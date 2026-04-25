@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eo pipefail;
+set -o pipefail;
 
 [[ -f /etc/install_config.conf ]] && source /etc/install_config.conf;
 
@@ -271,14 +271,18 @@ function _install_bonus_tools {
             esac
         fi
 
-        _tui_yesno "Flatpak" "Install Flatpak support?" && pacman -S --noconfirm flatpak
+        if _tui_yesno "Flatpak" "Install Flatpak support?"; then
+            ( pacman -S --noconfirm flatpak )  2>&1 | dialog --title "Extras" --programbox 20 80
+        fi
 
         if _tui_yesno "Zram" "Install Zram-tools for better RAM management?"; then
             ( pacman -S --noconfirm zram-tools "zram-tools-${INIT}" ) 2>&1 | dialog --title "Extras" --programbox 20 80
             [[ "${INIT}" == "openrc" ]] && rc-update add zramd default
         fi
 
-        _tui_yesno "Fastfetch" "Install Fastfetch?" && pacman -S --noconfirm fastfetch
+        if _tui_yesno "Fastfetch" "Install Fastfetch?"; then
+            ( pacman -S --noconfirm fastfetch )  2>&1 | dialog --title "Extras" --programbox 20 80
+        fi
 
         if [[ "${INIT}" == "runit" ]] && _tui_yesno "rsvc" "Install SashexSRB's rsvc?"; then
             ( git clone https://github.com/SashexSRB/rsvc /tmp/rsvc && cd /tmp/rsvc && make && make install ) 2>&1 | dialog --title "rsvc Installation" --programbox 20 80
@@ -290,5 +294,6 @@ function main {
     [[ "${EUID}" -ne 0 ]] && _error_exit "must be run as root";
     _setup_networking; _enable_arch_repos; _handle_modded_kernels; _install_interface; _setup_audio; _install_bonus_tools
     touch /var/lib/artix-firstboot-done; rm -f /etc/profile.d/firstboot.sh; _tui_msg "Finish" "Setup complete. Please reboot."
+    exec bash
 }
 main;
