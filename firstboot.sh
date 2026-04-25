@@ -22,9 +22,9 @@ function _error_exit {
 
 function _enable_arch_repos {
     if _tui_yesno "Arch Repos" "Would you like to enable official Arch Linux repositories (Extra, Community, Multilib)?"; then
-        (
+        {
             printf "[*] Installing archlinux-mirrorlist and keyring...\n"
-            pacman -Sy --noconfirm artix-archlinux-support &>/dev/null
+            pacman -Sy --noconfirm artix-archlinux-support
 
             printf "[*] Configuring /etc/pacman.conf...\n"
             if ! grep -q "\[extra\]" /etc/pacman.conf; then
@@ -41,13 +41,15 @@ Include = /etc/pacman.d/mirrorlist-arch
 REPOS
             fi
 
-            printf "[*] Syncing databases...\n"
-            pacman -Sy --noconfirm &>/dev/null
-            pacman-key --populate archlinux &>/dev/null
-        ) 2>&1 | dialog --title "Enabling Arch Repos" --programbox 20 80
+            echo "[*] Initializing Arch keys..."
+            pacman-key --init
+            pacman-key --populate archlinux --noconfirm
+
+            echo "[*] Final database sync..."
+            pacman -Sy --noconfirm
+        } 2>&1 | dialog --title "Enabling Arch Repos" --programbox 20 80
     fi
 }
-
 
 function _setup_networking {
     if ! ping -c 1 8.8.8.8 &>/dev/null; then
