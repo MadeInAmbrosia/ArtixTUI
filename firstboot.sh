@@ -136,18 +136,7 @@ function _handle_modded_kernels {
             _tui_msg "Kernel" "Downloading TKG source..."
             git clone https://github.com/frogging-family/linux-tkg /tmp/linux-tkg
             chown -R "${USER_NAME:-root}": /tmp/linux-tkg
-
-            if _tui_yesno "TKG Installation" "Source ready. Do you want to compile and install TKG kernel now?"; then
-                (
-                    cd /tmp/linux-tkg
-                    sudo -u "${USER_NAME:-root}" makepkg -si --noconfirm
-                    if [[ "${BOOTLOADER}" == "grub" ]]; then
-                        grub-mkconfig -o /boot/grub/grub.cfg
-                    elif [[ "${BOOTLOADER}" == "refind" ]]; then
-                        printf "\"Boot TKG\" \"${cmdline_opts} initrd=/boot/${ucode}.img initrd=/boot/initramfs-linux-tkg.img\"\n" > /boot/refind_linux.conf
-                    fi
-                ) 2>&1 | dialog --title "TKG Installation" --programbox 20 80
-            fi ;;
+            _tui_msg "TKG" "Source ready in /tmp/linux-tkg. Because of complexity, you can compile with: cd /tmp/linux-tkg && ./install.sh" ;;
     esac
 }
 
