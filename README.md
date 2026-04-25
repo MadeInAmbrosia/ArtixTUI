@@ -23,7 +23,7 @@ Everything is up to the user's choice.
 
 **Network**: Ethernet default. Installs iwd, wpa_supplicant, and dhcpcd.
 
-**Bootloaders**: Grub, rEFInd, efistub,
+**Bootloaders**: Grub, rEFInd, efistub.
 
 **Kernels**: Baseline Linux Kernel, LTS, Hardened, Xanmod (AUR), TKG (Compile-able)
 
