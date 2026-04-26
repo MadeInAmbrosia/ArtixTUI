@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -o pipefail;
 
+# Exit Guard loop - Temporary fix?
+[[ -f /var/lib/artix-firstboot-done ]] && return;
 [[ -f /etc/install_config.conf ]] && source /etc/install_config.conf;
 
 INIT="openrc";
@@ -98,7 +100,9 @@ function _setup_networking {
             esac
             
             sleep 2
-            iwctl || nmtui
+            if [[ -t 0 ]]; then
+                iwctl || nmtui
+            fi
         fi
     fi
 }
@@ -214,6 +218,9 @@ function _install_interface {
                 [[ -f config.def.h ]] && cp config.def.h config.h
                 make clean install
                 
+                mkdir -p /usr/share/xsessions
+                printf "[Desktop Entry]\nName=${WM_DE}\nExec=${WM_DE}\nType=Application\n" > "/usr/share/xsessions/${WM_DE}.desktop"
+
                 if [[ -n "${USER_NAME:-}" ]]; then
                     local user_home="/home/${USER_NAME}"
                     printf "while true; do xsetroot -name \"\$(date '+\%%H:\%%M')\"; sleep 60; done &\nexec ${WM_DE}\n" > "${user_home}/.xinitrc"
@@ -227,7 +234,7 @@ function _install_interface {
                 runit)  ln -s /etc/runit/sv/seatd /etc/runit/runsvdir/default/ 2>/dev/null || true ;;
                 dinit)  mkdir -p /etc/dinit.d/boot.d; ln -s ../seatd /etc/dinit.d/boot.d/ 2>/dev/null || true ;;
                 s6)     s6-rc-bundle-update add default seatd 2>/dev/null || true ;;
-            esac; [[ -n "${USER_NAME:-}" ]] && usermod -aG video,render,input "${USER_NAME}" ;;
+            esac; [[ -n "${USER_NAME:-}" ]] && usermod -aG video,render,input,seat "${USER_NAME}" ;;
         xfce4|lxqt|lxde)
             pacman -S --noconfirm "${dm}" "${dm}-${INIT}"
             [[ "${dm}" == "lightdm" ]] && pacman -S --noconfirm lightdm-gtk-greeter
@@ -239,7 +246,6 @@ function _install_interface {
             esac ;;
     esac
 }
-
 
 function _install_bonus_tools {
     if _tui_yesno "Extras" "Enter bonus tools menu?"; then
@@ -294,6 +300,5 @@ function main {
     [[ "${EUID}" -ne 0 ]] && _error_exit "must be run as root";
     _setup_networking; _enable_arch_repos; _handle_modded_kernels; _install_interface; _setup_audio; _install_bonus_tools
     touch /var/lib/artix-firstboot-done; rm -f /etc/profile.d/firstboot.sh; _tui_msg "Finish" "Setup complete. Please reboot."
-    exec bash
 }
 main;

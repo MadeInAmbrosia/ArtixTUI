@@ -52,13 +52,19 @@ USER_PASS="${USER_PASS}"
 ROOT_PASS="${ROOT_PASS}"
 USER_SHELL="${USER_SHELL}"
 EOF
-
+    chmod 600 /mnt/etc/install_config.conf
     local cores; cores=$(nproc);
     sed -i "s/#MAKEFLAGS=\"-j2\"/MAKEFLAGS=\"-j${cores}\"/" /mnt/etc/makepkg.conf;
 
     if [[ -f "${SCRIPT_DIR}/../firstboot.sh" ]]; then
         install -Dm755 "${SCRIPT_DIR}/../firstboot.sh" /mnt/usr/local/bin/firstboot.sh;
         install -Dm755 "${SCRIPT_DIR}/../firstboot_trigger.sh" /mnt/etc/profile.d/firstboot.sh;
+
+        cat <<EOF > /mnt/etc/profile.d/firstboot.sh
+if [[ \$(id -u) -eq 0 ]]; then
+    /usr/local/bin/firstboot.sh
+fi
+EOF
     fi
 
     sync;

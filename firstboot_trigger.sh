@@ -15,6 +15,9 @@ function main {
 
     [[ ! -f /usr/local/bin/firstboot.sh ]] && return 0;
 
+    if pgrep -f "firstboot.sh" > /dev/null; then
+        return 0;
+    fi
     local msg="ARTIX POST-INSTALLATION  \n\nIt looks like this is your first boot.\nThe system is now ready for final setup.\n\nRun setup now?"
 
     if _tui_yesno "First Boot" "${msg}" 2>/dev/null; then
@@ -26,6 +29,7 @@ function main {
             sudo /usr/local/bin/firstboot.sh
         fi
         clear;
+        return 0;
     else
         clear;
         printf "[*] Skipping setup for now. You can run it manually via /usr/local/bin/firstboot.sh\n"
