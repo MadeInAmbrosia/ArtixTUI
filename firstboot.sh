@@ -23,35 +23,33 @@ function _error_exit {
 }
 
 function _enable_arch_repos {
-    if _tui_yesno "Arch Repos" "Would you like to enable official Arch Linux repositories (Extra, Community, Multilib)?"; then
+    if _tui_yesno "Arch Repos" "Would you like to enable official Arch Linux repositories (Extra, Multilib)?"; then
         {
-            printf "[*] Installing archlinux-mirrorlist and keyring...\n"
-            pacman -Sy --noconfirm artix-archlinux-support
-
-            printf "[*] Configuring /etc/pacman.conf...\n"
+            printf "[*] Configuring /etc/pacman.conf...\n";
             if ! grep -q "\[extra\]" /etc/pacman.conf; then
                 cat <<REPOS >> /etc/pacman.conf
 
 [extra]
 Include = /etc/pacman.d/mirrorlist-arch
 
-[community]
-Include = /etc/pacman.d/mirrorlist-arch
-
 [multilib]
 Include = /etc/pacman.d/mirrorlist-arch
 REPOS
-            fi
+            fi;
 
-            echo "[*] Initializing Arch keys..."
-            pacman-key --init
-            pacman-key --populate archlinux --noconfirm
+            printf "[*] Installing artix-archlinux-support...\n";
+            pacman -Sy --noconfirm artix-archlinux-support;
 
-            echo "[*] Final database sync..."
-            pacman -Sy --noconfirm
-        } 2>&1 | dialog --title "Enabling Arch Repos" --programbox 20 80
-    fi
+            printf "[*] Initializing Arch keys...\n";
+            pacman-key --init;
+            pacman-key --populate archlinux;
+
+            printf "[*] Final database sync...\n";
+            pacman -Sy --noconfirm;
+        } 2>&1 | dialog --title " Enabling Arch Repos " --programbox 20 80;
+    fi;
 }
+
 
 function _setup_networking {
     if ! ping -c 1 8.8.8.8 &>/dev/null; then
@@ -193,12 +191,12 @@ function _install_interface {
     _handle_drivers; 
     local pkgs=("dbus" "dbus-${INIT}");
     local dm="lightdm"; 
-    local common="gvfs gvfs-mtp xdg-user-dirs"
+    local common="gvfs gvfs-mtp xdg-user-dirs";
     
     case "${WM_DE}" in
-        "xfce4")    pkgs+=("xfce4" "xfce4-goodies" $common) ;;
-        "lxqt")     pkgs+=("lxqt" "pavucontrol-qt" $common); dm="sddm" ;;
-        "lxde")     pkgs+=("lxde" "lxappearance" $common) ;;
+        "xfce4")    pkgs+=("xfce4" "xfce4-goodies" ${common}) ;;
+        "lxqt")     pkgs+=("lxqt" "pavucontrol-qt" ${common}); dm="sddm" ;;
+        "lxde")     pkgs+=("lxde" "lxappearance" ${common}) ;;
         "hyprland") pkgs+=("hyprland" "seatd" "seatd-${INIT}" "xdg-desktop-portal-hyprland" "foot") ;;
         "niri")     pkgs+=("niri" "seatd" "seatd-${INIT}" "foot") ;;
         "i3wm")     pkgs+=("i3-wm" "i3status" "i3lock" "xterm") ;;
@@ -207,16 +205,18 @@ function _install_interface {
 
     if [[ ${#pkgs[@]} -gt 2 ]]; then
         (
+            printf "[*] Refreshing databases (Multilib/Extra)...\n";
+            pacman -Sy --noconfirm;
+
             if [[ "${DRV_CHOICE:-2}" == "1" ]]; then
                 local x_ver;
-                x_ver=$(pacman -Si xorg-server 2>/dev/null | grep Version | awk '{print $3}' | cut -d'-' -f1 || echo "21.1.13")
-                pacman -S --noconfirm --needed --assume-installed "xorg-server=${x_ver}" "${pkgs[@]}"
+                x_ver=$(pacman -Si xorg-server 2>/dev/null | grep Version | awk '{print $3}' | cut -d'-' -f1 || echo "21.1.13");
+                printf "\n" | pacman -S --noconfirm --needed --assume-installed "xorg-server=${x_ver}" "${pkgs[@]}";
             else
-                pacman -S --noconfirm --needed "${pkgs[@]}"
+                printf "\n" | pacman -S --noconfirm --needed "${pkgs[@]}";
             fi
-        ) 2>&1 | dialog --title "Interface Installation" --programbox 20 80
+        ) 2>&1 | dialog --title " Interface Installation " --programbox 20 80
     fi
-
     case "${INIT}" in
         openrc) rc-update add dbus default; rc-service dbus start 2>/dev/null || true ;;
         runit)  ln -s /etc/runit/sv/dbus /etc/runit/runsvdir/default/ 2>/dev/null || true ;;
