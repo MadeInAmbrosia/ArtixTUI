@@ -25,12 +25,17 @@ function _error_exit {
 function _enable_arch_repos {
     if _tui_yesno "Arch Repos" "Would you like to enable official Arch Linux repositories (Extra, Multilib)?"; then
         {
+            sed -i 's/^\[extra\]/#\[extra\]/' /etc/pacman.conf 2>/dev/null;
+            sed -i 's/^Include = \/etc\/pacman.d\/mirrorlist-arch/#Include = \/etc\/pacman.d\/mirrorlist-arch/' /etc/pacman.conf 2>/dev/null;
+
             printf "[*] Installing artix-archlinux-support...\n";
             pacman -Sy --noconfirm artix-archlinux-support;
 
             printf "[*] Configuring /etc/pacman.conf...\n";
-            if ! grep -q "\[extra\]" /etc/pacman.conf; then
-                cat <<REPOS >> /etc/pacman.conf
+            sed -i '/\[extra\]/,/Include = \/etc\/pacman.d\/mirrorlist-arch/d' /etc/pacman.conf;
+            sed -i '/\[multilib\]/,/Include = \/etc\/pacman.d\/mirrorlist-arch/d' /etc/pacman.conf;
+
+            cat <<REPOS >> /etc/pacman.conf
 
 [extra]
 Include = /etc/pacman.d/mirrorlist-arch
@@ -38,16 +43,14 @@ Include = /etc/pacman.d/mirrorlist-arch
 [multilib]
 Include = /etc/pacman.d/mirrorlist-arch
 REPOS
-            fi;
 
             printf "[*] Initializing Arch keys...\n";
             pacman-key --init;
             pacman-key --populate archlinux;
-
-            printf "[*] Final database sync...\n";
+            
             pacman -Sy --noconfirm;
         } 2>&1 | dialog --title " Enabling Arch Repos " --programbox 20 80;
-    fi;
+    fi
 }
 
 function _setup_networking {
@@ -56,7 +59,7 @@ function _setup_networking {
         if grep -qaE "virt|vmware|kvm|qemu|oracle" /sys/class/dmi/id/product_name 2>/dev/null || \
            grep -qaE "virt|vmware|kvm|qemu|oracle" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
             is_vm=true;
-        fi;
+        fi
 
         if [[ "${is_vm}" == "true" ]]; then
             _tui_msg "Networking" "Virtual Machine detected. Attempting to start dhcpcd...";
@@ -67,7 +70,7 @@ function _setup_networking {
                 s6)     s6-rc -u change dhcpcd 2>/dev/null || true ;;
             esac;
             sleep 3;
-        fi;
+        fi
 
         if ! ping -c 1 8.8.8.8 &>/dev/null; then
             local eth_devs;
@@ -82,9 +85,9 @@ function _setup_networking {
                     ) | dialog --title " DHCP " --programbox 10 70;
                     
                     if ping -c 1 8.8.8.8 &>/dev/null; then break; fi;
-                fi;
+                fi
             done;
-        fi;
+        fi
 
         if ! ping -c 1 8.8.8.8 &>/dev/null; then
             local wifi_dev;
@@ -93,7 +96,7 @@ function _setup_networking {
             local msg="No internet detected. Connectivity options:\n\n";
             if [[ -n "${wifi_dev}" ]]; then
                 msg+="[ WIFI - iwctl ]\n1. station ${wifi_dev} scan\n2. station ${wifi_dev} get-networks\n3. station ${wifi_dev} connect [SSID]\n4. quit\n\n";
-            fi;
+            fi
             
             msg+="[ ETHERNET / VM / DHCP ]\n";
             msg+="Try restarting the service for your INIT (${INIT}):\n";
@@ -116,9 +119,9 @@ function _setup_networking {
             sleep 2;
             if [[ -t 0 ]]; then
                 iwctl || nmtui;
-            fi;
-        fi;
-    fi;
+            fi
+        fi
+    fi
 }
 
 function _handle_modded_kernels {
