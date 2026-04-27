@@ -166,17 +166,37 @@ function _handle_modded_kernels {
 function _setup_audio {
     if _tui_yesno "Audio Setup" "Would you like to configure audio server?"; then
         local ac=$( _tui_menu "Audio" "Select audio server:" "1" "Pipewire" "2" "PulseAudio" )
-        case "${ac}" in
-            1) pacman -S --noconfirm pipewire pipewire-pulse wireplumber && pacman -S --noconfirm "pipewire-${INIT}" 2>/dev/null || true ;;
-            2) pacman -S --noconfirm pulseaudio pulseaudio-alsa && pacman -S --noconfirm "pulseaudio-${INIT}" 2>/dev/null || true ;;
-        esac
+        (
+            case "${ac}" in
+                1)
+                    printf "[*] Installing Pipewire stack...\n"
+                    pacman -S --noconfirm --needed pipewire pipewire-pulse wireplumber
+                    printf "[*] Installing Pipewire init support for %s...\n" "${INIT}"
+                    pacman -S --noconfirm --needed "pipewire-${INIT}" 2>/dev/null || true
+                    ;;
+                2)
+                    printf "[*] Installing PulseAudio stack...\n"
+                    pacman -S --noconfirm --needed pulseaudio pulseaudio-alsa
+                    printf "[*] Installing PulseAudio init support for %s...\n" "${INIT}"
+                    pacman -S --noconfirm --needed "pulseaudio-${INIT}" 2>/dev/null || true
+                    ;;
+            esac
+        ) 2>&1 | dialog --title " Audio Installation " --programbox 20 80
     fi
 }
 
 function _handle_drivers {
-    local pkgs=(); local gpu_info=$(lspci | grep -iE "vga|3d")
-    if _tui_yesno "Drivers" "Install drivers for: ${gpu_info}?"; then
-        DRV_CHOICE=$(_tui_menu "Drivers" "Select driver type:" "1" "xLibre (Libre)" "2" "Standard X.Org")
+    local pkgs=(); 
+    local gpu_info=$(lspci | grep -iE "vga|3d" | cut -d: -f3 | xargs);
+
+    if dialog --title " Drivers " --yesno "Found GPU:\n\n${gpu_info}\n\nDo you want to install drivers?" 10 60; then
+        
+        DRV_CHOICE=$(dialog --stdout --title " Driver Type " --menu "Choose preferred driver stack:" 12 50 2 \
+            "1" "xLibre (Open Source)" \
+            "2" "Standard X.Org (Proprietary)");
+
+        [[ -z "${DRV_CHOICE}" ]] && return 0; 
+
         if [[ "${gpu_info,,}" == *nvidia* ]]; then
             [[ "${DRV_CHOICE}" == "2" ]] && pkgs+=( "nvidia-dkms" "nvidia-utils" ) || pkgs+=( "xlibre-video-nouveau" )
         elif [[ "${gpu_info,,}" == *intel* ]]; then
@@ -184,8 +204,13 @@ function _handle_drivers {
         elif [[ "${gpu_info,,}" == *amd* ]]; then
             [[ "${DRV_CHOICE}" == "2" ]] && pkgs+=( "xf86-video-amdgpu" "vulkan-radeon" ) || pkgs+=( "xlibre-video-amdgpu" "vulkan-radeon" )
         fi
+
         [[ "${DRV_CHOICE}" == "2" ]] && pkgs+=( "xorg-server" ) || pkgs+=( "xlibre-xserver" )
-        pacman -S --noconfirm --needed "${pkgs[@]}"
+
+        (
+            printf "[*] Installing selected driver packages...\n";
+            pacman -S --noconfirm --needed "${pkgs[@]}";
+        ) | dialog --title " Driver Installation " --programbox 20 80
     fi
 }
 
@@ -219,6 +244,7 @@ function _install_interface {
             fi
         ) 2>&1 | dialog --title " Interface Installation " --programbox 20 80
     fi
+
     case "${INIT}" in
         openrc) rc-update add dbus default; rc-service dbus start 2>/dev/null || true ;;
         runit)  ln -s /etc/runit/sv/dbus /etc/runit/runsvdir/default/ 2>/dev/null || true ;;
@@ -255,14 +281,16 @@ function _install_interface {
                 s6)     s6-rc-bundle-update add default seatd 2>/dev/null || true ;;
             esac; [[ -n "${USER_NAME:-}" ]] && usermod -aG video,render,input,seat "${USER_NAME}" ;;
         xfce4|lxqt|lxde)
-            pacman -S --noconfirm "${dm}" "${dm}-${INIT}"
-            [[ "${dm}" == "lightdm" ]] && pacman -S --noconfirm lightdm-gtk-greeter
-            case "${INIT}" in
-                openrc) rc-update add "${dm}" default ;;
-                runit)  ln -s "/etc/runit/sv/${dm}" /etc/runit/runsvdir/default/ 2>/dev/null || true ;;
-                dinit)  mkdir -p /etc/dinit.d/boot.d; ln -s ../${dm} /etc/dinit.d/boot.d/ 2>/dev/null || true ;;
-                s6)     s6-rc-bundle-update add default "${dm}" 2>/dev/null || true ;;
-            esac ;;
+            (
+                pacman -S --noconfirm "${dm}" "${dm}-${INIT}"
+                [[ "${dm}" == "lightdm" ]] && pacman -S --noconfirm lightdm-gtk-greeter
+                case "${INIT}" in
+                    openrc) rc-update add "${dm}" default ;;
+                    runit)  ln -s "/etc/runit/sv/${dm}" /etc/runit/runsvdir/default/ 2>/dev/null || true ;;
+                    dinit)  mkdir -p /etc/dinit.d/boot.d; ln -s ../${dm} /etc/dinit.d/boot.d/ 2>/dev/null || true ;;
+                    s6)     s6-rc-bundle-update add default "${dm}" 2>/dev/null || true ;;
+                esac
+            ) 2>&1 | dialog --title " Display Manager Setup " --programbox 20 80 ;;
     esac
 }
 
