@@ -34,7 +34,7 @@ _install_base() {
             
         printf "\n[✓] Basestrap complete. Moving to final steps...\n";
         sleep 2;
-    } | dialog --title " Base System Installation " --programbox 20 95
+    } | dialog --title " Base System Installation " --programbox 20 95 || true
 }
 
 _prepare_handoff() {
