@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eo pipefail;
 
+if [[ "$*" == *"--debug"* ]]; then
+    set -x;
+fi
+
 SELF_PATH="$(readlink -f "${BASH_SOURCE}")";
 SCRIPT_DIR="${SELF_PATH%/*}";
 

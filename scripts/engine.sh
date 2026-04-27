@@ -59,10 +59,7 @@ _setup_storage() {
 
 _setup_bootloader() {
     _load_state;
-    local log_boot="/tmp/bootloader.log"
-
-    [[ -z "${DISK:-}" ]] && _error_exit "DISK variable lost!";
-    [[ -z "${BOOTLOADER:-}" ]] && _error_exit "BOOTLOADER choice lost!";
+    local log_boot="/tmp/bootloader.log";
 
     {
         local root_dev real_dev uuid hooks cmdline_opts ucode

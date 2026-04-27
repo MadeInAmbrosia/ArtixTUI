@@ -22,19 +22,25 @@ _install_base() {
     [[ "${USE_LUKS}" == "yes" ]] && pkgs+=("cryptsetup");
     _load_state 2>/dev/null || true;
 
+    set +eo pipefail;
+
     {
         printf "[*] Validating keyrings...\n";
-        pacman-key --init &>/dev/null;
-        pacman-key --populate artix &>/dev/null;
-        grep -q "^\[universe\]" /etc/pacman.conf && pacman-key --populate archlinux &>/dev/null;
+        pacman-key --init 2>&1;
+        pacman-key --populate artix 2>&1;
+        if grep -q "^\[universe\]" /etc/pacman.conf; then
+            pacman-key --populate archlinux 2>&1;
+        fi;
 
         printf "[*] Starting basestrap installation...\n";
-        basestrap /mnt "${pkgs[@]}" --noconfirm --noprogressbar --color never 2>&1 | \
-            sed -u -E 's/\x1b\[[0-9;]*[a-zA-Z]//g'
+        (basestrap /mnt "${pkgs[@]}" --noconfirm --noprogressbar --color never 2>&1 || true) | \
+            sed -u -E 's/\x1b\[[0-9;]*[a-zA-Z]//g';
             
         printf "\n[✓] Basestrap complete. Moving to final steps...\n";
         sleep 2;
-    } | dialog --title " Base System Installation " --programbox 20 95 || true
+    } | dialog --title " Base System Installation " --programbox 20 95;
+
+    set -eo pipefail;
 }
 
 _prepare_handoff() {

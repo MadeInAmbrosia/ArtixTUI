@@ -128,18 +128,26 @@ function _dispatch {
 #|   -a, --auto      TUI-driven automated Artix installation
 #|   -m, --manual    Manual installation shell
 #|   -h, --help      Show this help message
+#|   -d, --debug     Uses "set -x" for debugging!
 function main {
     _is_efi;
     [[ "${EUID}" -ne 0 ]] && _error_exit "must be run as root";
     
+    local DEBUG=false;
     while [[ $# -gt 0 ]]; do
         case "${1}" in
             -a|--auto)   MODE="auto"; shift ;;
             -m|--manual) MODE="manual"; shift ;;
+            -d|--debug)  DEBUG=true; shift ;;
             -h|--help)   _extract_docblock "main"; exit 0 ;;
             *)           ARGV+=("${1}"); shift ;;
         esac
     done
+
+    if [[ "${DEBUG}" == "true" ]]; then
+        set -x; 
+        ARGV+=("--debug"); 
+    fi
 
     if [[ "${MODE}" == "auto" ]]; then
         _tui_main_menu;

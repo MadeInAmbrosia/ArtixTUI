@@ -55,56 +55,73 @@ REPOS
 
 function _setup_networking {
     if ! ping -c 1 8.8.8.8 &>/dev/null; then
-        local is_vm=false
+        local is_vm=false;
         if grep -qaE "virt|vmware|kvm|qemu|oracle" /sys/class/dmi/id/product_name 2>/dev/null || \
            grep -qaE "virt|vmware|kvm|qemu|oracle" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
-            is_vm=true
-        fi
+            is_vm=true;
+        fi;
 
         if [[ "${is_vm}" == "true" ]]; then
-            _tui_msg "Networking" "Virtual Machine detected. Attempting to start dhcpcd..."
+            _tui_msg "Networking" "Virtual Machine detected. Attempting to start dhcpcd...";
             case "${INIT}" in
                 openrc) rc-service dhcpcd restart 2>/dev/null || true ;;
                 runit)  sv restart dhcpcd 2>/dev/null || true ;;
                 dinit)  dinitctl start dhcpcd 2>/dev/null || true ;;
                 s6)     s6-rc -u change dhcpcd 2>/dev/null || true ;;
-            esac
-            sleep 3
-        fi
+            esac;
+            sleep 3;
+        fi;
 
         if ! ping -c 1 8.8.8.8 &>/dev/null; then
-            local wifi_dev
-            wifi_dev=$(ip link property | grep -oP '(?<=dev )wlp\S+|wlan\S+' | head -n 1 || echo "")
-
-            local msg="No internet detected. Connectivity options:\n\n"
-            if [[ -n "${wifi_dev}" ]]; then
-                msg+="[ WIFI - iwctl ]\n1. station ${wifi_dev} scan\n2. station ${wifi_dev} get-networks\n3. station ${wifi_dev} connect [SSID]\n4. quit\n\n"
-            fi
+            local eth_devs;
+            eth_devs=$(ip -o link show | awk -F': ' '{print $2}' | grep -vE 'lo|wlp|wlan');
             
-            msg+="[ ETHERNET / VM / DHCP ]\n"
-            msg+="Try restarting the service for your INIT (${INIT}):\n"
+            for dev in ${eth_devs}; do
+                if dialog --title " Networking " --yesno "No internet detected.\n\nFound potential ethernet: ${dev}\nDo you want to try automatic DHCP?" 10 55; then
+                    (
+                        printf "[*] Bringing up %s...\n" "${dev}";
+                        ip link set "${dev}" up;
+                        dhcpcd -n "${dev}" 2>&1;
+                    ) | dialog --title " DHCP " --programbox 10 70;
+                    
+                    if ping -c 1 8.8.8.8 &>/dev/null; then break; fi;
+                fi;
+            done;
+        fi;
+
+        if ! ping -c 1 8.8.8.8 &>/dev/null; then
+            local wifi_dev;
+            wifi_dev=$(ip link property | grep -oP '(?<=dev )wlp\S+|wlan\S+' | head -n 1 || echo "");
+
+            local msg="No internet detected. Connectivity options:\n\n";
+            if [[ -n "${wifi_dev}" ]]; then
+                msg+="[ WIFI - iwctl ]\n1. station ${wifi_dev} scan\n2. station ${wifi_dev} get-networks\n3. station ${wifi_dev} connect [SSID]\n4. quit\n\n";
+            fi;
+            
+            msg+="[ ETHERNET / VM / DHCP ]\n";
+            msg+="Try restarting the service for your INIT (${INIT}):\n";
             case "${INIT}" in
                 openrc) msg+="sudo rc-service dhcpcd restart\n" ;;
                 runit)  msg+="sudo sv restart dhcpcd\n" ;;
                 dinit)  msg+="sudo dinitctl restart dhcpcd\n" ;;
                 s6)     msg+="sudo s6-rc -u change dhcpcd\n" ;;
-            esac
-            msg+="\nManual force: sudo dhcpcd [interface_name]\n\nLaunching tools..."
-            _tui_msg "Networking" "${msg}"
+            esac;
+            msg+="\nManual force: sudo dhcpcd [interface_name]\n\nLaunching tools...";
+            _tui_msg "Networking" "${msg}";
 
             case "${INIT}" in
                 openrc) rc-service iwd start 2>/dev/null; rc-service dhcpcd start 2>/dev/null ;;
                 runit)  sv up iwd 2>/dev/null; sv up dhcpcd 2>/dev/null ;;
                 dinit)  dinitctl start iwd 2>/dev/null; dinitctl start dhcpcd 2>/dev/null ;;
                 s6)     s6-rc -u change iwd 2>/dev/null; s6-rc -u change dhcpcd 2>/dev/null ;;
-            esac
+            esac;
             
-            sleep 2
+            sleep 2;
             if [[ -t 0 ]]; then
-                iwctl || nmtui
-            fi
-        fi
-    fi
+                iwctl || nmtui;
+            fi;
+        fi;
+    fi;
 }
 
 function _handle_modded_kernels {
