@@ -56,7 +56,7 @@ fi
 EOF
     umount -R /mnt 2>/dev/null || true;
     
-    dialog --title " Success " --msgbox "Installation complete!\n\nYou can now reboot." 7 55
+    dialog --title " Success " --msgbox "Installation complete!\n\nYou can now reboot. Please log in as root on reboot!" 7 55
 }
 main;
 
