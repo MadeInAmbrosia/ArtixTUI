@@ -11,7 +11,7 @@ Everything is up to the user's choice.
 
 ## Features
 
-**NEWEST FEATURE(S)**: TUI, Multiple kernels, Networking function update, etc.
+**NEWEST FEATURE(S)**: NVIDIA 20,30,40,50 Driver support! 
 
 **Init systems**: OpenRC, runit, s6, dinit
 

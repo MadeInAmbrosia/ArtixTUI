@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -o pipefail;
 
+LOG_FILE="/var/log/artix-postinstall.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+function _report_err {
+    local exit_code="${1}";
+    local task="${2}";
+    dialog --title " Error (Code: ${exit_code}) " --msgbox "Task ${task} failed.\n\nCheck ${LOG_FILE} for details." 8 50;
+    exit "${exit_code}";
+}
+
 # Exit Guard loop - Temporary fix?
 [[ -f /var/lib/artix-firstboot-done ]] && return;
 [[ -f /etc/install_config.conf ]] && source /etc/install_config.conf;
@@ -50,6 +60,7 @@ REPOS
             
             pacman -Sy --noconfirm;
         } 2>&1 | dialog --title " Enabling Arch Repos " --programbox 20 80;
+        [[ ${PIPESTATUS[0]} -ne 0 ]] && _report_err ${PIPESTATUS[0]} "Arch Repos";
     fi
 }
 
@@ -182,35 +193,72 @@ function _setup_audio {
                     ;;
             esac
         ) 2>&1 | dialog --title " Audio Installation " --programbox 20 80
+        [[ ${PIPESTATUS[0]} -ne 0 ]] && _report_err ${PIPESTATUS[0]} "Audio";
     fi
 }
 
 function _handle_drivers {
     local pkgs=(); 
-    local gpu_info=$(lspci | grep -iE "vga|3d" | cut -d: -f3 | xargs);
+    local gpu_vendor=$(lspci -nn | awk -F' ' '/VGA|3D/ {print tolower($0)}' | grep -o 'nvidia\|intel\|amd' | head -n 1);
+    local gpu_info=$(lspci -nn | awk -F': ' '/VGA|3D/ {print $3}' | xargs);
+    local pci_id=$(lspci -n | awk -F' ' '/0300|0302/ {print $3}' | awk -F':' '{print $2}' | head -n 1);
+    local is_vm=$(systemd-detect-virt);
+    local final_stack="";
 
-    if dialog --title " Drivers " --yesno "Found GPU:\n\n${gpu_info}\n\nDo you want to install drivers?" 10 60; then
+    if dialog --title " Drivers " --yesno "Found GPU: ${gpu_info}\nVirt: ${is_vm}\n\nDo you want to install drivers?" 10 60; then
         
-        DRV_CHOICE=$(dialog --stdout --title " Driver Type " --menu "Choose preferred driver stack:" 12 50 2 \
-            "1" "xLibre (Open Source)" \
-            "2" "Standard X.Org (Proprietary)");
-
-        [[ -z "${DRV_CHOICE}" ]] && return 0; 
-
-        if [[ "${gpu_info,,}" == *nvidia* ]]; then
-            [[ "${DRV_CHOICE}" == "2" ]] && pkgs+=( "nvidia-dkms" "nvidia-utils" ) || pkgs+=( "xlibre-video-nouveau" )
-        elif [[ "${gpu_info,,}" == *intel* ]]; then
-            [[ "${DRV_CHOICE}" == "2" ]] && pkgs+=( "xf86-video-intel" "intel-media-driver" ) || pkgs+=( "xlibre-video-intel" )
-        elif [[ "${gpu_info,,}" == *amd* ]]; then
-            [[ "${DRV_CHOICE}" == "2" ]] && pkgs+=( "xf86-video-amdgpu" "vulkan-radeon" ) || pkgs+=( "xlibre-video-amdgpu" "vulkan-radeon" )
+        if [[ "$is_vm" != "none" ]]; then
+            case "$is_vm" in
+                kvm|qemu) pkgs+=("virtio-gpu") ;;
+                vmware)   pkgs+=("xf86-video-vmware") ;;
+                oracle)   pkgs+=("virtualbox-guest-utils") ;;
+            esac
+            final_stack="2"; 
+        elif [[ "$gpu_vendor" == "nvidia" ]]; then
+            local pci_hex=$((16#$pci_id));
+            if (( pci_hex >= 16#1e00 )); then
+                if _tui_yesno "NVIDIA Open Source Modules" "Detected newer GPU (${gpu_info}).\n\nUse OFFICIAL nvidia-open-dkms?"; then
+                    pkgs+=("nvidia-open-dkms" "nvidia-utils");
+                    final_stack=$(dialog --stdout --title " X-Server Type " --menu "NVIDIA Open detected. Choose X-Server:" 10 50 2 "1" "xLibre-XServer" "2" "Standard X.Org");
+                fi
+            fi
         fi
 
-        [[ "${DRV_CHOICE}" == "2" ]] && pkgs+=( "xorg-server" ) || pkgs+=( "xlibre-xserver" )
+        if [[ -z "${final_stack}" ]]; then
+            DRV_CHOICE=$(dialog --stdout --title " Driver Type " --menu "Choose preferred driver stack:" 12 50 2 \
+                "1" "xLibre (Open Source)" \
+                "2" "Standard X.Org (Proprietary)");
+
+            [[ -z "${DRV_CHOICE}" ]] && return 0; 
+            final_stack="${DRV_CHOICE}";
+
+            if [[ "$gpu_vendor" == "nvidia" ]]; then
+                [[ "${final_stack}" == "2" ]] && pkgs+=( "nvidia-dkms" "nvidia-utils" ) || pkgs+=( "xlibre-video-nouveau" )
+            elif [[ "$gpu_vendor" == "intel" ]]; then
+                [[ "${final_stack}" == "2" ]] && pkgs+=( "xf86-video-intel" "intel-media-driver" ) || pkgs+=( "xlibre-video-intel" )
+            elif [[ "$gpu_vendor" == "amd" ]]; then
+                [[ "${final_stack}" == "2" ]] && pkgs+=( "xf86-video-amdgpu" "vulkan-radeon" ) || pkgs+=( "xlibre-video-amdgpu" "vulkan-radeon" )
+            else
+                pkgs+=("xf86-video-vesa")
+            fi
+        fi
+
+        [[ "${final_stack}" == "2" ]] && pkgs+=( "xorg-server" ) || pkgs+=( "xlibre-xserver" )
 
         (
             printf "[*] Installing selected driver packages...\n";
             pacman -S --noconfirm --needed "${pkgs[@]}";
         ) | dialog --title " Driver Installation " --programbox 20 80
+
+        if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+            if [[ "$gpu_vendor" == "nvidia" ]]; then
+                 _tui_msg "NVIDIA Fallback" "Selected NVIDIA driver failed. Attempting xf86-video-nouveau...";
+                 ( pacman -S --noconfirm xf86-video-nouveau ) 2>&1 | dialog --title " NVIDIA Fallback " --programbox 20 80
+                 [[ ${PIPESTATUS[0]} -ne 0 ]] && _report_err ${PIPESTATUS[0]} "NVIDIA Fallback";
+            else
+                 _report_err ${PIPESTATUS[0]} "Driver Installation";
+            fi
+        fi
     fi
 }
 
@@ -243,6 +291,7 @@ function _install_interface {
                 printf "\n" | pacman -S --noconfirm --needed "${pkgs[@]}";
             fi
         ) 2>&1 | dialog --title " Interface Installation " --programbox 20 80
+        [[ ${PIPESTATUS[0]} -ne 0 ]] && _report_err ${PIPESTATUS[0]} "Interface";
     fi
 
     case "${INIT}" in
