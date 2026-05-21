@@ -210,6 +210,7 @@ ArtixTUI/
 │       ├── post.sh
 │       └── finalize.sh
 └── poweruser/
+    ├── VERSION
     ├── README.md
     ├── bin/
     │   └── gartix
