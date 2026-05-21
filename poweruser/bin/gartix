@@ -1,0 +1,336 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+POWERUSER_DIR="/usr/share/artix-poweruser"
+
+die() { printf '\e[1;31m[✗] %s\e[0m\n' "${1:-fatal error}" >&2; exit 1; }
+log_info()  { printf '\e[1;34m[*] %s\e[0m\n' "$*" >&2; }
+log_warn()  { printf '\e[1;33m[!] %s\e[0m\n' "$*" >&2; }
+log_error() { printf '\e[1;31m[✗] %s\e[0m\n' "$*" >&2; }
+require_root() { [[ $EUID -eq 0 ]] || die "This command must be run as root"; }
+
+if ! command -v gum &>/dev/null; then
+    echo "[*] Installing gum..."
+    pacman -Sy --noconfirm gum || die "Failed to install gum. Install it manually and retry."
+fi
+
+usage() {
+    cat <<EOF
+Usage: gartix [--tui] <command> [args]
+
+Commands:
+  list              List installed source packages
+  list-recipes      List all available recipes
+  info <pkg>        Show build details
+  rebuild <pkg>     Rebuild a specific package
+  new <name>        Create a new recipe from template
+  edit <name>       Edit an existing recipe
+  config            Edit the running kernel's .config
+  menuconfig        Launch make menuconfig (needs kernel source)
+  lint <name>       Validate a recipe
+  cache-clean       Remove obsolete cached packages
+  sync              Update recipes (git pull)
+  --tui             Launch interactive TUI
+EOF
+}
+
+list_packages() {
+    [[ -f "${POWERUSER_DIR}/db/local.db" ]] || { echo "No packages installed."; return; }
+    column -t -s '|' "${POWERUSER_DIR}/db/local.db"
+}
+
+list_recipes() {
+    for f in "${POWERUSER_DIR}"/recipes/*.sh; do
+        [[ -f "${f}" ]] || continue
+        local name desc
+        name=$(basename "${f}" .sh)
+        desc=$(grep -m1 '^desc=' "${f}" | cut -d'"' -f2)
+        echo "${name} - ${desc:-no description}"
+    done
+}
+
+info_package() {
+    local pkg="${1}"
+    grep "^${pkg}|" "${POWERUSER_DIR}/db/local.db" || echo "No info for ${pkg}"
+}
+
+rebuild_package() {
+    local pkg="${1}"
+    require_root
+    source "${POWERUSER_DIR}/lib/common.sh"
+    source "${POWERUSER_DIR}/lib/flags.bash"
+    source "${POWERUSER_DIR}/lib/recipe.bash"
+    source "${POWERUSER_DIR}/lib/validate.bash"
+    source "${POWERUSER_DIR}/lib/builder.bash"
+    source "${POWERUSER_DIR}/lib/cache.bash"
+    source "${POWERUSER_DIR}/lib/rebuild.bash"
+
+    load_profile "$(cat ${POWERUSER_DIR}/profile/active 2>/dev/null || echo default)"
+    load_recipe "${pkg}"
+
+    if ! needs_rebuild "${pkg}"; then
+        echo "${pkg} is up-to-date. Nothing to rebuild."
+        return 0
+    fi
+
+    echo "Rebuilding ${pkg}..."
+    build_package "${pkg}"
+}
+
+new_recipe() {
+    local name="${1}"
+    local recipe_file="${POWERUSER_DIR}/recipes/${name}.sh"
+    if [[ -f "${recipe_file}" ]]; then
+        echo "Recipe ${name} already exists. Use 'edit' to modify it."
+        exit 1
+    fi
+    cp "${POWERUSER_DIR}/recipes/template.sh" "${recipe_file}"
+    ${EDITOR:-nano} "${recipe_file}"
+    echo "Recipe ${name} created. Run 'gartix lint ${name}' to validate."
+}
+
+edit_recipe() {
+    local name="${1}"
+    local recipe_file="${POWERUSER_DIR}/recipes/${name}.sh"
+    [[ -f "${recipe_file}" ]] || { echo "Recipe ${name} not found."; exit 1; }
+    ${EDITOR:-nano} "${recipe_file}"
+}
+
+edit_config() {
+    require_root
+    local config_file="/boot/config-$(uname -r)"
+    if [[ -f "${config_file}" ]]; then
+        ${EDITOR:-nano} "${config_file}"
+    else
+        echo "No config found at ${config_file}"
+        echo "Run 'gartix rebuild linux' to regenerate the kernel and its config."
+        exit 1
+    fi
+    echo "Config edited. Rebuild with: gartix rebuild linux"
+}
+
+launch_menuconfig() {
+    require_root
+    local src_dir="/usr/src/linux-custom"
+    if [[ -d "${src_dir}" ]]; then
+        cd "${src_dir}"
+        make menuconfig
+        echo "Config saved. Rebuild with: gartix rebuild linux"
+    else
+        echo "Kernel source not found at ${src_dir}"
+        echo "Run 'gartix fetch-source linux' to download the kernel source."
+        exit 1
+    fi
+}
+
+fetch_source() {
+    local pkg="${1}"
+    require_root
+    source "${POWERUSER_DIR}/lib/common.sh"
+    source "${POWERUSER_DIR}/lib/flags.bash"
+    source "${POWERUSER_DIR}/lib/recipe.bash"
+    source "${POWERUSER_DIR}/lib/builder.bash"
+
+    load_recipe "${pkg}"
+    fetch_sources "${pkg}"
+    local src_dir="/usr/src/linux-custom"
+    mkdir -p "${src_dir}"
+    cd "${src_dir}"
+    export BUILD_DIR="${src_dir}"
+    export SOURCES_DIR="${POWERUSER_BUILD_DIR:-/var/cache/artix-poweruser}/sources"
+    mkdir -p "${SOURCES_DIR}"
+    fetch_sources "${pkg}" 2>/dev/null
+    if declare -f prepare >/dev/null 2>&1; then
+        prepare
+    fi
+    echo "Source ready in ${src_dir}"
+}
+
+lint_recipe() {
+    local name="${1}"
+    source "${POWERUSER_DIR}/lib/recipe.bash"
+    source "${POWERUSER_DIR}/lib/validate.bash"
+    if validate_recipe "${name}" 2>&1; then
+        echo "Recipe ${name} is valid."
+    else
+        echo "Recipe ${name} has errors (see above)."
+        exit 1
+    fi
+}
+
+cache_clean() {
+    require_root
+    source "${POWERUSER_DIR}/lib/cache.bash"
+    cache_clean
+}
+
+sync_recipes() {
+    local recipe_dir="${POWERUSER_DIR}/recipes"
+    if [[ -d "${recipe_dir}/.git" ]]; then
+        ( cd "${recipe_dir}" && git pull )
+        echo "Recipes updated."
+    else
+        echo "Recipe directory is not a git repository. Skipping sync."
+    fi
+}
+
+tui_menu() {
+    local title="${1}" msg="${2}"
+    shift 2
+    gum style --bold --foreground 212 "── ${title} ──" >&2
+    [[ -n "${msg}" ]] && gum format "${msg}" >&2
+    gum choose --height=15 "$@" </dev/tty
+}
+
+tui_checklist() {
+    local title="${1}" msg="${2}"
+    shift 2
+    gum style --bold --foreground 212 "── ${title} ──" >&2
+    [[ -n "${msg}" ]] && gum format "${msg}" >&2
+    gum choose --no-limit --height=15 "$@" </dev/tty
+}
+
+tui_msg() {
+    local title="${1}" msg="${2}"
+    gum style --bold --foreground 212 "── ${title} ──"
+    gum format "${msg}"
+    gum confirm "Press Enter to continue" --affirmative="OK" --timeout=0 </dev/tty 2>/dev/null || true
+}
+
+tui_input() {
+    local title="${1}" msg="${2}" default="${3:-}" result
+    gum style --bold --foreground 212 "── ${title} ──" >&2
+    [[ -n "${msg}" ]] && gum format "${msg}" >&2
+    result=$(gum input --value "${default}" --prompt "> " </dev/tty) || true
+    printf '%s' "${result}"
+}
+
+tui_yesno() {
+    local title="${1}" msg="${2}"
+    gum style --bold --foreground 212 "── ${title} ──"
+    gum format "${msg}"
+    gum confirm </dev/tty
+}
+
+tui_main() {
+    while true; do
+        clear
+        local action
+        action=$(tui_menu "gartix" "Select an action:" \
+            "List installed packages" \
+            "List available recipes" \
+            "Package info" \
+            "Rebuild a package" \
+            "Create new recipe" \
+            "Edit recipe" \
+            "Edit kernel config" \
+            "Menuconfig" \
+            "Fetch kernel source" \
+            "Lint recipe" \
+            "Sync recipes" \
+            "Clean cache" \
+            "Quit") || break
+
+        case "$action" in
+            "List installed packages")
+                local installed=$(list_packages 2>/dev/null)
+                tui_msg "Installed Packages" "${installed:-No packages installed.}"
+                ;;
+            "List available recipes")
+                local recipes=$(list_recipes 2>/dev/null)
+                tui_msg "Available Recipes" "${recipes:-No recipes found.}"
+                ;;
+            "Package info")
+                local pkg_list=$(list_packages 2>/dev/null | awk '{print $1}')
+                if [[ -z "$pkg_list" ]]; then
+                    tui_msg "No packages" "No source packages installed yet."
+                    continue
+                fi
+                local pkg=$(tui_menu "Select Package" "" $pkg_list) || continue
+                local info=$(info_package "$pkg")
+                tui_msg "Package Info: $pkg" "$info"
+                ;;
+            "Rebuild a package")
+                local avail=$(list_recipes 2>/dev/null | awk '{print $1}')
+                if [[ -z "$avail" ]]; then
+                    tui_msg "No recipes" "No recipes found."
+                    continue
+                fi
+                local to_rebuild=$(tui_menu "Select package" "" $avail) || continue
+                rebuild_package "$to_rebuild"
+                tui_msg "Rebuild" "$to_rebuild rebuilt."
+                ;;
+            "Create new recipe")
+                local name=$(tui_input "New Recipe" "Package name:") || continue
+                [[ -z "$name" ]] && continue
+                new_recipe "$name"
+                ;;
+            "Edit recipe")
+                local avail2=$(list_recipes 2>/dev/null | awk '{print $1}')
+                if [[ -z "$avail2" ]]; then
+                    tui_msg "No recipes" "No recipes found."
+                    continue
+                fi
+                local to_edit=$(tui_menu "Select recipe" "" $avail2) || continue
+                edit_recipe "$to_edit"
+                ;;
+            "Edit kernel config")
+                edit_config
+                tui_msg "Config" "Kernel config edited."
+                ;;
+            "Menuconfig")
+                launch_menuconfig
+                tui_msg "Menuconfig" "Kernel configuration complete."
+                ;;
+            "Fetch kernel source")
+                fetch_source linux
+                tui_msg "Source" "Kernel source ready in /usr/src/linux-custom"
+                ;;
+            "Lint recipe")
+                local avail3=$(list_recipes 2>/dev/null | awk '{print $1}')
+                if [[ -z "$avail3" ]]; then
+                    tui_msg "No recipes" "No recipes found."
+                    continue
+                fi
+                local to_lint=$(tui_menu "Select recipe" "" $avail3) || continue
+                local lint_result=$(lint_recipe "$to_lint" 2>&1)
+                tui_msg "Lint Result: $to_lint" "$lint_result"
+                ;;
+            "Sync recipes")
+                sync_recipes
+                tui_msg "Sync" "Recipes synchronized."
+                ;;
+            "Clean cache")
+                cache_clean
+                tui_msg "Cache" "Obsolete packages removed."
+                ;;
+            "Quit") break ;;
+        esac
+    done
+    clear
+}
+
+main() {
+    if [[ "${1:-}" == "--tui" || "${1:-}" == "-tui" ]]; then
+        tui_main
+        exit 0
+    fi
+
+    case "${1:-}" in
+        list)          list_packages ;;
+        list-recipes)  list_recipes ;;
+        info)          [[ -n "${2:-}" ]] || { usage; exit 1; }; info_package "${2}" ;;
+        rebuild)       [[ -n "${2:-}" ]] || { usage; exit 1; }; rebuild_package "${2}" ;;
+        new)           [[ -n "${2:-}" ]] || { usage; exit 1; }; new_recipe "${2}" ;;
+        edit)          [[ -n "${2:-}" ]] || { usage; exit 1; }; edit_recipe "${2}" ;;
+        config)        edit_config ;;
+        menuconfig)    launch_menuconfig ;;
+        fetch-source)  [[ -n "${2:-}" ]] || { usage; exit 1; }; fetch_source "${2}" ;;
+        lint)          [[ -n "${2:-}" ]] || { usage; exit 1; }; lint_recipe "${2}" ;;
+        cache-clean)   cache_clean ;;
+        sync)          sync_recipes ;;
+        *)             usage ;;
+    esac
+}
+
+main "$@"

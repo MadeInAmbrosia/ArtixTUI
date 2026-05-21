@@ -16,27 +16,6 @@ stage_preflight() {
         cp /etc/pacman.conf "${pacman_conf_backup}"
     fi
 
-    if ! command_exists gum; then
-        if [[ -f "/usr/local/bin/gum" ]]; then
-            PATH="/usr/local/bin:${PATH}"   
-        elif [[ -f "${BASE_DIR}/bin/gum" ]]; then
-            log_info "Installing bundled gum binary...";
-            install -Dm755 "${BASE_DIR}/bin/gum" /usr/local/bin/gum;
-        else
-            log_info "Gum not found. Building from source...";
-            if ! command_exists go; then
-                log_info "Installing Go...";
-                pacman -S --noconfirm --needed go;
-            fi
-            local gum_tmp;
-            gum_tmp="$(mktemp -d)";
-            git clone --depth 1 https://github.com/charmbracelet/gum.git "${gum_tmp}";
-            ( cd "${gum_tmp}"; go build -o gum .; install -Dm755 gum /usr/local/bin/gum; );
-            rm -rf "${gum_tmp}";
-            log_info "Gum compiled and installed to /usr/local/bin/gum.";
-        fi
-    fi
-
     local pkgs=();
     local fs_type;
     local target_kernel;
@@ -69,10 +48,7 @@ stage_preflight() {
                 log_info "Building bcachefs-tools from source..."
                 local bcachefs_src='/tmp/bcachefs-tools-src'
                 rm -rf "${bcachefs_src}"
-                # Rust. I need RUST to build bcachefs tools. I'm going to gouge my eyes out.
                 pacman -S --noconfirm --needed base-devel git rust clang liburcu libaio keyutils lz4 zstd libscrypt
-                # Out of all things the maintainer could have chosen...
-                # I would rather compile straight ASM than this. But oh well.
                 git clone --depth 1 https://evilpiepirate.org/git/bcachefs-tools.git "${bcachefs_src}" || {
                     die "Failed to clone bcachefs-tools source repository"
                 }
@@ -137,9 +113,8 @@ EOF
     if [[ ${#pkgs[@]} -gt 0 ]]; then
         log_info "Installing required tools: ${pkgs[*]}";
         gum spin --spinner dot --title "Preflight – installing dependencies" -- \
-            pacman -S --noconfirm --needed "${pkgs[@]}";
+            pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies";
         log_info "Preflight dependencies installed.";
-        # Pacman likes to randomly fail it seems.. temporary fix until I figure out what's wrong
         for pkg in "${pkgs[@]}"; do
             pacman -Q "${pkg}" &>/dev/null || die "Failed to install ${pkg}"
         done

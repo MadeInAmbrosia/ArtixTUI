@@ -231,6 +231,13 @@ tui_select_locale() {
     state_set LOCALE "${l}"
 }
 
+tui_select_priv_escalation() {
+    local priv
+    priv=$(tui_menu "Privilege Escalation" "Select privilege escalation tool:" \
+        "sudo" "doas") || return 1
+    state_set PRIV_ESCALATION "${priv,,}"
+}
+
 tui_select_keyboard_layout() {
     local k
     k=$(tui_input "Keyboard Layout" "Enter keyboard layout:" "us") || return 1
@@ -259,6 +266,21 @@ tui_select_btrfs_layout() {
     state_set BTRFS_LAYOUT "${layout}"
 }
 
+tui_select_poweruser() {
+    local mode
+    mode="$(state_get MODE auto)"
+    [[ "${mode}" == "power" ]] || return 0
+
+    state_set POWER_USER "yes"
+
+    POWERUSER_DIR="${BASE_DIR}/poweruser"
+    source "${POWERUSER_DIR}/lib/flags.bash"
+    source "${POWERUSER_DIR}/lib/recipe.bash"
+    source "${POWERUSER_DIR}/tui/menu_poweruser.sh"
+
+    tui_poweruser_config
+}
+
 tui_show_sanity_warnings() {
     local warnings=()
     [[ "$(state_get FS_TYPE)" == "exfat" ]] && warnings+=("exFAT not recommended for root")
@@ -281,6 +303,7 @@ tui_collect_install_config() {
     tui_select_btrfs_layout
     tui_select_bootloader
     tui_select_kernel
+    tui_select_poweruser
     tui_select_microcode
     tui_select_desktop
     tui_select_display_manager
@@ -288,6 +311,7 @@ tui_collect_install_config() {
     tui_select_network_stack
     tui_select_audio_stack
     tui_select_shell
+    tui_select_priv_escalation
     tui_select_extras
     tui_select_luks
     tui_select_arch_repos

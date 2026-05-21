@@ -28,8 +28,10 @@ install_base_system() {
         none)  ucode='' ;;
     esac
 
+    local priv_esc
+    priv_esc="$(state_get PRIV_ESCALATION sudo)"
     local pkgs=(
-        base base-devel linux-firmware bash nano vim sudo
+        base base-devel linux-firmware bash nano vim "${priv_esc}"
         git curl wget pciutils "${init}" dbus efibootmgr dosfstools
     )
     [[ -n "${ucode}" ]] && pkgs+=("${ucode}")

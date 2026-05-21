@@ -109,35 +109,38 @@ MODE=""
 DEBUG="false"
 
 main_menu() {
-    gum style --bold --foreground 212 "ArtixTUI v7 – Installation Mode"
     local mode
-    mode=$(gum choose \
-        "Automatic  – guided installation" \
-        "Manual     – detect existing partitions" \
-        "Resume     – resume interrupted install" \
-        "Recovery   – scan /mnt for existing system" \
-        "Power User – compile everything from source (coming soon)") || exit 1
+    mode=$(tui_menu "ArtixTUI v7" "Select installation mode:" \
+        "Automatic – guided installation" \
+        "Manual – detect existing partitions" \
+        "Resume – resume interrupted install" \
+        "Recovery – scan /mnt for existing system" \
+        "Power User – source‑built packages") || exit 1
 
     case "${mode}" in
-        *Automatic*) MODE='auto' ;;
-        *Manual*)    MODE='manual' ;;
-        *Resume*)    MODE='resume' ;;
-        *Recovery*)  MODE='recovery' ;;
-        *Power*)     MODE='power' ;;
-        *)           MODE='auto' ;;
+        Automatic*) MODE='auto' ;;
+        Manual*)    MODE='manual' ;;
+        Resume*)    MODE='resume' ;;
+        Recovery*)  MODE='recovery' ;;
+        Power*)     MODE='power' ;;
+        *)          MODE='auto' ;;
     esac
 
-    if gum confirm "Enable debug mode (verbose logging)?" --affirmative="Yes" --negative="No"; then
+    if tui_yesno "Debug Mode" "Enable debug mode (verbose logging)?"; then
         DEBUG='true'
     else
         DEBUG='false'
     fi
-    gum style --foreground 212 "Mode: ${MODE}   Debug: ${DEBUG}"
+    tui_msg_quick "Mode Selected" "Mode: ${MODE}   Debug: ${DEBUG}"
 }
+
 run_install_pipeline() {
     stage_preflight || die 'preflight stage failed'
     stage_storage   || die 'storage stage failed'
     stage_base      || die 'base stage failed'
+    if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
+        stage_poweruser || die 'power user build stage failed'
+    fi
     stage_chroot    || die 'chroot stage failed'
     stage_post      || die 'post-install stage failed'
     stage_finalize  || die 'finalization stage failed'
@@ -204,6 +207,7 @@ main() {
             }
         fi
     fi
+
     clear
     main_menu
 
@@ -222,9 +226,10 @@ main() {
         manual)   start_manual_install ;;
         resume)   resume_install ;;
         recovery) start_recovery_install ;;
-        power)    die "Power User mode not yet implemented" ;;
-        *)        gum style --foreground 1 "No mode selected. Exiting."; exit 1 ;;
+        power)    MODE='power' ; start_auto_install ;;
+        *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
+
 }
 
 main "$@"

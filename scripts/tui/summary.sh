@@ -15,6 +15,8 @@ $(gum style --bold 'Filesystem:') %s
 $(gum style --bold 'Init:')       %s
 $(gum style --bold 'Bootloader:') %s
 $(gum style --bold 'Kernel:')     %s
+$(gum style --bold 'Priv Esc:')   %s
+$(gum style --bold 'Power User:') %s
 $(gum style --bold 'Desktop:')    %s
 $(gum style --bold 'Network:')    %s
 $(gum style --bold 'X Stack:')    %s
@@ -31,6 +33,8 @@ $(gum style --bold 'Arch Repos:') %s" \
         "$(state_get INIT openrc)" \
         "$(state_get BOOTLOADER grub)" \
         "$(state_get KERNEL_CHOICE linux)" \
+        "$(state_get PRIV_ESCALATION sudo)" \
+        "$(state_get POWER_USER no)" \
         "$(state_get WM_DE none)" \
         "$(state_get NETWORK_STACK dhcpcd+iwd)" \
         "$(state_get X_STACK xorg)" \

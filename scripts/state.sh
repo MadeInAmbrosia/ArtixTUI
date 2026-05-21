@@ -40,6 +40,7 @@ state_save() {
         printf 'USER_PASS=%q\n'             "${USER_PASS:-}"
         printf 'ROOT_PASS=%q\n'             "${ROOT_PASS:-}"
         printf 'USER_SHELL=%q\n'            "${USER_SHELL:-/bin/bash}"
+        printf 'PRIV_ESCALATION=%q\n'       "${PRIV_ESCALATION:-sudo}"
         printf 'NETWORK_STACK=%q\n'         "${NETWORK_STACK:-dhcpcd+iwd}"
         printf 'ALLOW_OFFLINE=%q\n'         "${ALLOW_OFFLINE:-no}"
         printf 'X_STACK=%q\n'               "${X_STACK:-xorg}"

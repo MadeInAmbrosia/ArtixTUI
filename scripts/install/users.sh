@@ -2,11 +2,12 @@
 set -Eeuo pipefail
 
 configure_users() {
-    local username password root_password shell
+    local username password root_password shell priv_esc
     username="$(state_get USER_NAME)"
     password="$(state_get USER_PASS)"
     root_password="$(state_get ROOT_PASS)"
     shell="$(state_get USER_SHELL /bin/bash)"
+    priv_esc="$(state_get PRIV_ESCALATION sudo)"
 
     [[ "${username}" =~ ^[a-z_][a-z0-9_-]*$ ]] || die 'invalid username'
 
@@ -22,17 +23,27 @@ configure_users() {
     user_hash=$(openssl passwd -6 -- "${password}") || die 'failed to hash user password'
 
     log_info "Configuring users..."
-    export root_hash user_hash username shell
-    artix-chroot /mnt /bin/bash <<'EOF'
+
+    artix-chroot /mnt /bin/bash -c "
 set -Eeuo pipefail
-usermod -p "${root_hash}" root
-if ! id "${username}" &>/dev/null; then
-    useradd -m -G wheel,audio,video,storage -s "${shell}" "${username}"
-    usermod -p "${user_hash}" "${username}"
+usermod -p '${root_hash}' root
+if ! id '${username}' &>/dev/null; then
+    useradd -m -G wheel,audio,video,storage -s '${shell}' '${username}'
+    usermod -p '${user_hash}' '${username}'
 fi
-sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
-sed -i 's/^# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+if [[ '${priv_esc}' == 'sudo' ]]; then
+    sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+    sed -i 's/^# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+fi
+"
+
+    if [[ "${priv_esc}" == "doas" ]]; then
+        log_info "Configuring doas..."
+        cat <<'EOF' > /mnt/etc/doas.conf
+permit persist :wheel
 EOF
+        chmod 0400 /mnt/etc/doas.conf
+    fi
 
     log_info "User configuration complete."
 }
