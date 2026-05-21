@@ -1,8 +1,8 @@
 # Power User Mode
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Power_User-v1.3.0.0-blue?style=flat-square" alt="Power User Version">
-  <img src="https://img.shields.io/badge/ArtixTUI-v7.2.0.0-212?style=flat-square" alt="ArtixTUI">
+  <img src="https://img.shields.io/badge/Power_User-v1.3.1.0-blue?style=flat-square" alt="Power User Version">
+  <img src="https://img.shields.io/badge/ArtixTUI-v7.2.1.0-212?style=flat-square" alt="ArtixTUI">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/Build_Engine-makepkg-FFB6C1?style=flat-square" alt="makepkg">
 </p>
@@ -57,6 +57,7 @@ gartix edit <name>       # Edit recipe
 gartix lint <name>       # Validate recipe
 gartix config            # Edit running kernel config
 gartix menuconfig        # Launch make menuconfig
+gartix upgrade          # Backup recipes and update from remote
 gartix cache-clean       # Remove obsolete cached packages
 gartix sync              # Update recipes from remote
 gartix --tui             # Launch interactive TUI

@@ -28,6 +28,7 @@ Commands:
   config            Edit the running kernel's .config
   menuconfig        Launch make menuconfig (needs kernel source)
   lint <name>       Validate a recipe
+  upgrade           Backup recipes and update from remote
   cache-clean       Remove obsolete cached packages
   sync              Update recipes (git pull)
   --tui             Launch interactive TUI
@@ -158,6 +159,88 @@ lint_recipe() {
     fi
 }
 
+upgrade_gartix() {
+    require_root
+    local recipe_dir="${POWERUSER_DIR}/recipes"
+    local backup_dir="${POWERUSER_DIR}/recipes.old"
+    local version_file="${POWERUSER_DIR}/VERSION"
+    local timestamp
+    timestamp=$(date +%Y%m%d-%H%M%S)
+    local backup_path="${backup_dir}/${timestamp}"
+
+    local current_version="unknown"
+    [[ -f "${version_file}" ]] && current_version=$(tr -d '[:space:]' < "${version_file}")
+
+    local remote_version=""
+    if [[ -d "${recipe_dir}/.git" ]]; then
+        remote_version=$(cd "${recipe_dir}" && git ls-remote origin HEAD 2>/dev/null | cut -f1)
+        remote_version="${remote_version:0:8}"
+    fi
+
+    echo "[*] Installed Power User version: ${current_version}"
+    echo "[*] Latest available version: ${remote_version:-unknown}"
+
+    if [[ "${current_version}" == "${remote_version}" ]] && [[ -n "${remote_version}" ]]; then
+        echo "[*] Already up-to-date. Nothing to upgrade."
+        return 0
+    fi
+
+    echo "[*] Backing up current recipes to ${backup_path}..."
+    mkdir -p "${backup_path}"
+    if compgen -G "${recipe_dir}/*.sh" >/dev/null 2>&1; then
+        cp -a "${recipe_dir}"/*.sh "${backup_path}/" 2>/dev/null || true
+    fi
+
+    [[ -f "${version_file}" ]] && cp "${version_file}" "${backup_path}/VERSION"
+
+    echo "[*] Pulling latest recipes..."
+    if [[ -d "${recipe_dir}/.git" ]]; then
+        cd "${recipe_dir}"
+        local before after
+        before=$(git rev-parse HEAD 2>/dev/null | cut -c1-8 || echo "unknown")
+        git pull 2>&1 || { echo "[!] git pull failed."; return 1; }
+        after=$(git rev-parse HEAD 2>/dev/null | cut -c1-8 || echo "unknown")
+        echo "[*] Updated from ${before} to ${after}"
+    else
+        echo "[!] Recipe directory is not a git repository. Manual update required."
+        return 1
+    fi
+
+    if [[ -f "${recipe_dir}/../VERSION" ]]; then
+        cp "${recipe_dir}/../VERSION" "${version_file}"
+        local new_version
+        new_version=$(tr -d '[:space:]' < "${version_file}")
+        echo "[*] Power User updated to v${new_version}"
+    fi
+
+    echo "[*] Checking for changed recipes..."
+    local changed=()
+    for recipe in "${recipe_dir}"/*.sh; do
+        [[ -f "${recipe}" ]] || continue
+        local name
+        name=$(basename "${recipe}")
+        if [[ -f "${backup_path}/${name}" ]]; then
+            if ! cmp -s "${recipe}" "${backup_path}/${name}"; then
+                changed+=("${name}")
+            fi
+        else
+            changed+=("${name} (new)")
+        fi
+    done
+
+    if [[ ${#changed[@]} -gt 0 ]]; then
+        echo "[*] Changed or new recipes:"
+        for c in "${changed[@]}"; do
+            echo "    - ${c}"
+        done
+        echo ""
+        echo "[*] Old recipes saved to ${backup_path}"
+        echo "[*] Run 'gartix rebuild <recipe>' for any changed packages."
+    else
+        echo "[*] No recipe changes detected."
+    fi
+}
+
 cache_clean() {
     require_root
     source "${POWERUSER_DIR}/lib/cache.bash"
@@ -227,6 +310,7 @@ tui_main() {
             "Menuconfig" \
             "Fetch kernel source" \
             "Lint recipe" \
+            "Upgrade recipes" \
             "Sync recipes" \
             "Clean cache" \
             "Quit") || break
@@ -296,6 +380,10 @@ tui_main() {
                 local lint_result=$(lint_recipe "$to_lint" 2>&1)
                 tui_msg "Lint Result: $to_lint" "$lint_result"
                 ;;
+            "Upgrade recipes")
+                upgrade_gartix
+                tui_msg "Upgrade" "Recipes upgraded. Old recipes backed up."
+                ;;
             "Sync recipes")
                 sync_recipes
                 tui_msg "Sync" "Recipes synchronized."
@@ -327,6 +415,7 @@ main() {
         menuconfig)    launch_menuconfig ;;
         fetch-source)  [[ -n "${2:-}" ]] || { usage; exit 1; }; fetch_source "${2}" ;;
         lint)          [[ -n "${2:-}" ]] || { usage; exit 1; }; lint_recipe "${2}" ;;
+        upgrade)       upgrade_gartix ;;
         cache-clean)   cache_clean ;;
         sync)          sync_recipes ;;
         *)             usage ;;
