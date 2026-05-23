@@ -37,7 +37,7 @@ prepare_handoff() {
     elif [[ -f /mnt/boot/amd-ucode.img ]]; then microcode_image='amd-ucode.img'
     fi
 
-    if [[ "$(state_get BOOTLOADER)" == "uki" ]]; then
+    if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
         local uki_found
         uki_found=$(find /mnt/boot/efi/EFI/Artix -maxdepth 1 -type f -name '*.efi' 2>/dev/null | head -n1)
         if [[ -n "${uki_found}" ]]; then
@@ -58,10 +58,7 @@ FS_TYPE="$(state_get FS_TYPE)"
 INIT="$(state_get INIT)"
 USE_LUKS="$(state_get USE_LUKS)"
 USE_LVM="$(state_get USE_LVM)"
-KEEP_BINARY_KERNEL="$(state_get KEEP_BINARY_KERNEL)"
-COREUTILS="$(state_get COREUTILS)"
-KERNEL_CONFIG_DEPTH="$(state_get KERNEL_CONFIG_DEPTH)"
-QUICK_INSTALL="$(state_get QUICK_INSTALL)"
+GENERATE_UKI="$(state_get GENERATE_UKI)"
 BOOTLOADER="$(state_get BOOTLOADER)"
 DISPLAY_MANAGER="$(state_get DISPLAY_MANAGER)"
 AUDIO_STACK="$(state_get AUDIO_STACK)"

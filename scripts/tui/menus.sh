@@ -54,10 +54,15 @@ tui_select_filesystem() {
 tui_select_bootloader() {
     local bl
     bl=$(tui_menu "Bootloader" "Select bootloader:" \
-        "GRUB" "rEFInd" "EFIStub" "Unified Kernel Image (UKI)") || return 1
+        "GRUB" "rEFInd" "EFIStub") || return 1
     state_set BOOTLOADER "${bl,,}"
-    if [[ "$(state_get BOOTLOADER)" == "unified kernel image (uki)" ]]; then
-        state_set BOOTLOADER "uki"
+}
+
+tui_select_uki() {
+    if tui_yesno "UKI" "Generate a Unified Kernel Image (UKI)?"; then
+        state_set GENERATE_UKI "yes"
+    else
+        state_set GENERATE_UKI "no"
     fi
 }
 
@@ -448,6 +453,7 @@ tui_collect_install_config() {
     tui_select_filesystem
     tui_select_btrfs_layout
     tui_select_bootloader
+    tui_select_uki
     tui_select_kernel
     tui_select_poweruser
     tui_select_microcode

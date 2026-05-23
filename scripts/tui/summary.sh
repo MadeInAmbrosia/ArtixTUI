@@ -12,8 +12,10 @@ $(gum style --bold 'Keyboard:')   %s
 $(gum style --bold 'Microcode:')  %s
 $(gum style --bold 'BTRFS:')      %s
 $(gum style --bold 'Filesystem:') %s
+$(gum style --bold 'LVM:')        %s
 $(gum style --bold 'Init:')       %s
 $(gum style --bold 'Bootloader:') %s
+$(gum style --bold 'UKI:')        %s
 $(gum style --bold 'Kernel:')     %s
 $(gum style --bold 'Priv Esc:')   %s
 $(gum style --bold 'Power User:') %s
@@ -30,8 +32,10 @@ $(gum style --bold 'Arch Repos:') %s" \
         "$(state_get MICROCODE_OVERRIDE auto)" \
         "$(state_get BTRFS_LAYOUT standard)" \
         "$(state_get FS_TYPE ext4)" \
+        "$(state_get USE_LVM no)" \
         "$(state_get INIT openrc)" \
         "$(state_get BOOTLOADER grub)" \
+        "$(state_get GENERATE_UKI no)" \
         "$(state_get KERNEL_CHOICE linux)" \
         "$(state_get PRIV_ESCALATION sudo)" \
         "$(state_get POWER_USER no)" \

@@ -199,7 +199,7 @@ EOF
     case "${bootloader}" in
         grub)    pkgs+=(grub os-prober) ;;
         refind)  pkgs+=(refind) ;;
-        efistub|uki) ;;
+        efistub) ;;
     esac
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then

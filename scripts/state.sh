@@ -45,6 +45,7 @@ state_save() {
         printf 'ALLOW_OFFLINE=%q\n'         "${ALLOW_OFFLINE:-no}"
         printf 'X_STACK=%q\n'               "${X_STACK:-xorg}"
         printf 'ENABLE_ARCH_REPOS=%q\n'     "${ENABLE_ARCH_REPOS:-no}"
+        printf 'GENERATE_UKI=%q\n'         "${GENERATE_UKI:-no}"
         printf 'USE_LVM=%q\n'              "${USE_LVM:-no}"
         printf 'KEEP_BINARY_KERNEL=%q\n'   "${KEEP_BINARY_KERNEL:-yes}"
         printf 'COREUTILS=%q\n'            "${COREUTILS:-gnu}"
