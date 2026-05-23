@@ -139,6 +139,9 @@ stage_require_post() {
         && [[ -d /mnt/home || -d /mnt/root ]]
 }
 
+stage_validate() {
+    local stage="${1}";
+
     case "${stage}" in
         preflight)
             return 0

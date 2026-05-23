@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.0.0.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.0.0.1-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
@@ -25,6 +25,12 @@ ArtixTUI is a **TUI-first, modular installer** for Artix Linux (OpenRC, runit, d
 It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools — all from a single, beautiful terminal interface.
 
 Built with **gum** by Charmbracelet, it looks better than `archinstall` and supports all major Artix init systems — including BusyBox init in Power User mode.
+
+  Over 9 trillion system configurations in a standard install.
+  Over 1 000 000 000 000 000 000 (1 quintillion) when Power User mode is enabled.
+  No two installations need ever be the same.
+
+
 
 ---
 

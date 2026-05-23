@@ -1,4 +1,4 @@
-CONTRIBUTING
+# CONTRIBUTING
 
 ArtixTUI welcomes contributions from anyone, provided they fall within a
 reasonable scope aligned with the project's goals.
@@ -33,6 +33,8 @@ submitter permanently banned from further participation. This includes, but
 is not limited to, introducing backdoors, spyware, logic bombs, or any code
 intended to cause damage or security vulnerabilities.
 
+If you discover a security vulnerability, do not submit it as a public pull
+request. Instead, follow the reporting process in [SECURITY.md](SECURITY.md).
 ## Credit
 
 Contributors whose code is merged into the main repository will be credited
@@ -46,3 +48,6 @@ responsibilities.
 Be respectful, constructive, and honest. Treat others as you would in a
 professional engineering team. Harassment, spam, or disruptive behaviour
 will not be tolerated.
+
+To report a violation, open an issue on GitHub or contact the maintainer
+directly at [realvolk](https://github.com/realvolk), or otherwise over Discord: `volk.v`.
