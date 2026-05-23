@@ -1,5 +1,14 @@
 # Changelog
 
+## v8.0.1.0 (2026-05-23)
+
+### Fixed
+- UKI reworked as independent toggle alongside any bootloader, not a standalone option
+- Removed `uki` from bootloader case in basestrap.sh
+- Added `GENERATE_UKI` to state.sh, summary.sh, and handoff.sh
+- Removed duplicate v8 variables from handoff.sh config block
+
+
 ## v8.0.0.1 (2026-05-23)
 
 ### Fixed
