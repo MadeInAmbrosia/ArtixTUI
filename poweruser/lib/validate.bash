@@ -70,5 +70,18 @@ validate_system() {
             ;;
     esac
 
+    if [[ "${bootloader}" == "uki" ]]; then
+        local uki_file="/mnt/boot/efi/EFI/Artix/linux-custom.efi"
+        [[ -f "${uki_file}" ]] || log_warn "UKI file not found: ${uki_file}"
+        artix-chroot /mnt efibootmgr -v 2>/dev/null | grep -qi 'UKI' || log_warn "No UKI boot entry found"
+    fi
+
+    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+        artix-chroot /mnt command -v lvm &>/dev/null || log_warn "lvm2 not found in target"
+        artix-chroot /mnt vgscan 2>/dev/null | grep -q 'vg0' || log_warn "LVM volume group vg0 not found"
+    fi
+
+    log_info "Post-build validation complete."
+
     log_info "Post-build validation complete."
 }

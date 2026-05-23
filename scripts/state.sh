@@ -45,6 +45,11 @@ state_save() {
         printf 'ALLOW_OFFLINE=%q\n'         "${ALLOW_OFFLINE:-no}"
         printf 'X_STACK=%q\n'               "${X_STACK:-xorg}"
         printf 'ENABLE_ARCH_REPOS=%q\n'     "${ENABLE_ARCH_REPOS:-no}"
+        printf 'USE_LVM=%q\n'              "${USE_LVM:-no}"
+        printf 'KEEP_BINARY_KERNEL=%q\n'   "${KEEP_BINARY_KERNEL:-yes}"
+        printf 'COREUTILS=%q\n'            "${COREUTILS:-gnu}"
+        printf 'KERNEL_CONFIG_DEPTH=%q\n'  "${KERNEL_CONFIG_DEPTH:-auto}"
+        printf 'QUICK_INSTALL=%q\n'        "${QUICK_INSTALL:-no}"
     } > "${STATE_FILE}"
     chmod 600 "${STATE_FILE}"
 }
@@ -134,34 +139,31 @@ stage_require_post() {
         && [[ -d /mnt/home || -d /mnt/root ]]
 }
 
-stage_validate() {
-    local stage="${1}";
-
     case "${stage}" in
         preflight)
             return 0
             ;;
-
         storage)
             [[ -b "$(state_get DISK)" ]]
             ;;
-
         base)
             [[ -x /mnt/usr/bin/bash ]]
             ;;
-
+        poweruser)
+            return 0
+            ;;
         chroot)
             [[ -f /mnt/etc/fstab ]]
             ;;
-
+        init)
+            return 0
+            ;;
         post)
             [[ -d /mnt/home || -d /mnt/root ]]
             ;;
-
         finalize)
             return 0
             ;;
-
         *)
             return 1
             ;;
@@ -177,7 +179,9 @@ stage_reset_from() {
         preflight \
         storage \
         base \
+        poweruser \
         chroot \
+        init \
         post \
         finalize; do
 

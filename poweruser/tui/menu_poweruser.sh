@@ -55,6 +55,41 @@ EOF
     tui_msg "Flags Saved" "Custom flags saved as 'custom' profile."
 }
 
+tui_poweruser_select_coreutils() {
+    local choice
+    choice=$(tui_menu "Coreutils" "Select coreutils implementation:" \
+        "GNU (default) – standard Artix coreutils" \
+        "BusyBox – lightweight multi-call binary" \
+        "uutils – Rust rewrite of GNU coreutils" \
+        "ArtixTUI – debloated minimal coreutils" \
+        "Custom – write your own recipe" \
+        "None – keep whatever is installed") || return 1
+
+    case "${choice}" in
+        GNU*)      state_set COREUTILS "gnu" ;;
+        BusyBox*)  state_set COREUTILS "busybox" ;;
+        uutils*)   state_set COREUTILS "uutils" ;;
+        ArtixTUI*) state_set COREUTILS "artix" ;;
+        Custom*)
+            state_set COREUTILS "custom"
+            tui_poweruser_create_recipe
+            ;;
+        None*)     state_set COREUTILS "none" ;;
+    esac
+}
+
+tui_poweruser_select_init() {
+    local choice
+    choice=$(tui_menu "Init System Override" "Power User init options:" \
+        "Keep current (OpenRC/runit/dinit/s6)" \
+        "BusyBox init – minimal, source-built") || return 1
+
+    case "${choice}" in
+        *BusyBox*) state_set INIT "busybox" ;;
+        *) ;;
+    esac
+}
+
 tui_poweruser_select_packages() {
     local recipes=()
     while IFS=' — ' read -r name desc; do
@@ -358,13 +393,24 @@ tui_poweruser_pre_summary() {
     tui_msg "Power User Build Summary" "${summary}"
 }
 
+tui_poweruser_fallback_kernel() {
+    if tui_yesno "Fallback Kernel" "Keep the binary kernel as a fallback?"; then
+        state_set KEEP_BINARY_KERNEL "yes"
+    else
+        state_set KEEP_BINARY_KERNEL "no"
+    fi
+}
+
 tui_poweruser_config() {
     tui_poweruser_select_profile || return 1
     tui_poweruser_tweak_profile
+    tui_poweruser_select_init
     tui_poweruser_select_packages || {
         state_set POWER_USER "no"
         return 1
     }
+    tui_poweruser_select_coreutils
+    tui_poweruser_fallback_kernel
     tui_poweruser_create_recipe
     tui_poweruser_feature_flags
     tui_poweruser_hw_summary

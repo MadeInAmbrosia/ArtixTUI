@@ -27,6 +27,7 @@ Commands:
   edit <name>       Edit an existing recipe
   config            Edit the running kernel's .config
   menuconfig        Launch make menuconfig (needs kernel source)
+  fetch-all         Download all recipe sources for offline use
   lint <name>       Validate a recipe
   upgrade           Backup recipes and update from remote
   cache-clean       Remove obsolete cached packages
@@ -145,6 +146,24 @@ fetch_source() {
         prepare
     fi
     echo "Source ready in ${src_dir}"
+}
+
+fetch_all_sources() {
+    require_root
+    source "${POWERUSER_DIR}/lib/common.sh"
+    source "${POWERUSER_DIR}/lib/recipe.bash"
+    source "${POWERUSER_DIR}/lib/builder.bash"
+
+    local recipes
+    recipes=$(list_recipes 2>/dev/null | awk '{print $1}')
+    [[ -n "${recipes}" ]] || { echo "No recipes found."; return 1; }
+
+    for pkg in ${recipes}; do
+        echo "[*] Fetching sources for ${pkg}..."
+        load_recipe "${pkg}"
+        fetch_sources "${pkg}" 2>&1 || log_warn "Failed to fetch ${pkg}"
+    done
+    echo "[*] All available sources downloaded. You can now build offline."
 }
 
 lint_recipe() {
@@ -309,6 +328,7 @@ tui_main() {
             "Edit kernel config" \
             "Menuconfig" \
             "Fetch kernel source" \
+            "Fetch all sources" \
             "Lint recipe" \
             "Upgrade recipes" \
             "Sync recipes" \
@@ -370,6 +390,10 @@ tui_main() {
                 fetch_source linux
                 tui_msg "Source" "Kernel source ready in /usr/src/linux-custom"
                 ;;
+            "Fetch all sources")
+                fetch_all_sources
+                tui_msg "Fetch All" "All recipe sources downloaded."
+                ;;
             "Lint recipe")
                 local avail3=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail3" ]]; then
@@ -414,6 +438,7 @@ main() {
         config)        edit_config ;;
         menuconfig)    launch_menuconfig ;;
         fetch-source)  [[ -n "${2:-}" ]] || { usage; exit 1; }; fetch_source "${2}" ;;
+        fetch-all)     fetch_all_sources ;;
         lint)          [[ -n "${2:-}" ]] || { usage; exit 1; }; lint_recipe "${2}" ;;
         upgrade)       upgrade_gartix ;;
         cache-clean)   cache_clean ;;

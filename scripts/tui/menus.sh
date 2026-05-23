@@ -49,10 +49,16 @@ tui_select_filesystem() {
     state_set FS_TYPE "${fs}"
 }
 
+
+
 tui_select_bootloader() {
     local bl
-    bl=$(tui_menu "Bootloader" "Select bootloader:" "GRUB" "rEFInd" "EFIStub") || return 1
+    bl=$(tui_menu "Bootloader" "Select bootloader:" \
+        "GRUB" "rEFInd" "EFIStub" "Unified Kernel Image (UKI)") || return 1
     state_set BOOTLOADER "${bl,,}"
+    if [[ "$(state_get BOOTLOADER)" == "unified kernel image (uki)" ]]; then
+        state_set BOOTLOADER "uki"
+    fi
 }
 
 tui_select_kernel() {
@@ -138,6 +144,12 @@ tui_select_luks() {
         state_set LUKS_PASS "${pass}"
     else
         state_set USE_LUKS "no"
+    fi
+
+    if tui_yesno "LVM" "Enable Logical Volume Management (LVM)?"; then
+        state_set USE_LVM "yes"
+    else
+        state_set USE_LVM "no"
     fi
 }
 
@@ -283,11 +295,53 @@ tui_select_poweruser() {
 
 tui_show_sanity_warnings() {
     local warnings=()
+
     [[ "$(state_get FS_TYPE)" == "exfat" ]] && warnings+=("exFAT not recommended for root")
-    [[ "$(state_get KERNEL_CHOICE)" == "linux-libre" ]] && warnings+=("linux-libre may lack hardware support")
-    [[ "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("ZFS is experimental")
-    [[ "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("EFIStub needs compatible firmware")
-    [[ "$(state_get WM_DE)" == "none" ]] && warnings+=("No desktop selected")
+    [[ "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("ZFS is experimental — DKMS rebuilds may be required")
+    [[ "$(state_get FS_TYPE)" == "bcachefs" ]] && warnings+=("bcachefs is experimental — tools may be unstable")
+
+    [[ "$(state_get KERNEL_CHOICE)" == "linux-libre" ]] && warnings+=("linux-libre removes non-free firmware — hardware may not work")
+    [[ "$(state_get KERNEL_CHOICE)" == "tkg" ]] && warnings+=("TKG kernel requires manual compilation after install")
+
+    [[ "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("EFIStub needs compatible UEFI firmware")
+    [[ "$(state_get BOOTLOADER)" == "uki" ]] && warnings+=("UKI is UEFI-only — BIOS systems not supported")
+    [[ "$(state_get BOOTLOADER)" == "grub" && "$(state_get FS_TYPE)" == "xfs" ]] && warnings+=("GRUB + XFS: ensure bigtime is disabled for compatibility")
+    [[ "$(state_get BOOTLOADER)" == "uki" && "$(state_get USE_LUKS)" == "yes" ]] && warnings+=("UKI + LUKS: ensure initramfs includes encrypt hook")
+
+    [[ "$(state_get INIT)" == "busybox" ]] && warnings+=("BusyBox init is minimal — manual service scripts required")
+    [[ "$(state_get INIT)" == "busybox" && "$(state_get WM_DE)" != "none" ]] && warnings+=("BusyBox init with a desktop — you'll need to start services manually")
+    [[ "$(state_get INIT)" == "busybox" && "$(state_get COREUTILS)" != "busybox" && "$(state_get COREUTILS)" != "artix" ]] && warnings+=("BusyBox init with GNU coreutils — consider BusyBox coreutils for consistency")
+
+    [[ "$(state_get USE_LVM)" == "yes" && "$(state_get BOOTLOADER)" == "grub" ]] && warnings+=("LVM + GRUB: ensure lvm2 hook is in initramfs")
+    [[ "$(state_get USE_LVM)" == "yes" && "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("LVM + EFIStub: cmdline must reference /dev/mapper paths")
+    [[ "$(state_get USE_LVM)" == "yes" && "$(state_get USE_LUKS)" == "yes" ]] && warnings+=("LVM on LUKS: correct crypt device order is critical")
+    [[ "$(state_get USE_LVM)" == "yes" && "$(state_get FS_TYPE)" == "exfat" ]] && warnings+=("LVM + exFAT is unusual — ensure your use case supports this")
+    
+    [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get BOOTLOADER)" == "refind" ]] && warnings+=("LUKS + rEFInd: may require manual boot config")
+    [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("LUKS + ZFS: complex setup, test thoroughly before relying on it")
+
+    [[ "$(state_get COREUTILS)" == "busybox" ]] && warnings+=("BusyBox coreutils — some scripts may need GNU extensions")
+    [[ "$(state_get COREUTILS)" == "uutils" ]] && warnings+=("uutils coreutils — Rust-based, may have compatibility gaps")
+    [[ "$(state_get COREUTILS)" == "custom" ]] && warnings+=("Custom coreutils — ensure all essential tools are implemented")
+    [[ "$(state_get COREUTILS)" != "gnu" && "$(state_get COREUTILS)" != "none" && "$(state_get COREUTILS)" != "" ]] && warnings+=("Non-GNU coreutils: some install scripts may behave unexpectedly")
+
+    [[ "$(state_get WM_DE)" == "none" ]] && warnings+=("No desktop environment selected")
+    [[ "$(state_get WM_DE)" =~ ^(hyprland|niri|sway)$ && "$(state_get X_STACK)" == "xorg" ]] && warnings+=("Wayland compositor selected but X.Org display stack configured")
+    [[ "$(state_get WM_DE)" =~ ^(hyprland|niri)$ && "$(state_get ENABLE_ARCH_REPOS)" == "no" ]] && warnings+=("Hyprland/Niri may need Arch repositories for dependencies")
+    [[ "$(state_get DISPLAY_MANAGER)" == "none" && "$(state_get WM_DE)" != "none" ]] && warnings+=("No display manager — you'll start the desktop manually")
+
+    [[ "$(state_get NETWORK_STACK)" == "none" ]] && warnings+=("No network stack — you'll configure networking manually")
+
+    [[ "$(state_get POWER_USER)" == "yes" && "$(state_get KEEP_BINARY_KERNEL)" == "no" ]] && warnings+=("No fallback kernel — system may be unbootable if custom kernel fails")
+    [[ "$(state_get POWER_USER)" == "yes" && " $(state_get POWERUSER_PACKAGES) " =~ " glibc " ]] && warnings+=("glibc from source is DANGEROUS — a miscompilation breaks everything")
+    [[ "$(state_get POWER_USER)" == "yes" && "$(state_get INIT)" == "busybox" ]] && warnings+=("BusyBox init from source — ensure the recipe compiled successfully")
+
+    [[ "$(state_get ALLOW_OFFLINE)" == "yes" ]] && warnings+=("Offline mode — packages may be outdated or missing")
+
+    [[ "$(state_get PRIV_ESCALATION)" == "none" ]] && warnings+=("No privilege escalation tool — you'll need to configure su manually")
+    [[ "$(state_get PRIV_ESCALATION)" == "doas" && "$(state_get POWER_USER)" == "yes" ]] && warnings+=("doas + Power User: gartix commands require root; use 'doas gartix ...'")
+
+    [[ "$(state_get QUICK_INSTALL)" == "yes" && "$(state_get WM_DE)" == "embedded" ]] && warnings+=("Embedded profile: minimal system, no networking, no desktop — know what you're doing")
 
     if [[ ${#warnings[@]} -gt 0 ]]; then
         local msg
@@ -296,7 +350,99 @@ tui_show_sanity_warnings() {
     fi
 }
 
+tui_quick_install() {
+    if ! tui_yesno "Quick Install" "Use a pre-configured profile?"; then
+        return 1
+    fi
+
+    local profile
+    profile=$(tui_menu "Quick Profile" "Select a preset:" \
+        "Desktop – KDE, NetworkManager, PipeWire, flatpak" \
+        "Server – no desktop, SSH, ufw, zram" \
+        "Minimal – no extras, basic system only" \
+        "Embedded – BusyBox init, minimal kernel, no X") || return 1
+
+    case "${profile}" in
+        *Desktop*)
+            state_set WM_DE "kde"
+            state_set KDE_PROFILE "desktop"
+            state_set DISPLAY_MANAGER "sddm"
+            state_set NETWORK_STACK "networkmanager"
+            state_set AUDIO_STACK "pipewire"
+            state_set X_STACK "xorg"
+            state_set USER_SHELL "bash"
+            state_set PRIV_ESCALATION "sudo"
+            state_set EXTRAS "git flatpak fastfetch ufw bluez zram-tools fzf zoxide starship eza btop htop tmux"
+            state_set ENABLE_ARCH_REPOS "yes"
+            ;;
+        *Server*)
+            state_set WM_DE "none"
+            state_set DISPLAY_MANAGER "none"
+            state_set NETWORK_STACK "dhcpcd+iwd"
+            state_set AUDIO_STACK "none"
+            state_set X_STACK "none"
+            state_set USER_SHELL "bash"
+            state_set PRIV_ESCALATION "doas"
+            state_set EXTRAS "git ufw zram-tools tmux"
+            ;;
+        *Minimal*)
+            state_set WM_DE "none"
+            state_set DISPLAY_MANAGER "none"
+            state_set NETWORK_STACK "dhcpcd+iwd"
+            state_set AUDIO_STACK "none"
+            state_set X_STACK "none"
+            state_set USER_SHELL "bash"
+            state_set PRIV_ESCALATION "doas"
+            state_set EXTRAS ""
+            ;;
+        *Embedded*)
+            state_set INIT "busybox"
+            state_set WM_DE "none"
+            state_set DISPLAY_MANAGER "none"
+            state_set NETWORK_STACK "none"
+            state_set AUDIO_STACK "none"
+            state_set X_STACK "none"
+            state_set USER_SHELL "bash"
+            state_set PRIV_ESCALATION "none"
+            state_set EXTRAS ""
+            state_set KERNEL_CHOICE "linux-lts"
+            state_set POWER_USER "yes"
+            state_set COREUTILS "busybox"
+            state_set KEEP_BINARY_KERNEL "no"
+            ;;
+    esac
+
+    local summary=""
+    summary+="Profile: ${profile}\n\n"
+    summary+="Desktop: $(state_get WM_DE none)\n"
+    summary+="Display Manager: $(state_get DISPLAY_MANAGER none)\n"
+    summary+="Network: $(state_get NETWORK_STACK none)\n"
+    summary+="Audio: $(state_get AUDIO_STACK none)\n"
+    summary+="X Stack: $(state_get X_STACK none)\n"
+    summary+="Privilege Escalation: $(state_get PRIV_ESCALATION none)\n"
+    summary+="Extras: $(state_get EXTRAS none)\n"
+
+    if [[ "$(state_get INIT openrc)" == "busybox" ]]; then
+        summary+="Init: BusyBox (Power User)\n"
+        summary+="Kernel: linux-lts\n"
+    fi
+
+    if ! tui_yesno "Confirm Profile" "${summary}\n\nProceed with this profile?"; then
+        return 1
+    fi
+
+    state_set QUICK_INSTALL "yes"
+    return 0
+}
+
 tui_collect_install_config() {
+    if tui_quick_install; then
+        if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
+            tui_select_poweruser
+        fi
+        tui_show_summary
+        return
+    fi
     tui_select_disk
     tui_select_init
     tui_select_filesystem

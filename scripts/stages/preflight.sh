@@ -1,6 +1,39 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail;
 
+_preflight_rank_mirrors() {
+    if ! tui_yesno "Mirror Ranking" "Rank mirrors for faster downloads?"; then
+        return 0
+    fi
+
+    log_info "Ranking mirrors..."
+    pacman -S --noconfirm --needed pacman-contrib || die "Failed to install pacman-contrib"
+
+    local mirrorlist="/etc/pacman.d/mirrorlist"
+    local mirrorlist_backup="${mirrorlist}.backup"
+
+    if [[ -f "${mirrorlist}" ]]; then
+        cp "${mirrorlist}" "${mirrorlist_backup}"
+        log_info "Ranking mirrors (this may take a minute)..."
+        rankmirrors -n 6 "${mirrorlist_backup}" > "${mirrorlist}" || {
+            log_warn "rankmirrors failed, restoring backup"
+            cp "${mirrorlist_backup}" "${mirrorlist}"
+        }
+    fi
+
+    if [[ "$(state_get ENABLE_ARCH_REPOS no)" == "yes" ]]; then
+        local arch_mirrorlist="/etc/pacman.d/mirrorlist-arch"
+        if [[ -f "${arch_mirrorlist}" ]]; then
+            cp "${arch_mirrorlist}" "${arch_mirrorlist}.backup"
+            rankmirrors -n 6 "${arch_mirrorlist}.backup" > "${arch_mirrorlist}" || {
+                cp "${arch_mirrorlist}.backup" "${arch_mirrorlist}"
+            }
+        fi
+    fi
+
+    log_info "Mirror ranking complete."
+}
+
 stage_preflight() {
     if stage_should_skip preflight; then
         return 0;
@@ -9,6 +42,7 @@ stage_preflight() {
     require_root;
     require_efi;
     require_internet;
+    _preflight_rank_mirrors;
 
     local pacman_conf_backup='/tmp/pacman.conf.artixtui.bak'
 
@@ -32,6 +66,14 @@ stage_preflight() {
     command_exists wipefs       || pkgs+=(util-linux);
     command_exists btrfs        || pkgs+=(btrfs-progs);
 
+    [[ "$(state_get USE_LVM no)" == "yes" ]] && { command_exists pvcreate || pkgs+=(lvm2); }
+
+    if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
+        for tool in bc flex bison openssl; do
+            command -v "${tool}" &>/dev/null || pkgs+=("${tool}")
+        done
+    fi
+    
     case "$(uname -r)" in
         *lts*)       live_kernel_pkg="linux-lts" ;;
         *zen*)       live_kernel_pkg="linux-zen" ;;

@@ -30,17 +30,27 @@ install_base_system() {
 
     local priv_esc
     priv_esc="$(state_get PRIV_ESCALATION sudo)"
+
+    local init_pkg="${init}"
+    local seatd_suffix="${init}"
+    local elogind_suffix="${init}"
+    if [[ "${init}" == "busybox" ]]; then
+        init_pkg=""
+        seatd_suffix=""
+        elogind_suffix=""
+    fi
+
     local pkgs=(
         base base-devel linux-firmware bash nano vim "${priv_esc}"
-        git curl wget pciutils "${init}" dbus efibootmgr dosfstools
+        git curl wget pciutils "${init_pkg}" dbus efibootmgr dosfstools
     )
     [[ -n "${ucode}" ]] && pkgs+=("${ucode}")
 
     case "${wm_de}" in
         hyprland|mango|niri|sway)
-            pkgs+=(seatd "seatd-${init}") ;;
+            [[ -n "${seatd_suffix}" ]] && pkgs+=(seatd "seatd-${seatd_suffix}") ;;
         *)
-            pkgs+=("elogind-${init}") ;;
+            [[ -n "${elogind_suffix}" ]] && pkgs+=("elogind-${elogind_suffix}") ;;
     esac
 
     case "${user_shell}" in
@@ -50,78 +60,102 @@ install_base_system() {
         *)    die "unsupported shell: ${user_shell}" ;;
     esac
 
+    local skip_binary_kernel=0
+    [[ "$(state_get POWER_USER no)" == "yes" && "$(state_get KEEP_BINARY_KERNEL yes)" == "no" ]] && skip_binary_kernel=1
+
     case "${kernel}" in
         linux|linux-zen|linux-lts|linux-hardened)
-            pkgs+=("${KERNEL_PACKAGE}" "${KERNEL_HEADERS}") ;;
+            if [[ $skip_binary_kernel -eq 1 ]]; then
+                log_info "Skipping binary ${kernel} kernel (fallback disabled)"
+            else
+                pkgs+=("${KERNEL_PACKAGE}" "${KERNEL_HEADERS}")
+            fi
+            ;;
         linux-libre)
-            log_info "Enabling linux-libre repository..."
-            if ! grep -q '^\[libre\]' /etc/pacman.conf; then
-                cat <<'EOF' >> /etc/pacman.conf
+            if [[ $skip_binary_kernel -eq 1 ]]; then
+                log_info "Skipping binary linux-libre kernel (fallback disabled)"
+            else
+                log_info "Enabling linux-libre repository..."
+                if ! grep -q '^\[libre\]' /etc/pacman.conf; then
+                    cat <<'EOF' >> /etc/pacman.conf
 [libre]
 SigLevel = Never
 Server = https://repo.parabola.nu/libre/os/x86_64
 EOF
+                fi
+                pkgs+=(linux-libre linux-libre-headers)
+                log_warn "linux-libre removes non-free firmware/drivers. NVIDIA, Wi‑Fi, Bluetooth may stop working."
             fi
-            pkgs+=(linux-libre linux-libre-headers)
-            log_warn "linux-libre removes non-free firmware/drivers. NVIDIA, Wi‑Fi, Bluetooth may stop working."
             ;;
         linux-cachyos-bore)
-            log_info "Setting up CachyOS repository..."
-            pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-            pacman-key --lsign-key F3B607488DB35A47
-            local cachyos_keyring cachyos_mirrorlist
-            cachyos_keyring=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-keyring-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
-            cachyos_mirrorlist=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
-            [[ -z "${cachyos_keyring}" || -z "${cachyos_mirrorlist}" ]] && die 'Failed to locate CachyOS bootstrap packages'
-            pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_keyring}" "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_mirrorlist}"
-            if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
-                cat <<'EOF' >> /etc/pacman.conf
+            if [[ $skip_binary_kernel -eq 1 ]]; then
+                log_info "Skipping binary cachyos kernel (fallback disabled)"
+            else
+                log_info "Setting up CachyOS repository..."
+                pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+                pacman-key --lsign-key F3B607488DB35A47
+                local cachyos_keyring cachyos_mirrorlist
+                cachyos_keyring=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-keyring-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
+                cachyos_mirrorlist=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
+                [[ -z "${cachyos_keyring}" || -z "${cachyos_mirrorlist}" ]] && die 'Failed to locate CachyOS bootstrap packages'
+                pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_keyring}" "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_mirrorlist}"
+                if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
+                    cat <<'EOF' >> /etc/pacman.conf
 [cachyos]
 Include = /etc/pacman.d/cachyos-mirrorlist
 EOF
+                fi
+                pkgs+=(linux-cachyos-bore linux-cachyos-bore-headers)
             fi
-            pkgs+=(linux-cachyos-bore linux-cachyos-bore-headers)
             ;;
         linux-bazzite-bin)
-            log_info "Setting up Bazzite kernel AUR build..."
-            if ! pacman -Q artix-archlinux-support >/dev/null 2>&1; then
-                pacman -S --noconfirm --needed artix-archlinux-support
-            fi
-            local arch_mirrorlist='/etc/pacman.d/mirrorlist-arch'
-            if [[ ! -f "${arch_mirrorlist}" ]]; then
-                install -Dm644 /dev/null "${arch_mirrorlist}"
-                cat > "${arch_mirrorlist}" <<'MIRROR_EOF'
+            if [[ $skip_binary_kernel -eq 1 ]]; then
+                log_info "Skipping binary bazzite kernel (fallback disabled)"
+            else
+                log_info "Setting up Bazzite kernel AUR build..."
+                if ! pacman -Q artix-archlinux-support >/dev/null 2>&1; then
+                    pacman -S --noconfirm --needed artix-archlinux-support
+                fi
+                local arch_mirrorlist='/etc/pacman.d/mirrorlist-arch'
+                if [[ ! -f "${arch_mirrorlist}" ]]; then
+                    install -Dm644 /dev/null "${arch_mirrorlist}"
+                    cat > "${arch_mirrorlist}" <<'MIRROR_EOF'
 Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
 MIRROR_EOF
-            fi
-            if ! grep -q '^\[extra\]' /etc/pacman.conf; then
-                cat <<'EOF' >> /etc/pacman.conf
+                fi
+                if ! grep -q '^\[extra\]' /etc/pacman.conf; then
+                    cat <<'EOF' >> /etc/pacman.conf
 [extra]
 Include = /etc/pacman.d/mirrorlist-arch
 EOF
-            fi
-            if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
-                cat <<'EOF' >> /etc/pacman.conf
+                fi
+                if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+                    cat <<'EOF' >> /etc/pacman.conf
 [multilib]
 Include = /etc/pacman.d/mirrorlist-arch
 EOF
+                fi
+                pkgs+=(base-devel git mkinitcpio)
             fi
-            pkgs+=(base-devel git mkinitcpio)
             ;;
         xanmod)
-            log_info "Setting up Chaotic-AUR for XanMod..."
-            pacman-key --init
-            pacman-key --populate artix
-            pacman-key --recv-keys 3056513887B78AEB --keyserver hkp://keyserver.ubuntu.com
-            pacman-key --lsign-key 3056513887B78AEB
-            pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
-            if ! grep -q '^\[chaotic-aur\]' /etc/pacman.conf; then
-                cat <<'EOF' >> /etc/pacman.conf
+            if [[ $skip_binary_kernel -eq 1 ]]; then
+                log_info "Skipping binary xanmod kernel (fallback disabled)"
+            else
+                log_info "Setting up Chaotic-AUR for XanMod..."
+                pacman-key --init
+                pacman-key --populate artix
+                pacman-key --recv-keys 3056513887B78AEB --keyserver hkp://keyserver.ubuntu.com
+                pacman-key --lsign-key 3056513887B78AEB
+                pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+                if ! grep -q '^\[chaotic-aur\]' /etc/pacman.conf; then
+                    cat <<'EOF' >> /etc/pacman.conf
 [chaotic-aur]
 Include = /etc/pacman.d/chaotic-mirrorlist
 EOF
+                fi
+                pkgs+=("${KERNEL_PACKAGE}" "${KERNEL_HEADERS}")
             fi
-            pkgs+=("${KERNEL_PACKAGE}" "${KERNEL_HEADERS}")
             ;;
         tkg)
             log_info "Setting up TKG build dependencies..."
@@ -165,8 +199,12 @@ EOF
     case "${bootloader}" in
         grub)    pkgs+=(grub os-prober) ;;
         refind)  pkgs+=(refind) ;;
-        efistub) ;;
+        efistub|uki) ;;
     esac
+
+    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+        pkgs+=(lvm2)
+    fi
 
     printf '%s\n' "${pkgs[@]}" > "${PWD}/artix-pkgs.log"
 
@@ -292,6 +330,11 @@ EOF
     if [[ "${fs_type}" == 'bcachefs' ]]; then
         log_info "Adding Bcachefs hook to mkinitcpio..."
         artix-chroot /mnt sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block keyboard bcachefs filesystems)/' /etc/mkinitcpio.conf
+    fi
+
+    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+        log_info "Adding LVM hook to mkinitcpio..."
+        artix-chroot /mnt sed -i 's/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
     fi
 
     if [[ "${kernel}" == 'tkg' ]]; then

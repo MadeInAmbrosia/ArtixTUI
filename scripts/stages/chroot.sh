@@ -11,7 +11,7 @@ stage_chroot() {
     fs_type="$(state_get FS_TYPE ext4)"
 
     case "${init}" in
-        openrc|runit|dinit|s6) ;;
+        openrc|runit|dinit|s6|busybox) ;;
         *) die "invalid init system: ${init}" ;;
     esac
 
@@ -23,13 +23,20 @@ stage_chroot() {
         return 1
     fi
 
-    if ! artix-chroot /mnt pacman -Q "${init}" >/dev/null 2>&1; then
-        log_info "Installing init system: ${init}"
-        artix-chroot /mnt pacman -S --noconfirm "${init}"
-        rc=$?
-        if [[ ${rc} -ne 0 ]]; then
-            log_error "Failed to install init system: ${init}"
-            return ${rc}
+    if [[ "${init}" != "busybox" ]]; then
+        if ! artix-chroot /mnt pacman -Q "${init}" >/dev/null 2>&1; then
+            log_info "Installing init system: ${init}"
+            artix-chroot /mnt pacman -S --noconfirm "${init}"
+            rc=$?
+            if [[ ${rc} -ne 0 ]]; then
+                log_error "Failed to install init system: ${init}"
+                return ${rc}
+            fi
+        fi
+    else
+        log_info "BusyBox init is source-built — skipping pacman check"
+        if ! artix-chroot /mnt which busybox &>/dev/null; then
+            log_warn "BusyBox binary not found in target — init may have failed to build"
         fi
     fi
 

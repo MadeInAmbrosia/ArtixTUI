@@ -63,9 +63,62 @@ require_internet() {
         return 0
     fi
 
-    die 'no internet connection'
-}
+    warn 'no internet connection detected'
 
+    if ! tui_yesno "Network Setup" "No internet detected. Configure network now?"; then
+        die 'no internet connection'
+    fi
+
+    local net_type
+    net_type=$(tui_menu "Network Type" "Select connection type:" \
+        "DHCP (automatic)" \
+        "WiFi" \
+        "Static IP") || die 'no internet connection'
+
+    case "${net_type}" in
+        *DHCP*)
+            dhcpcd -q 2>/dev/null || true
+            ;;
+        *WiFi*)
+            command -v iwctl &>/dev/null || pacman -S --noconfirm iwd
+            iwctl station list
+            local wifi_iface wifi_ssid wifi_pass
+            wifi_iface=$(iwctl station list | grep -oP 'wlan\S+' | head -n1)
+            [[ -n "${wifi_iface}" ]] || wifi_iface=$(tui_input "WiFi" "Enter wireless interface:" "wlan0")
+            wifi_ssid=$(tui_input "WiFi" "Enter SSID:")
+            wifi_pass=$(tui_password "WiFi" "Enter passphrase:")
+            iwctl station "${wifi_iface}" connect "${wifi_ssid}" --passphrase "${wifi_pass}" || {
+                log_warn "WiFi connection failed."
+                die 'no internet connection'
+            }
+            ;;
+        *Static*)
+            local ip mask gw dns
+            ip=$(tui_input "Static IP" "IP address:" "192.168.1.100")
+            mask=$(tui_input "Static IP" "Netmask (CIDR):" "24")
+            gw=$(tui_input "Static IP" "Gateway:" "192.168.1.1")
+            dns=$(tui_input "Static IP" "DNS server:" "1.1.1.1")
+            local iface
+            iface=$(ip route | grep default | grep -oP 'dev \K\S+' | head -n1)
+            [[ -n "${iface}" ]] || iface=$(tui_input "Static IP" "Interface:" "eth0")
+            ip addr add "${ip}/${mask}" dev "${iface}" 2>/dev/null || true
+            ip route add default via "${gw}" 2>/dev/null || true
+            echo "nameserver ${dns}" > /etc/resolv.conf
+            ;;
+    esac
+
+    if command -v curl &>/dev/null; then
+        if curl -fsSL --max-time 5 https://1.1.1.1 &>/dev/null; then
+            log_info "Network configured successfully."
+            return 0
+        fi
+    elif ping -c 1 -W 3 1.1.1.1 &>/dev/null; then
+        log_info "Network configured successfully."
+        return 0
+    fi
+
+    die 'network configuration failed. No internet connection'
+}
 get_partition_name() {
     local disk="${1}"
     local partition="${2}"

@@ -33,6 +33,8 @@ configure() {
   scripts/config --enable SMP
   scripts/config --enable PCI
   scripts/config --enable BLK_DEV_SD
+  scripts/config --enable BLK_DEV_NVME
+  scripts/config --enable VIRTIO_BLK
   scripts/config --enable ATA
   scripts/config --enable SATA_AHCI
   scripts/config --enable NET
@@ -67,12 +69,26 @@ configure() {
 
   local depth
   depth="$(state_get KERNEL_CONFIG_DEPTH auto)"
-  source "${POWERUSER_DIR}/lib/kconfig.bash"
 
-  if [[ "${depth}" == "auto" || "${depth}" == "manual" ]]; then
+  if [[ -f "${POWERUSER_DIR}/lib/kconfig.bash" ]]; then
+    source "${POWERUSER_DIR}/lib/kconfig.bash"
     apply_basic_config
     apply_advanced_config
-  elif [[ "${depth}" == "menuconfig" ]]; then
+  else
+    log_warn "kconfig.bash not found — kernel may lack hardware drivers"
+  fi
+
+  local fs_type
+  fs_type="$(state_get FS_TYPE ext4)"
+  case "${fs_type}" in
+    ext4) scripts/config --enable EXT4_FS ;;
+    btrfs) scripts/config --enable BTRFS_FS ;;
+    xfs) scripts/config --enable XFS_FS ;;
+    f2fs) scripts/config --enable F2FS_FS ;;
+    exfat) scripts/config --enable EXFAT_FS ;;
+  esac
+
+  if [[ "${depth}" == "menuconfig" ]]; then
     make menuconfig
   fi
 

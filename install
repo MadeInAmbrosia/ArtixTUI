@@ -110,7 +110,7 @@ DEBUG="false"
 
 main_menu() {
     local mode
-    mode=$(tui_menu "ArtixTUI v7" "Select installation mode:" \
+    mode=$(tui_menu "ArtixTUI v8" "Select installation mode:" \
         "Automatic – guided installation" \
         "Manual – detect existing partitions" \
         "Resume – resume interrupted install" \
@@ -142,6 +142,7 @@ run_install_pipeline() {
         stage_poweruser || die 'power user build stage failed'
     fi
     stage_chroot    || die 'chroot stage failed'
+    stage_init      || die 'init configuration stage failed'
     stage_post      || die 'post-install stage failed'
     stage_finalize  || die 'finalization stage failed'
 }

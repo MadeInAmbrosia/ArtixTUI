@@ -74,6 +74,24 @@ stage_poweruser() {
             queue_mark "${pkg}" "done"
         else
             queue_mark "${pkg}" "failed"
+            if [[ "${pkg}" == "linux" ]]; then
+                if tui_yesno "Kernel Failed" "The custom kernel failed to build. Install the binary kernel instead?"; then
+                    log_info "Installing binary kernel as fallback..."
+                    local kernel_choice kernel_pkg
+                    kernel_choice="$(state_get KERNEL_CHOICE linux)"
+                    case "${kernel_choice}" in
+                        linux)          kernel_pkg="linux" ;;
+                        linux-zen)      kernel_pkg="linux-zen" ;;
+                        linux-lts)      kernel_pkg="linux-lts" ;;
+                        linux-hardened) kernel_pkg="linux-hardened" ;;
+                        *)              kernel_pkg="linux" ;;
+                    esac
+                    artix-chroot /mnt pacman -S --noconfirm "${kernel_pkg}" "${kernel_pkg}-headers"
+                    state_set KEEP_BINARY_KERNEL "yes"
+                    queue_mark "${pkg}" "done"
+                    continue
+                fi
+            fi
             die "Build failed for ${pkg}"
         fi
     done
@@ -86,7 +104,7 @@ stage_poweruser() {
     cp "${POWERUSER_DIR}/bin/gartix" /mnt/usr/local/bin/gartix
     chmod +x /mnt/usr/local/bin/gartix
 
-    cp "${POWERUSER_DIR}/lib"/{common.sh,flags,recipe,validate,builder,cache,rebuild}.bash /mnt/usr/share/artix-poweruser/lib/ 2>/dev/null || true
+    cp "${POWERUSER_DIR}/lib"/{common.sh,flags,recipe,validate,builder,cache,rebuild,kconfig,hwdetect}.bash /mnt/usr/share/artix-poweruser/lib/ 2>/dev/null || true
     cp "${POWERUSER_DIR}/lib/common.sh" /mnt/usr/share/artix-poweruser/lib/ 2>/dev/null || true
 
     cp "${POWERUSER_DIR}/profile"/*.sh /mnt/usr/share/artix-poweruser/profile/

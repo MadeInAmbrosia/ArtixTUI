@@ -52,5 +52,32 @@ partition_disk() {
         [[ -b "$(get_partition_name "${disk}" 2)" ]] || die 'root partition not created'
     fi
 
+    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+        log_info "Setting up LVM..."
+        local root_part
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            root_part=$(get_partition_name "${disk}" 3)
+        else
+            root_part=$(get_partition_name "${disk}" 2)
+        fi
+
+        sgdisk -t "$(lsblk -no PARTN "${root_part}" | head -n1)":8e00 "${disk}"
+
+        local lvm_target="${root_part}"
+        if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+            log_info "Opening LUKS container for LVM..."
+            local luks_pass
+            luks_pass="$(state_get LUKS_PASS)"
+            printf '%s' "${luks_pass}" | cryptsetup luksOpen "${root_part}" cryptlvm -
+            lvm_target="/dev/mapper/cryptlvm"
+        fi
+
+        pvcreate "${lvm_target}" || die "pvcreate failed"
+        vgcreate vg0 "${lvm_target}" || die "vgcreate failed"
+        lvcreate -L 20G -n root vg0 || die "lvcreate root failed"
+        lvcreate -L 8G -n home vg0 || true
+        lvcreate -l 100%FREE -n data vg0 || true
+    fi
+
     log_info "Partitioning complete."
 }

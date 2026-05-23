@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 apply_basic_config() {
+    ensure_boot_essentials
     source "${POWERUSER_DIR}/lib/hwdetect.bash"
     local rec
     while IFS= read -r rec; do
@@ -15,6 +16,8 @@ apply_basic_config() {
 
 ensure_boot_essentials() {
     scripts/config --enable BLK_DEV_SD
+    scripts/config --enable BLK_DEV_NVME
+    scripts/config --enable VIRTIO_BLK
     scripts/config --enable ATA
     scripts/config --enable SATA_AHCI
     scripts/config --enable NET

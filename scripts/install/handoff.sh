@@ -37,6 +37,15 @@ prepare_handoff() {
     elif [[ -f /mnt/boot/amd-ucode.img ]]; then microcode_image='amd-ucode.img'
     fi
 
+    if [[ "$(state_get BOOTLOADER)" == "uki" ]]; then
+        local uki_found
+        uki_found=$(find /mnt/boot/efi/EFI/Artix -maxdepth 1 -type f -name '*.efi' 2>/dev/null | head -n1)
+        if [[ -n "${uki_found}" ]]; then
+            kernel_image="${uki_found}"
+            initramfs_image=''
+        fi
+    fi
+
     [[ -n "${kernel_image}" ]]     && state_set KERNEL_IMAGE "$(basename "${kernel_image}")"
     [[ -n "${initramfs_image}" ]]  && state_set INITRAMFS_IMAGE "$(basename "${initramfs_image}")"
     [[ -n "${microcode_image}" ]]  && state_set MICROCODE_IMAGE "${microcode_image}"
@@ -48,6 +57,11 @@ DISK="$(state_get DISK)"
 FS_TYPE="$(state_get FS_TYPE)"
 INIT="$(state_get INIT)"
 USE_LUKS="$(state_get USE_LUKS)"
+USE_LVM="$(state_get USE_LVM)"
+KEEP_BINARY_KERNEL="$(state_get KEEP_BINARY_KERNEL)"
+COREUTILS="$(state_get COREUTILS)"
+KERNEL_CONFIG_DEPTH="$(state_get KERNEL_CONFIG_DEPTH)"
+QUICK_INSTALL="$(state_get QUICK_INSTALL)"
 BOOTLOADER="$(state_get BOOTLOADER)"
 DISPLAY_MANAGER="$(state_get DISPLAY_MANAGER)"
 AUDIO_STACK="$(state_get AUDIO_STACK)"
@@ -55,6 +69,9 @@ SWAP_ENABLED="$(state_get SWAP_ENABLED)"
 SWAP_SIZE="$(state_get SWAP_SIZE)"
 EXTRAS="$(state_get EXTRAS)"
 KERNEL_CHOICE="$(state_get KERNEL_CHOICE)"
+KERNEL_CONFIG_DEPTH="$(state_get KERNEL_CONFIG_DEPTH)"
+KEEP_BINARY_KERNEL="$(state_get KEEP_BINARY_KERNEL)"
+COREUTILS="$(state_get COREUTILS)"
 KERNEL_IMAGE="$(state_get KERNEL_IMAGE)"
 INITRAMFS_IMAGE="$(state_get INITRAMFS_IMAGE)"
 MICROCODE_IMAGE="$(state_get MICROCODE_IMAGE)"
@@ -73,6 +90,7 @@ NETWORK_STACK="$(state_get NETWORK_STACK)"
 ALLOW_OFFLINE="$(state_get ALLOW_OFFLINE)"
 X_STACK="$(state_get X_STACK)"
 ENABLE_ARCH_REPOS="$(state_get ENABLE_ARCH_REPOS)"
+QUICK_INSTALL="$(state_get QUICK_INSTALL)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 

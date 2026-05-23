@@ -1,15 +1,15 @@
 # Power User Mode
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Power_User-v1.3.1.0-blue?style=flat-square" alt="Power User Version">
-  <img src="https://img.shields.io/badge/ArtixTUI-v7.2.1.0-212?style=flat-square" alt="ArtixTUI">
+  <img src="https://img.shields.io/badge/Power_User-v1.4.0.0-blue?style=flat-square" alt="Power User Version">
+  <img src="https://img.shields.io/badge/ArtixTUI-v8.0.0.0-212?style=flat-square" alt="ArtixTUI">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/Build_Engine-makepkg-FFB6C1?style=flat-square" alt="makepkg">
 </p>
 
 Power User Mode is ArtixTUI's source-based package compilation subsystem.
 
-It brings Gentoo-style control to Artix Linux — build kernels, drivers, and userspace packages from source with custom compilation flags and feature toggles.
+It brings Gentoo-style control to Artix Linux — build kernels, drivers, init systems, coreutils, and userspace packages from source with custom compilation flags and feature toggles.
 
 ---
 
@@ -26,6 +26,18 @@ After the base system is installed, you'll configure:
    - Hardware auto-detection
    - Manual checklist configuration
    - `make menuconfig`
+5. Coreutils selection:
+   - GNU coreutils
+   - BusyBox
+   - uutils (Rust)
+   - ArtixTUI minimal coreutils
+   - Custom recipe
+6. Init configuration:
+   - OpenRC
+   - runit
+   - dinit
+   - s6
+   - BusyBox init
 
 The build engine then:
 
@@ -33,6 +45,8 @@ The build engine then:
 - Resolves dependencies
 - Compiles packages
 - Installs them into the target system
+- Optionally downloads all recipe sources ahead of time for offline builds
+
 
 ---
 
@@ -50,6 +64,7 @@ Use it to manage your source-built packages.
 
 ```bash
 gartix list              # List installed source packages
+gartix list-recipes      # List all available recipes
 gartix info <pkg>        # Show build details
 gartix rebuild <pkg>     # Rebuild package with current flags
 gartix new <name>        # Create a new recipe
@@ -57,7 +72,8 @@ gartix edit <name>       # Edit recipe
 gartix lint <name>       # Validate recipe
 gartix config            # Edit running kernel config
 gartix menuconfig        # Launch make menuconfig
-gartix upgrade          # Backup recipes and update from remote
+gartix fetch-all         # Download all recipe sources for offline builds
+gartix upgrade           # Backup recipes and update from remote
 gartix cache-clean       # Remove obsolete cached packages
 gartix sync              # Update recipes from remote
 gartix --tui             # Launch interactive TUI

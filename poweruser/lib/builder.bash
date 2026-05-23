@@ -142,8 +142,21 @@ handle_build_failure() {
 
     while true; do
         local action
-        action=$(tui_menu "Build Failed" "${recipe_name} failed." \
-            "Retry" "Skip" "Debug shell" "Abort") || action="Abort"
+        if [[ "${recipe_name}" == "linux" ]]; then
+            action=$(tui_menu "Build Failed" "${recipe_name} failed." \
+                "Retry" \
+                "Skip" \
+                "Debug shell" \
+                "Install binary kernel instead" \
+                "Abort") || action="Abort"
+        else
+            action=$(tui_menu "Build Failed" "${recipe_name} failed." \
+                "Retry" \
+                "Skip" \
+                "Debug shell" \
+                "Abort") || action="Abort"
+        fi
+
         case "${action}" in
             Retry)
                 log_info "Retrying ${recipe_name}..."
@@ -160,6 +173,26 @@ handle_build_failure() {
             "Debug shell")
                 log_info "Dropping to shell in ${work_dir}. Type 'exit' to return."
                 ( cd "${work_dir}" && bash )
+                ;;
+            "Install binary kernel instead")
+                log_info "Installing binary kernel as fallback..."
+                local kernel_choice kernel_pkg
+                kernel_choice="$(state_get KERNEL_CHOICE linux)"
+                case "${kernel_choice}" in
+                    linux)          kernel_pkg="linux" ;;
+                    linux-zen)      kernel_pkg="linux-zen" ;;
+                    linux-lts)      kernel_pkg="linux-lts" ;;
+                    linux-hardened) kernel_pkg="linux-hardened" ;;
+                    *)              kernel_pkg="linux" ;;
+                esac
+                artix-chroot /mnt pacman -S --noconfirm "${kernel_pkg}" "${kernel_pkg}-headers" || {
+                    log_error "Failed to install binary kernel"
+                    continue
+                }
+                log_info "Binary kernel ${kernel_pkg} installed as fallback"
+                state_set KEEP_BINARY_KERNEL "yes"
+                printf '%s|%s|%d\n' "${recipe_name}" "binary-fallback" 0 >> "${LOGS_DIR}/timing.log"
+                return 0
                 ;;
             Abort)
                 die "Build aborted by user"

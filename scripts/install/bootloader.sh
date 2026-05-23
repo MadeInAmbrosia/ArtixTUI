@@ -8,8 +8,26 @@ configure_bootloader() {
     fs_type="$(state_get FS_TYPE)"
     [[ "${fs_type}" == 'zfs' ]] && root_param='root=ZFS=zroot/root'
 
+    if [[ "${bootloader}" == "uki" ]]; then
+        log_info "Writing UKI preset..."
+        local kernel_base="/boot/vmlinuz-${kernel}"
+        [[ "${kernel}" == "linux" ]] && kernel_base="/boot/vmlinuz-linux"
+        local kver
+        kver=$(ls /mnt/lib/modules | head -n1)
+        [[ -n "${kver}" ]] || die "Could not detect kernel version for UKI"
+        cat > /mnt/etc/mkinitcpio.d/linux-uki.preset <<EOF
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux-custom"
+PRESETS=('default')
+default_config="/etc/mkinitcpio.conf"
+default_image="/boot/initramfs-linux-custom.img"
+default_uki="/boot/efi/EFI/Artix/linux-custom.efi"
+EOF
+    fi
+
     log_info "Generating initramfs..."
     artix-chroot /mnt mkinitcpio -P || die 'failed to generate initramfs'
+
     local root_device
     root_device=$(artix-chroot /mnt findmnt -n -o SOURCE /) || true
     [[ -n "${root_device}" ]] || die 'failed to detect root device'
@@ -48,8 +66,11 @@ configure_bootloader() {
             artix-chroot /mnt bash -c "echo \"${refind_root_param} rw\" > /boot/refind_linux.conf"
             artix-chroot /mnt refind-install || die 'refind-install failed'
             ;;
-        efistub)
-            log_info "Configuring EFIStub boot entry..."
+        efistub|uki)
+            local label="Artix Linux"
+            [[ "${bootloader}" == "uki" ]] && label="Artix Linux (UKI)"
+
+            log_info "Configuring ${label} boot entry..."
             command -v efibootmgr >/dev/null 2>&1 || die 'efibootmgr unavailable'
             local root_source root_uuid esp_source esp_mount esp_disk esp_part
             root_source="$(findmnt -rn -o SOURCE --target /mnt)"
@@ -70,45 +91,72 @@ configure_bootloader() {
             esp_part="$(lsblk -no PARTN "${esp_source}" | head -n1)"
             [[ -n "${esp_part}" ]] || die 'failed to detect EFI partition number'
 
-            local kernel_image="/mnt/boot/$(state_get KERNEL_IMAGE)"
-            local initramfs_image="/mnt/boot/$(state_get INITRAMFS_IMAGE)"
-            local microcode_file="$(state_get MICROCODE_IMAGE)"
-            [[ -f "${kernel_image}" ]] || die 'failed to locate kernel image'
-            [[ -f "${initramfs_image}" ]] || die 'failed to locate initramfs image'
+            if [[ "${bootloader}" == "uki" ]]; then
+                local uki_file="${esp_mount}/EFI/Artix/linux-custom.efi"
+                [[ -f "${uki_file}" ]] || die "UKI file not found: ${uki_file}"
+                local loader="\\EFI\\Artix\\linux-custom.efi"
+                local cmdline="root=UUID=${root_uuid} rw"
 
-            local kernel_basename initramfs_basename microcode_image_str
-            kernel_basename="$(basename "${kernel_image}")"
-            initramfs_basename="$(basename "${initramfs_image}")"
-            local esp_artix_dir="${esp_mount}/EFI/Artix"
-            mkdir -p "${esp_artix_dir}"
-            cp -f "${kernel_image}" "${esp_artix_dir}/${kernel_basename}"
-            cp -f "${initramfs_image}" "${esp_artix_dir}/${initramfs_basename}"
+                log_info "Creating EFI boot entry for UKI..."
+                artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
+                    --label "${label}" --loader "${loader}" --unicode "${cmdline}" --verbose \
+                    || die 'failed to create UKI EFI boot entry'
 
-            if [[ -n "${microcode_file}" && -f "/mnt/boot/${microcode_file}" ]]; then
-                cp -f "/mnt/boot/${microcode_file}" "${esp_artix_dir}/${microcode_file}"
-                microcode_image_str="initrd=\\EFI\\Artix\\${microcode_file}"
-            fi
-
-            local loader="\\EFI\\Artix\\${kernel_basename}"
-            local cmdline
-
-            if [[ "${fs_type}" == 'zfs' ]]; then
-                cmdline="root=ZFS=zroot/root rw"
+                if tui_yesno "Secure Boot" "Sign the UKI for Secure Boot?"; then
+                    local sb_key sb_cert
+                    sb_key=$(tui_input "Secure Boot" "Path to DB.key (on target):" "/etc/secureboot/DB.key")
+                    sb_cert=$(tui_input "Secure Boot" "Path to DB.crt (on target):" "/etc/secureboot/DB.crt")
+                    if [[ -f "/mnt${sb_key}" && -f "/mnt${sb_cert}" ]]; then
+                        artix-chroot /mnt sbsign --key "${sb_key}" --cert "${sb_cert}" \
+                            --output /boot/efi/EFI/Artix/linux-custom-signed.efi \
+                            /boot/efi/EFI/Artix/linux-custom.efi || log_warn "sbsign failed"
+                        artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
+                            --label "Artix Linux (UKI Signed)" \
+                            --loader '\EFI\Artix\linux-custom-signed.efi' \
+                            --unicode "${cmdline}" --verbose || log_warn "Failed to create signed boot entry"
+                        log_info "UKI signed for Secure Boot."
+                    else
+                        log_warn "Signing keys not found. UKI not signed."
+                    fi
+                fi
             else
-                cmdline="root=UUID=${root_uuid} rw"
+                local kernel_image="/mnt/boot/$(state_get KERNEL_IMAGE)"
+                local initramfs_image="/mnt/boot/$(state_get INITRAMFS_IMAGE)"
+                local microcode_file="$(state_get MICROCODE_IMAGE)"
+                [[ -f "${kernel_image}" ]] || die 'failed to locate kernel image'
+                [[ -f "${initramfs_image}" ]] || die 'failed to locate initramfs image'
+
+                local kernel_basename initramfs_basename microcode_image_str
+                kernel_basename="$(basename "${kernel_image}")"
+                initramfs_basename="$(basename "${initramfs_image}")"
+                local esp_artix_dir="${esp_mount}/EFI/Artix"
+                mkdir -p "${esp_artix_dir}"
+                cp -f "${kernel_image}" "${esp_artix_dir}/${kernel_basename}"
+                cp -f "${initramfs_image}" "${esp_artix_dir}/${initramfs_basename}"
+
+                if [[ -n "${microcode_file}" && -f "/mnt/boot/${microcode_file}" ]]; then
+                    cp -f "/mnt/boot/${microcode_file}" "${esp_artix_dir}/${microcode_file}"
+                    microcode_image_str="initrd=\\EFI\\Artix\\${microcode_file}"
+                fi
+
+                local loader="\\EFI\\Artix\\${kernel_basename}"
+                local cmdline
+                if [[ "${fs_type}" == 'zfs' ]]; then
+                    cmdline="root=ZFS=zroot/root rw"
+                else
+                    cmdline="root=UUID=${root_uuid} rw"
+                fi
+                [[ -n "${microcode_image_str:-}" ]] && cmdline+=" ${microcode_image_str}"
+                cmdline+=" initrd=\\EFI\\Artix\\${initramfs_basename}"
+
+                log_info "Creating EFI boot entry..."
+                artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
+                    --label 'Artix Linux' --loader "${loader}" --unicode "${cmdline}" --verbose \
+                    || die 'failed to create EFI boot entry'
             fi
-
-            [[ -n "${microcode_image_str:-}" ]] && \
-                cmdline+=" ${microcode_image_str}"
-
-            cmdline+=" initrd=\\EFI\\Artix\\${initramfs_basename}"
-
-            log_info "Creating EFI boot entry..."
-            artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
-                --label 'Artix Linux' --loader "${loader}" --unicode "${cmdline}" --verbose || die 'failed to create EFI boot entry'
 
             log_info "Verifying EFI boot entries..."
-            artix-chroot /mnt efibootmgr -v | grep -qi 'Artix Linux' || die 'failed to verify EFI boot entry'
+            artix-chroot /mnt efibootmgr -v | grep -qi "${label}" || die "failed to verify EFI boot entry: ${label}"
             ;;
         *)
             die "unsupported bootloader: ${bootloader}" ;;

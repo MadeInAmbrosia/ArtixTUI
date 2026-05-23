@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v7.2.1.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.0.0.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
@@ -24,7 +24,7 @@ ArtixTUI is a **TUI-first, modular installer** for Artix Linux (OpenRC, runit, d
 
 It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools — all from a single, beautiful terminal interface.
 
-Built with **gum** by Charmbracelet, it looks better than `archinstall` and works with **any** Artix init system.
+Built with **gum** by Charmbracelet, it looks better than `archinstall` and supports all major Artix init systems — including BusyBox init in Power User mode.
 
 ---
 
@@ -49,11 +49,12 @@ You'll be greeted by a main menu where you choose your installation mode.
 
 | Mode | Description |
 |------|-------------|
-| 🟢 Automatic | The installer guides you through every configuration choice. |
-| 🔵 Manual | You select a disk; the installer detects what's already done and resumes. |
-| 🟡 Resume | Continue an interrupted installation from the last saved stage. |
-| 🟠 Recovery | Scan `/mnt` for an existing system, reconstruct state, and repair. |
-| 🔴 Power User | Source-based package compilation with Gentoo-style control. |
+| 🟢 Automatic | Guided installation with full configuration flow. |
+| 🔵 Manual | Detect existing setup progress and continue manually. |
+| 🟡 Resume | Continue from the last saved installation stage. |
+| 🟠 Recovery | Reconstruct installer state from `/mnt` and repair installations. |
+| 🔴 Power User | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control. |
+| ⚡ Quick Profiles | Desktop, Server, Minimal, and Embedded presets for rapid deployment. |
 
 A debug toggle is available for every mode from the same menu.
 
@@ -69,8 +70,13 @@ A debug toggle is available for every mode from the same menu.
   - `/tmp/artix-installer/install.log`
   - `/mnt/var/log/artix-installer.log`
 - Safe passwords — hashed with `openssl passwd -6`, never written to disk
+- Quick install profiles — Desktop, Server, Minimal, Embedded
+- Network pre-configuration — WiFi, DHCP, or static IP setup before installation
+- Optional mirror ranking using `rankmirrors`
 - Full-disk encryption — LUKS support with passphrase confirmation
-- EFIStub, GRUB, rEFInd — all bootloaders supported
+- LVM support — PV/VG/LV creation with optional LUKS integration
+- UKI, EFIStub, GRUB, rEFInd — multiple boot methods supported
+- Optional Secure Boot signing for UKI images using `sbsign`
 - Privilege escalation choice — `sudo` or `doas`
 
 ### Supported Kernels
@@ -91,7 +97,7 @@ A debug toggle is available for every mode from the same menu.
 - `btrfs`
 - `xfs`
 - `f2fs`
-- `bcachefs`
+- `bcachefs` (Unstable/Unsupported)
 - `exfat`
 - `zfs`
 
@@ -133,6 +139,7 @@ A debug toggle is available for every mode from the same menu.
 - more
 
 - Offline mode — install from cached packages when network is unavailable
+- Offline source bootstrap for Power User builds
 - State persistence — all configuration saved for resume/recovery
 
 ---
@@ -140,12 +147,19 @@ A debug toggle is available for every mode from the same menu.
 ## Power User Mode
 
 - Source-based package compilation
+- BusyBox init support
+- Swappable coreutils:
+  - GNU coreutils
+  - BusyBox
+  - uutils (Rust)
+  - ArtixTUI minimal coreutils
+  - Custom recipes
 - Hardware auto-detection
 - Manual kernel configuration
 - Compilation profiles
-- Custom flag editor
-- Feature flags per package
+- Per-package feature flags
 - Recipe system
+- Offline source bootstrap
 - Build queue with resume
 - Error recovery
 - Live build log viewer
@@ -202,6 +216,7 @@ ArtixTUI/
 │   │   ├── kernel.sh
 │   │   └── extras.sh
 │   └── stages/
+│       ├── init.sh
 │       ├── preflight.sh
 │       ├── storage.sh
 │       ├── base.sh
@@ -216,6 +231,7 @@ ArtixTUI/
     │   └── gartix
     ├── lib/
     │   ├── builder.bash
+    │   ├── common.sh
     │   ├── cache.bash
     │   ├── deps.bash
     │   ├── flags.bash
@@ -231,6 +247,15 @@ ArtixTUI/
     │   ├── performance.sh
     │   └── safe.sh
     ├── recipes/
+    │   ├── artix-coreutils.sh
+    │   ├── busybox-init.sh
+    │   ├── busybox.sh
+    │   ├── glibc.sh
+    │   ├── mesa.sh
+    │   ├── openssl.sh
+    │   ├── uutils-coreutils.sh
+    │   ├── zlib.sh
+    │   ├── zstd.sh
     │   ├── linux.sh
     │   └── template.sh
     ├── tui/
@@ -252,18 +277,19 @@ ArtixTUI/
 
 | Category | Options |
 |---|---|
-| Init system | OpenRC, runit, dinit, s6 |
+| Init system | OpenRC, runit, dinit, s6, BusyBox init |
 | Filesystem | ext4, btrfs, xfs, f2fs, bcachefs, exfat, zfs |
-| Bootloader | GRUB, rEFInd, EFIStub |
+| Storage | Standard partitions, LVM, LUKS, LVM-on-LUKS |
+| Boot method | UKI, GRUB, rEFInd, EFIStub |
 | Kernel | linux, zen, lts, hardened, libre, cachyos-bore, bazzite, xanmod, tkg |
 | Desktop | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, IceWM, none |
 | Network | NetworkManager, dhcpcd+iwd, ConnMan, none |
 | Audio | PipeWire, PulseAudio, none |
 | Shell | bash, zsh, fish |
 | Display stack | X.Org, xLibre |
+| Coreutils | GNU, BusyBox, uutils, ArtixTUI minimal, Custom |
 | Privilege escalation | sudo, doas |
 | Encryption | LUKS full-disk encryption |
-
 ---
 
 # Contributing

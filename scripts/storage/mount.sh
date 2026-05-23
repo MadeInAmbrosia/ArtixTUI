@@ -40,6 +40,14 @@ mount_filesystems() {
     umount -R /mnt/boot/efi 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     mkdir -p /mnt
+
+    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+        log_info "Activating LVM volumes..."
+        modprobe dm-mod 2>/dev/null || true
+        vgchange -ay || die "Failed to activate LVM volume group"
+        root_part="/dev/mapper/vg0-root"
+    fi
+
     log_info "Mounting root filesystem..."
     case "${fs_type}" in
         btrfs)
