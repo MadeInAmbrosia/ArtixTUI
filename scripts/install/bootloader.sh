@@ -26,7 +26,6 @@ default_image="/boot/${uki_initramfs_name}"
 default_uki="/boot/efi/EFI/Artix/linux-custom.efi"
 EOF
     fi
-    fi
 
     log_info "Generating initramfs..."
     artix-chroot /mnt mkinitcpio -P || die 'failed to generate initramfs'
