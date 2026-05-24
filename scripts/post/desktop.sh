@@ -35,7 +35,12 @@ install_desktop() {
                 minimal)       pkgs+=(plasma-desktop dolphin konsole xdg-desktop-portal-kde) ;;
                 full|edge)     pkgs+=(plasma kde-applications xdg-desktop-portal-kde) ;;
                 desktop|*)     pkgs+=(plasma xdg-desktop-portal-kde) ;;
-            esac ;;
+            esac
+
+            if [[ "${x_stack:-xorg}" == 'xlibre' ]]; then
+                pacman -S --noconfirm --needed xlibre-input-wacom 2>/dev/null || true
+            fi
+            ;;
 
         hyprland)
             pkgs+=(hyprland foot waybar wofi xdg-desktop-portal-hyprland seatd "seatd-${init}") ;;
