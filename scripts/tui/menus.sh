@@ -441,6 +441,7 @@ tui_quick_install() {
 }
 
 tui_collect_install_config() {
+    tui_select_disk
     if tui_quick_install; then
         if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
             tui_select_poweruser
@@ -448,7 +449,6 @@ tui_collect_install_config() {
         tui_show_summary
         return
     fi
-    tui_select_disk
     tui_select_init
     tui_select_filesystem
     tui_select_btrfs_layout

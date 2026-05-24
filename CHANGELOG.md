@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.0.1.1 (2026-05-24)
+
+### Fixed
+- UKI preset now dynamically detects installed kernel instead of hardcoding `vmlinuz-linux-custom`
+- Quick Install profiles now always run disk selection before proceeding
+
 ## v8.0.1.0 (2026-05-23)
 
 ### Fixed

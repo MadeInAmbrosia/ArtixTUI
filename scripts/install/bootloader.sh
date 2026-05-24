@@ -10,17 +10,22 @@ configure_bootloader() {
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
         log_info "Writing UKI preset..."
-        local kver
-        kver=$(ls /mnt/lib/modules | head -n1)
-        [[ -n "${kver}" ]] || die "Could not detect kernel version for UKI"
+        local uki_kernel_image
+        uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
+        [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI preset"
+        local uki_kernel_name
+        uki_kernel_name=$(basename "${uki_kernel_image}")
+        local uki_initramfs_name="initramfs-${uki_kernel_name#vmlinuz-}.img"
+
         cat > /mnt/etc/mkinitcpio.d/linux-uki.preset <<EOF
 ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="/boot/vmlinuz-linux-custom"
+ALL_kver="${uki_kernel_image}"
 PRESETS=('default')
 default_config="/etc/mkinitcpio.conf"
-default_image="/boot/initramfs-linux-custom.img"
+default_image="/boot/${uki_initramfs_name}"
 default_uki="/boot/efi/EFI/Artix/linux-custom.efi"
 EOF
+    fi
     fi
 
     log_info "Generating initramfs..."
