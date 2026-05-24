@@ -32,6 +32,7 @@ _preflight_rank_mirrors() {
     fi
 
     log_info "Mirror ranking complete."
+    pacman -Sy --noconfirm || true
 }
 
 stage_preflight() {
