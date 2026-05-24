@@ -1,5 +1,18 @@
 # Changelog
 
+## v8.0.1.4 (2026-05-24)
+
+### Fixed (Also partially from v8.0.1.1)
+- Quick Install profiles now fully define all system variables instead of relying on defaults
+- Quick Install profiles now ask for hostname, timezone, locale, keymap, username, and passwords
+- Added "Customize" option after Quick Install confirmation to drop into full manual flow
+- Desktop profile now uses xlibre (Artix default) instead of X.Org
+- UKI preset now dynamically detects installed kernel instead of hardcoding `vmlinuz-linux-custom`
+- Quick Install profiles now always run disk selection before proceeding
+- Preflight: added `pacman -Sy` before package installation to prevent mirror sync issues
+- state_get: now returns default value when stored value is empty, not just unset
+- bootloader.sh: removed duplicate `fi` causing syntax error
+
 ## v8.0.1.1 (2026-05-24)
 
 ### Fixed
@@ -14,11 +27,10 @@
 - Added `GENERATE_UKI` to state.sh, summary.sh, and handoff.sh
 - Removed duplicate v8 variables from handoff.sh config block
 
-
 ## v8.0.0.1 (2026-05-23)
 
 ### Fixed
-- state.sh: restored missing `stage_validate()` function header lost during v8 merge (accidentally removed)
+- state.sh: restored missing `stage_validate()` function header lost during v8 merge
 - Added missing documentation files: GUIDE.md, CHANGELOG.md, SECURITY.md, OSI.md
 
 ## v8.0.0.0 (2026-05-23)
@@ -52,7 +64,7 @@
 - users.sh heredoc quoting for password hashes
 - builder.bash copy-to-target race condition with sync+sleep
 
-## v7.2.0.0 (2026-05-15?)
+## v7.2.0.0 (2026-05-15)
 
 ### Added
 - Power User Mode: source-based package compilation
@@ -70,7 +82,8 @@
 - Live build log viewer
 - Binary cache and rebuild detection
 
-## v7.1.5.0 and earlier (Wasn't documented)
+## v7.1.5.0 and earlier
+
 - Initial public release
 - Basic TUI installer with gum
 - Core installation pipeline (partition, format, basestrap, chroot, post)
