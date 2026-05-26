@@ -33,9 +33,10 @@ mount_filesystems() {
     esac
     command -v mount >/dev/null || die 'mount unavailable (util-linux missing)'
 
+    modprobe fat 2>/dev/null || true
     modprobe vfat 2>/dev/null || true
-    if ! grep -q 'vfat' /proc/filesystems 2>/dev/null && ! modinfo vfat &>/dev/null; then
-        die 'vfat kernel module unavailable and not built-in — check kernel config'
+    if ! grep -q 'vfat' /proc/filesystems 2>/dev/null; then
+        die 'FAT/VFAT kernel support unavailable — check kernel config'
     fi
 
     if mountpoint -q /mnt && mountpoint -q /mnt/boot/efi; then
@@ -123,11 +124,18 @@ mount_filesystems() {
             die "unsupported filesystem: ${fs_type}"
             ;;
     esac
+
     local efi_fs
     efi_fs="$(blkid -o value -s TYPE "${efi_part}" 2>/dev/null || true)"
 
-    [[ "${efi_fs}" == "vfat" ]] || \
-        die "EFI partition is not vfat (detected: ${efi_fs:-unknown})"
+    case "${efi_fs}" in
+        vfat|fat32)
+            ;;
+        *)
+            die "EFI partition is not FAT32 (detected: ${efi_fs:-unknown})"
+            ;;
+    esac
+
     log_info "Mounting EFI partition..."
     mount -t vfat --mkdir "${efi_part}" "${efi_mount}"
     mountpoint -q "${efi_mount}" || die 'failed to mount EFI partition'
