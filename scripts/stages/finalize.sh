@@ -19,7 +19,7 @@ _finalize_unmount() {
 }
 
 _finalize_success_dialog() {
-    gum style --border rounded --padding 1 --bold "Artix installation completed successfully!"
+    gum style --border rounded --padding 1 --bold --foreground "${GUM_TITLE_COLOR}" "Artix installation completed successfully!"
     gum style "You may now reboot."
     gum confirm "Press Enter to finish" --affirmative="OK" --timeout=0 2>/dev/null || true
 }

@@ -1,8 +1,8 @@
 # Power User Mode
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Power_User-v1.4.0.0-blue?style=flat-square" alt="Power User Version">
-  <img src="https://img.shields.io/badge/ArtixTUI-v8.0.1.9-212?style=flat-square" alt="ArtixTUI">
+  <img src="https://img.shields.io/badge/Power_User-v1.4.1.0-blue?style=flat-square" alt="Power User Version">
+  <img src="https://img.shields.io/badge/ArtixTUI-v8.0.2.0-212?style=flat-square" alt="ArtixTUI">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/Build_Engine-makepkg-FFB6C1?style=flat-square" alt="makepkg">
 </p>

@@ -9,6 +9,9 @@ log_warn()  { printf '\e[1;33m[!] %s\e[0m\n' "$*" >&2; }
 log_error() { printf '\e[1;31m[✗] %s\e[0m\n' "$*" >&2; }
 require_root() { [[ $EUID -eq 0 ]] || die "This command must be run as root"; }
 
+GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
+GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
+
 if ! command -v gum &>/dev/null; then
     echo "[*] Installing gum..."
     pacman -Sy --noconfirm gum || die "Failed to install gum. Install it manually and retry."
@@ -279,7 +282,7 @@ sync_recipes() {
 tui_menu() {
     local title="${1}" msg="${2}"
     shift 2
-    gum style --bold --foreground 212 "── ${title} ──" >&2
+    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
     gum choose --height=15 "$@" </dev/tty
 }
@@ -287,21 +290,21 @@ tui_menu() {
 tui_checklist() {
     local title="${1}" msg="${2}"
     shift 2
-    gum style --bold --foreground 212 "── ${title} ──" >&2
+    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
     gum choose --no-limit --height=15 "$@" </dev/tty
 }
 
 tui_msg() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground 212 "── ${title} ──"
+    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
     gum format "${msg}"
     gum confirm "Press Enter to continue" --affirmative="OK" --timeout=0 </dev/tty 2>/dev/null || true
 }
 
 tui_input() {
     local title="${1}" msg="${2}" default="${3:-}" result
-    gum style --bold --foreground 212 "── ${title} ──" >&2
+    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
     result=$(gum input --value "${default}" --prompt "> " </dev/tty) || true
     printf '%s' "${result}"
@@ -309,7 +312,7 @@ tui_input() {
 
 tui_yesno() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground 212 "── ${title} ──"
+    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
     gum format "${msg}"
     gum confirm </dev/tty
 }

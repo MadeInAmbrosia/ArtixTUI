@@ -45,7 +45,7 @@ $(gum style --bold 'Arch Repos:') %s" \
         "$(state_get USE_LUKS no)" \
         "$(state_get ENABLE_ARCH_REPOS no)"
 
-    gum style --border rounded --padding 1 --bold "Installation Summary"
+    gum style --border rounded --padding 1 --bold --foreground "${GUM_TITLE_COLOR}" "Installation Summary"
     gum format "${summary}"
     gum confirm "Proceed with installation?" || exit 0
 }
