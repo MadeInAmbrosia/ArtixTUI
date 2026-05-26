@@ -12,10 +12,25 @@ _ensure_log_dirs() {
     [[ -d /mnt ]] && mkdir -p "$(dirname "${CHROOT_LOG}")" 2>/dev/null || true
 }
 
+theme_ansi() {
+    local gum_code="${1:-212}"
+    local r g b
+    case "${gum_code}" in
+        212) printf '\e[38;5;212m' ;;  # gentoo purple
+        39)  printf '\e[38;5;39m' ;;   # artix blue
+        245) printf '\e[38;5;245m' ;;  # light grey
+        250) printf '\e[38;5;250m' ;;  # lighter grey
+        3)   printf '\e[38;5;3m' ;;    # amber
+        *)   printf '\e[38;5;%sm' "${gum_code}" ;;
+    esac
+}
+
 log_info() {
     local msg="${1}"
+    local colour
+    colour=$(theme_ansi "${GUM_TITLE_COLOR:-212}")
     _ensure_log_dirs
-    printf '\e[1;34m[*] %s\e[0m\n' "${msg}" | tee -a "${LOG_FILE}" >&2
+    printf '%s[*] %s\e[0m\n' "${colour}" "${msg}" | tee -a "${LOG_FILE}" >&2
     [[ -d /mnt ]] && printf '[*] %s\n' "${msg}" >> "${CHROOT_LOG}" 2>/dev/null || true
 }
 
