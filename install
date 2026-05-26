@@ -148,6 +148,7 @@ run_install_pipeline() {
 }
 
 start_auto_install() {
+    rm -f /tmp/artix-installer/state.conf
     tui_collect_install_config
     tui_show_summary
     if ! tui_yesno "Begin Installation" "Proceed with installation?"; then
@@ -159,6 +160,7 @@ start_auto_install() {
 }
 
 start_manual_install() {
+    rm -f /tmp/artix-installer/state.conf
     state_set INSTALL_MODE manual
     run_install_pipeline
 }

@@ -52,6 +52,7 @@ configure() {
   scripts/config --enable BLOCK
   scripts/config --enable MODULES
   scripts/config --enable MODULE_UNLOAD
+  scripts/config --enable VIRTIO_BLK
 
   for feat in "${selected_features[@]}"; do
     case "${feat}" in

@@ -337,6 +337,11 @@ EOF
         artix-chroot /mnt sed -i 's/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
     fi
 
+    if ! grep -q 'virtio_blk' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
+        log_info "Adding virtio_blk to initramfs MODULES..."
+        artix-chroot /mnt sed -i 's/^MODULES=(/MODULES=(virtio_blk /' /etc/mkinitcpio.conf
+    fi
+
     if [[ "${kernel}" == 'tkg' ]]; then
         log_info "Cloning linux-tkg repository..."
         artix-chroot /mnt git clone https://github.com/Frogging-Family/linux-tkg /opt/linux-tkg || true
