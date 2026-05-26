@@ -144,7 +144,8 @@ install_drivers() {
         log_info "Installing: ${pkgs[*]}"
         export COLUMNS=80 LINES=24 TERM=dumb
 
-        if pacman --color=never --noconfirm --needed -S "${pkgs[@]}"; then
+        clean_pacman_lock
+        if retry_command "driver install" pacman --color=never --noconfirm --needed -S "${pkgs[@]}"; then
             rc=0
         else
             rc=$?
@@ -174,9 +175,9 @@ install_drivers() {
         {
             export COLUMNS=80 LINES=24 TERM=dumb
             if [[ "${x_stack}" == 'xlibre' ]]; then
-                pacman --color=never --noconfirm --needed -S xlibre-video-nouveau mesa
+                retry_command "nouveau fallback" pacman --color=never --noconfirm --needed -S xlibre-video-nouveau mesa
             else
-                pacman --color=never --noconfirm --needed -S xf86-video-nouveau mesa
+                retry_command "nouveau fallback" pacman --color=never --noconfirm --needed -S xf86-video-nouveau mesa
             fi
             rc=$?
         } >> /root/ArtixTUI/drivers-debug.log 2>&1

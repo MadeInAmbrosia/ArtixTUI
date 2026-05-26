@@ -76,7 +76,11 @@ EOF
     log_info "Installing desktop environment..."
     log_info "Desktop package list:"
     printf ' - %s\n' "${pkgs[@]}"
-    pacman -S --noconfirm --needed "${pkgs[@]}" || { log_error "Failed to install desktop packages."; return 1; }
+    clean_pacman_lock
+    if ! retry_command "desktop install" pacman -S --noconfirm --needed "${pkgs[@]}"; then
+        log_error "Failed to install desktop packages."
+        return 1
+    fi
 
     if [[ "${wm_de}" == 'mango' ]]; then
         log_info "Building MangoWM from AUR..."
@@ -85,7 +89,7 @@ EOF
         git clone 'https://aur.archlinux.org/mangowm-git.git' "${build_dir}" || { log_error "Failed to clone MangoWM repo."; return 1; }
         chown -R "${USER_NAME}:${USER_NAME}" "${build_dir}"
         su - "${USER_NAME}" -c "cd '${build_dir}' && makepkg --noconfirm" || { log_error "Failed to build MangoWM."; return 1; }
-        pacman -U --noconfirm "${build_dir}"/*.pkg.tar.* || { log_error "Failed to install MangoWM package."; return 1; }
+        retry_command "MangoWM install" pacman -U --noconfirm "${build_dir}"/*.pkg.tar.* || { log_error "Failed to install MangoWM package."; return 1; }
         rm -rf "${build_dir}"
     fi
 

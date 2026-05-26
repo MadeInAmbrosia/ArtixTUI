@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.0.1.8-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.0.1.9-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
@@ -302,10 +302,11 @@ ArtixTUI/
 
 Contributions are welcome and appreciated.
 
-Please read [CONTRIBUTING](CONTRIBUTING) for guidelines on testing, submissions, and code of conduct.
+Please read [CONTRIBUTING](DOCUMENTS/CONTRIBUTING) for guidelines on testing,
+submissions, and code of conduct.
 
 ---
 
 # License
 
-Licensed under the [Volk Open License 1.0](LICENSE) © [realvolk](https://github.com/realvolk) 2026.
+Licensed under the [Volk Open License 1.0](DOCUMENTS/LICENSE) © [realvolk](https://github.com/realvolk) 2026.

@@ -1,8 +1,27 @@
 # Changelog
 
+## v8.0.1.9 (2026-05-26)
+
+### Added
+- Resilience helpers: `check_disk_space`, `retry_command`, `clean_pacman_lock`, `curl_resume` added to both `scripts/common.sh` and `poweruser/lib/common.sh`
+- Disk space checks at critical stages: preflight (3GB), base (5GB), poweruser (10GB)
+- Pacman lock recovery before every `pacman -S` call in basestrap, drivers, and desktop installs
+- Retry with exponential backoff for pacman installs in drivers.sh and desktop.sh
+- Mid‑build resume for Power User recipes via `ARTIX_RESUME_BUILD` flag — preserves work directory on retry
+- Resume partial downloads via `curl_resume` in builder.bash `fetch_sources()`
+- Enhanced `stage_validate()` in state.sh with real success indicators for base, poweruser, and chroot stages
+- VirtIO block driver (`virtio_blk`) added to initramfs MODULES for QEMU/VirtIO VM support
+- VFAT/FAT32 kernel module loading: `modprobe fat` first, then `vfat`, with `/proc/filesystems` fallback
+- EFI partition check now accepts both `vfat` and `fat32` filesystem labels
+- Added a PRIVACY_POLICY.md
+- Moved all non-essential documentation for the installer into DOCUMENTS
+
+### Fixed
+- Stale UKI state: `state.conf` wiped before fresh auto/manual installs to prevent leaking `GENERATE_UKI=yes` between runs
+
 ## v8.0.1.4 (2026-05-24)
 
-### Fixed (Also partially from v8.0.1.1)
+### Fixed
 - Quick Install profiles now fully define all system variables instead of relying on defaults
 - Quick Install profiles now ask for hostname, timezone, locale, keymap, username, and passwords
 - Added "Customize" option after Quick Install confirmation to drop into full manual flow
@@ -10,8 +29,8 @@
 - UKI preset now dynamically detects installed kernel instead of hardcoding `vmlinuz-linux-custom`
 - Quick Install profiles now always run disk selection before proceeding
 - Preflight: added `pacman -Sy` before package installation to prevent mirror sync issues
-- state_get: now returns default value when stored value is empty, not just unset
-- bootloader.sh: removed duplicate `fi` causing syntax error
+- `state_get`: now returns default value when stored value is empty, not just unset
+- `bootloader.sh`: removed duplicate `fi` causing syntax error
 
 ## v8.0.1.1 (2026-05-24)
 

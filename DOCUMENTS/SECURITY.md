@@ -3,7 +3,7 @@
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in ArtixTUI, please report it privately
-to **realvolk** via email or a private GitHub security advisory.
+to **realvolk** via a private GitHub security advisory or email.
 
 Do not open a public issue for security issues.
 
@@ -11,7 +11,8 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v8.0.0.0 | Yes |
+| v8.0.1.x | Yes |
+| v8.0.0.x | Critical fixes only |
 | v7.2.0.0 | Critical fixes only |
 | < v7.2.0.0 | No |
 
@@ -38,3 +39,4 @@ Security concerns include, but are not limited to:
 - Recipe sources should use verified checksums. The `SKIP` placeholder is for development only and should never appear in published recipes.
 - The installer does not expose network services during installation. Any network configuration (WiFi passwords, static IPs) is applied to the target system, not the live environment.
 - Post‑installation, `gartix` runs with root privileges. Users should audit recipes before building, especially those obtained from third‑party sources.
+- The installer's state directory (`/tmp/artix-installer/`) lives on a tmpfs and is lost on reboot. The target configuration file (`/mnt/etc/artix-installer.conf`) is shredded or removed during the finalize stage.

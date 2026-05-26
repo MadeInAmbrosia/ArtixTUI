@@ -144,33 +144,15 @@ stage_validate() {
     local stage="${1}";
 
     case "${stage}" in
-        preflight)
-            return 0
-            ;;
-        storage)
-            [[ -b "$(state_get DISK)" ]]
-            ;;
-        base)
-            [[ -x /mnt/usr/bin/bash ]]
-            ;;
-        poweruser)
-            return 0
-            ;;
-        chroot)
-            [[ -f /mnt/etc/fstab ]]
-            ;;
-        init)
-            return 0
-            ;;
-        post)
-            [[ -d /mnt/home || -d /mnt/root ]]
-            ;;
-        finalize)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
+        preflight)  return 0 ;;
+        storage)    [[ -b "$(state_get DISK)" ]] ;;
+        base)       [[ -x /mnt/usr/bin/bash ]] && artix-chroot /mnt pacman -Q base &>/dev/null ;;
+        poweruser)  [[ -f /mnt/etc/artix-poweruser/world.txt ]] && artix-chroot /mnt pacman -Q linux-custom &>/dev/null ;;
+        chroot)     [[ -f /mnt/etc/fstab ]] && [[ -f /mnt/etc/hostname ]] ;;
+        init)       return 0 ;;
+        post)       [[ -d /mnt/home || -d /mnt/root ]] ;;
+        finalize)   return 0 ;;
+        *)          return 1 ;;
     esac
 }
 

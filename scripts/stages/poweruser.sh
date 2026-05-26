@@ -49,6 +49,8 @@ stage_poweruser() {
     log_info "Build order: ${build_order[*]}"
     generate_queue "${build_order[@]}"
 
+    check_disk_space 10 "${WORK_DIR}"
+
     local remaining
     while ! queue_all_done; do
         pkg="$(queue_next)"

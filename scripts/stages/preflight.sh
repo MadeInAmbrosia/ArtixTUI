@@ -200,5 +200,6 @@ EOF
         fi
     fi
     
+    check_disk_sapce 3 /mnt
     stage_mark_done preflight;
 }
