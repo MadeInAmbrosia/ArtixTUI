@@ -32,7 +32,12 @@ mount_filesystems() {
         exfat) modprobe exfat 2>/dev/null || true ;;
     esac
     command -v mount >/dev/null || die 'mount unavailable (util-linux missing)'
-    modprobe vfat 2>/dev/null || die 'vfat kernel module unavailable'
+
+    modprobe vfat 2>/dev/null || true
+    if ! grep -q 'vfat' /proc/filesystems 2>/dev/null && ! modinfo vfat &>/dev/null; then
+        die 'vfat kernel module unavailable and not built-in — check kernel config'
+    fi
+
     if mountpoint -q /mnt && mountpoint -q /mnt/boot/efi; then
         log_info "Filesystems already mounted, skipping remount."
         return 0
