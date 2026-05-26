@@ -508,34 +508,41 @@ tui_quick_install() {
 
 tui_select_theme() {
     local theme
-    theme=$(tui_menu "Theme" "Select colour scheme:" \
-        "Gentoo (default)" \
-        "Artix" \
-        "Jet Black" \
-        "Mono" \
-        "Retro") || return 0
-    case "${theme}" in
-        "Gentoo (default)")
-            GUM_TITLE_COLOR=212   # gentoo purple
-            GUM_ACCENT_COLOR=34   # green
-            ;;
-        Artix*)
-            GUM_TITLE_COLOR=39    # artix blue
-            GUM_ACCENT_COLOR=117  # baby blue
-            ;;
-        "Jet Black")
-            GUM_TITLE_COLOR=245   # light grey headers
-            GUM_ACCENT_COLOR=196  # red accents
-            ;;
-        Mono*)
-            GUM_TITLE_COLOR=250   # light grey headers
-            GUM_ACCENT_COLOR=255  # white accents
-            ;;
-        Retro*)
-            GUM_TITLE_COLOR=3     # amber headers
-            GUM_ACCENT_COLOR=11   # yellow accents
-            ;;
-    esac
+    while true; do
+        theme=$(tui_menu "Theme" "Select colour scheme:" \
+            "Gentoo (default)" \
+            "Artix" \
+            "Jet Black" \
+            "Mono" \
+            "Retro") || break
+        case "${theme}" in
+            "Gentoo (default)")
+                GUM_TITLE_COLOR=212   # gentoo purple
+                GUM_ACCENT_COLOR=34   # green
+                ;;
+            Artix*)
+                GUM_TITLE_COLOR=39    # artix blue
+                GUM_ACCENT_COLOR=117  # baby blue
+                ;;
+            "Jet Black")
+                GUM_TITLE_COLOR=245   # light grey headers
+                GUM_ACCENT_COLOR=196  # red accents
+                ;;
+            Mono*)
+                GUM_TITLE_COLOR=250   # light grey headers
+                GUM_ACCENT_COLOR=255  # white accents
+                ;;
+            Retro*)
+                GUM_TITLE_COLOR=3     # amber headers
+                GUM_ACCENT_COLOR=11   # yellow accents
+                ;;
+        esac
+
+        tui_msg "Theme Preview" "This is how titles and messages will look."
+        if tui_yesno "Keep Theme?" "Keep this theme?"; then
+            break
+        fi
+    done
 }
 
 tui_collect_install_config() {
