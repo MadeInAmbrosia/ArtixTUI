@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.0.2.3-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.0.2.4-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
@@ -24,7 +24,9 @@ ArtixTUI is a **TUI-first, modular installer** for Artix Linux (OpenRC, runit, d
 
 It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools — all from a single, beautiful terminal interface.
 
-Built with **gum** by Charmbracelet, it looks better than `archinstall` and supports all major Artix init systems — including BusyBox init in Power User mode.
+- Built with **gum** by Charmbracelet, it looks better than `archinstall` and supports all major Artix init systems — including BusyBox init in Power User mode.
+- **Custom colour themes** — choose from Gentoo Purple, Artix Blue, Jet Black, Mono, or Retro Amber. Theme persists across install and is inherited by `gartix`.
+- **Resilience hardened** — automatic pacman lock recovery, retry with exponential backoff for failed downloads, mid‑build resume for interrupted compilations, disk space checks at every stage.
 
   Over 9 trillion system configurations in a standard install.
   Over 1 000 000 000 000 000 000 (1 quintillion) when Power User mode is enabled.
@@ -84,6 +86,11 @@ A debug toggle is available for every mode from the same menu.
 - UKI, EFIStub, GRUB, rEFInd — multiple boot methods supported
 - Optional Secure Boot signing for UKI images using `sbsign`
 - Privilege escalation choice — `sudo` or `doas`
+- Custom colour themes with live preview — Gentoo (default), Artix, Jet Black, Mono, Retro
+- Resilience features: disk space checks, pacman lock recovery, download retry, mid‑build resume
+- Offline mode with cached packages
+- State persistence for full resume/recovery
+- Privacy‑respecting — collects nothing, removes itself after installation
 
 ### Supported Kernels
 
@@ -170,7 +177,10 @@ A debug toggle is available for every mode from the same menu.
 - Error recovery
 - Live build log viewer
 - Post-build validation
-- `gartix` package manager
+- Mid‑build resume — interrupted compilations pick up where they left off
+- Partial download resume for source tarballs
+- `gartix` package manager with full TUI, recipe editor, and offline source bootstrap
+- Recipe linting and validation before build
 
 ---
 
@@ -190,10 +200,17 @@ Everything else is handled by the installer itself.
 ArtixTUI/
 ├── .github/
 │   └── artixtui.png
+├── DOCUMENTS/
+│   ├── CHANGELOG.md
+│   ├── CONTRIBUTING
+│   ├── GUIDE.md
+│   ├── LICENSE
+│   ├── OSI.md
+│   ├── PRIVACY_POLICY.md
+│   └── SECURITY.md
 ├── install
-├── LICENSE
-├── CONTRIBUTING
 ├── VERSION
+├── README.md
 ├── scripts/
 │   ├── common.sh
 │   ├── state.sh
@@ -296,6 +313,7 @@ ArtixTUI/
 | Coreutils | GNU, BusyBox, uutils, ArtixTUI minimal, Custom |
 | Privilege escalation | sudo, doas |
 | Encryption | LUKS full-disk encryption |
+| Theme | Gentoo, Artix, Jet Black, Mono, Retro |
 ---
 
 # Contributing

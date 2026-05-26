@@ -517,26 +517,19 @@ tui_select_theme() {
             "Retro") || break
         case "${theme}" in
             "Gentoo (default)")
-                GUM_TITLE_COLOR=212   # gentoo purple
-                GUM_ACCENT_COLOR=34   # green
-                ;;
+                GUM_TITLE_COLOR=212; GUM_ACCENT_COLOR=34 ;;
             Artix*)
-                GUM_TITLE_COLOR=39    # artix blue
-                GUM_ACCENT_COLOR=117  # baby blue
-                ;;
+                GUM_TITLE_COLOR=39; GUM_ACCENT_COLOR=117 ;;
             "Jet Black")
-                GUM_TITLE_COLOR=245   # light grey headers
-                GUM_ACCENT_COLOR=196  # red accents
-                ;;
+                GUM_TITLE_COLOR=245; GUM_ACCENT_COLOR=196 ;;
             Mono*)
-                GUM_TITLE_COLOR=250   # light grey headers
-                GUM_ACCENT_COLOR=255  # white accents
-                ;;
+                GUM_TITLE_COLOR=250; GUM_ACCENT_COLOR=255 ;;
             Retro*)
-                GUM_TITLE_COLOR=3     # amber headers
-                GUM_ACCENT_COLOR=11   # yellow accents
-                ;;
+                GUM_TITLE_COLOR=3; GUM_ACCENT_COLOR=11 ;;
         esac
+
+        state_set GUM_TITLE_COLOR "${GUM_TITLE_COLOR}"
+        state_set GUM_ACCENT_COLOR "${GUM_ACCENT_COLOR}"
 
         tui_msg "Theme Preview" "This is how titles and messages will look."
         if tui_yesno "Keep Theme?" "Keep this theme?"; then

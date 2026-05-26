@@ -1,5 +1,20 @@
 # Changelog
 
+## v8.0.2.4 (2026-05-26)
+
+### Added
+- Colour theme system with five presets: Gentoo (default), Artix, Jet Black, Mono, Retro
+- Theme preview with keep/change loop during installation
+- Theme persistence: saved to `/etc/gartix-theme.conf` and loaded by `gartix` on startup
+- ANSI colour mapping for `log_info` and `log_warn` so log output follows the chosen theme
+- `summary.sh` labels now use theme colours
+- `gartix` inherits the installer's theme automatically
+
+### Fixed
+- Quick install summary now displays proper newlines instead of raw `\n`
+- Removed duplicate summary display when using Quick Install profiles
+- `check_disk_space` typo in preflight.sh corrected
+
 ## v8.0.1.9 (2026-05-26)
 
 ### Added

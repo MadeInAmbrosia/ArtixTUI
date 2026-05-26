@@ -26,6 +26,9 @@ stage_post() {
 
     log_info "Entering chroot environment..."
 
+    export GUM_TITLE_COLOR="$(state_get GUM_TITLE_COLOR 212)"
+    export GUM_ACCENT_COLOR="$(state_get GUM_ACCENT_COLOR 34)"
+
     if artix-chroot /mnt /bin/bash <<EOF
 set -Eeuo pipefail
 
@@ -38,6 +41,8 @@ export AUDIO_STACK="${audio_stack}"
 export EXTRAS="${extras}"
 export USER_NAME="${user_name}"
 export FS_TYPE="${fs_type}"
+export GUM_TITLE_COLOR="${GUM_TITLE_COLOR}"
+export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR}"
 
 cd /root/ArtixTUI || exit 1
 
@@ -50,10 +55,6 @@ source ./scripts/post/desktop.sh
 source ./scripts/post/audio.sh
 source ./scripts/post/extras.sh
 source ./scripts/post/kernel.sh
-
-log_info() {
-    printf '\e[1;34m[*] %s\e[0m\n' "\$*" | tee -a /var/log/artix-installer.log
-}
 
 if [[ "${KERNEL_CHOICE}" == 'linux-bazzite-bin' ]]; then
     log_info "Building Bazzite kernel..."

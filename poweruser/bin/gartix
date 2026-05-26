@@ -3,14 +3,50 @@ set -Eeuo pipefail
 
 POWERUSER_DIR="/usr/share/artix-poweruser"
 
-die() { printf '\e[1;31m[✗] %s\e[0m\n' "${1:-fatal error}" >&2; exit 1; }
-log_info()  { printf '\e[1;34m[*] %s\e[0m\n' "$*" >&2; }
-log_warn()  { printf '\e[1;33m[!] %s\e[0m\n' "$*" >&2; }
-log_error() { printf '\e[1;31m[✗] %s\e[0m\n' "$*" >&2; }
-require_root() { [[ $EUID -eq 0 ]] || die "This command must be run as root"; }
-
 GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
 GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
+
+[[ -f /etc/gartix-theme.conf ]] && source /etc/gartix-theme.conf
+
+theme_ansi() {
+    local gum_code="${1:-212}"
+    case "${gum_code}" in
+        212) printf '\e[38;5;212m' ;;  # gentoo purple
+        39)  printf '\e[38;5;39m' ;;   # artix blue
+        245) printf '\e[38;5;245m' ;;  # light grey
+        250) printf '\e[38;5;250m' ;;  # lighter grey
+        3)   printf '\e[38;5;3m' ;;    # amber
+        34)  printf '\e[38;5;34m' ;;   # gentoo green accent
+        117) printf '\e[38;5;117m' ;;  # baby blue accent
+        196) printf '\e[38;5;196m' ;;  # red accent
+        255) printf '\e[38;5;255m' ;;  # white accent
+        11)  printf '\e[38;5;11m' ;;   # yellow accent
+        *)   printf '\e[38;5;%sm' "${gum_code}" ;;
+    esac
+}
+
+die() {
+    printf '\e[1;31m[✗] %s\e[0m\n' "${1:-fatal error}" >&2
+    exit 1
+}
+
+log_info() {
+    local colour
+    colour=$(theme_ansi "${GUM_ACCENT_COLOR:-34}")
+    printf '%s[*] %s\e[0m\n' "${colour}" "$*" >&2
+}
+
+log_warn() {
+    local colour
+    colour=$(theme_ansi "${GUM_TITLE_COLOR:-212}")
+    printf '%s[!] %s\e[0m\n' "${colour}" "$*" >&2
+}
+
+log_error() {
+    printf '\e[1;31m[✗] %s\e[0m\n' "$*" >&2
+}
+
+require_root() { [[ $EUID -eq 0 ]] || die "This command must be run as root"; }
 
 if ! command -v gum &>/dev/null; then
     echo "[*] Installing gum..."

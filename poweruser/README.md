@@ -1,8 +1,8 @@
 # Power User Mode
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Power_User-v1.4.1.0-blue?style=flat-square" alt="Power User Version">
-  <img src="https://img.shields.io/badge/ArtixTUI-v8.0.2.3-212?style=flat-square" alt="ArtixTUI">
+  <img src="https://img.shields.io/badge/Power_User-v1.4.1.1-blue?style=flat-square" alt="Power User Version">
+  <img src="https://img.shields.io/badge/ArtixTUI-v8.0.2.4-212?style=flat-square" alt="ArtixTUI">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/Build_Engine-makepkg-FFB6C1?style=flat-square" alt="makepkg">
 </p>
@@ -79,6 +79,8 @@ gartix sync              # Update recipes from remote
 gartix --tui             # Launch interactive TUI
 ```
 
+`gartix` automatically inherits the colour theme you chose during installation. Your theme choice is saved to `/etc/gartix-theme.conf` and loaded on every run.
+
 ---
 
 # Recipes
@@ -151,3 +153,5 @@ This tracks:
 - Artix Linux live environment
 - Internet connection for source downloads
 - Sufficient disk space (~5 GB temporary space for kernel builds)
+- `gum` for TUI (installed automatically if missing)
+- The build engine includes automatic retry for failed downloads, mid‑build resume for interrupted compilations, and pacman lock recovery

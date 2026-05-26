@@ -91,6 +91,11 @@ QUICK_INSTALL="$(state_get QUICK_INSTALL)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
+    cat > /mnt/etc/gartix-theme.conf <<EOF
+GUM_TITLE_COLOR="$(state_get GUM_TITLE_COLOR 212)"
+GUM_ACCENT_COLOR="$(state_get GUM_ACCENT_COLOR 34)"
+EOF
+
     log_info "Copying post-install modules..."
     install -d /mnt/usr/local/lib/artix-installer
     cp -r "${script_dir}/../post/." /mnt/usr/local/lib/artix-installer/post
