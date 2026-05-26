@@ -552,7 +552,6 @@ tui_collect_install_config() {
         if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
             tui_select_poweruser
         fi
-        tui_show_summary
         return
     fi
     tui_select_init
