@@ -33,6 +33,26 @@ stage_poweruser() {
     fi
     log_info "Build target /mnt/tmp is writable"
 
+    local recipe_count
+    recipe_count=$(find "${POWERUSER_DIR}/recipes" -name '*.sh' ! -name 'template.sh' | wc -l)
+    if [[ ${recipe_count} -eq 0 ]]; then
+        log_info "No recipes found. Fetching OFFICIAL/Base from community repository..."
+        local list_url="https://raw.githubusercontent.com/realvolk/ArtixTUI-recipes/main/.LIST"
+        local repo_base="https://raw.githubusercontent.com/realvolk/ArtixTUI-recipes/main"
+        if curl -fsSL "${list_url}" -o /tmp/artix-recipes.list 2>/dev/null; then
+            while IFS='|' read -r name section desc; do
+                if [[ "${section}" == "OFFICIAL/Base" ]]; then
+                    log_info "  Downloading ${name}.sh..."
+                    curl -sL "${repo_base}/${section}/${name}.sh" -o "${POWERUSER_DIR}/recipes/${name}.sh" || log_warn "Failed to download ${name}"
+                fi
+            done < /tmp/artix-recipes.list
+            rm -f /tmp/artix-recipes.list
+            log_info "Recipes downloaded."
+        else
+            log_warn "Could not reach community recipe repository. Only local recipes will be available."
+        fi
+    fi
+
     local -a selected_pkgs
     read -ra selected_pkgs <<< "$(state_get POWERUSER_PACKAGES)"
     [[ ${#selected_pkgs[@]} -gt 0 ]] || die "No packages selected for source build"

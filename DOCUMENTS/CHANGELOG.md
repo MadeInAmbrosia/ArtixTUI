@@ -1,5 +1,28 @@
 # Changelog
 
+## v8.1.1.0 (2026-05-27)
+
+### Added
+- Community recipe system: `ArtixTUI-recipes` repository with 31 recipes across OFFICIAL/Base, OFFICIAL/Other, and COMMUNITY sections
+- `gartix` can fetch individual recipes, sync all enabled sections, and manage section preferences
+- `.LIST` index format for recipe discovery (`pkgname|section|description`)
+- Power User mode auto-fetches OFFICIAL/Base recipes on first run when the recipes directory is empty
+- Recipe section selector in installer TUI (OFFICIAL/Base, OFFICIAL/Other, COMMUNITY/Base, COMMUNITY/Other)
+- 20 new OFFICIAL/Other recipes: browsers, media tools, Wayland compositors, development tools, system tools, gaming, libraries, network/security, terminal
+- `gartix` section management via CLI (`gartix sections`) and TUI ("Manage recipe sections")
+- `gartix` recipe fetch via CLI (`gartix fetch-recipe <name>`) and TUI ("Fetch a recipe from repo")
+- `ArtixTUI-recipes` repository with VERSION file and contribution structure
+
+### Changed
+- `poweruser/recipes/` now ships only `template.sh` — all other recipes moved to community repo
+- `stage_poweruser` auto-downloads OFFICIAL/Base recipes when the local recipe directory is empty
+- `gartix sync` now pulls `.LIST` and offers to update all enabled recipes
+- `gartix fetch-all` respects enabled section filtering
+- `list_recipes()` unchanged — automatically picks up downloaded recipes
+
+### Fixed
+- `gartix` theme colours now load from `/etc/gartix-theme.conf` correctly
+
 ## v8.0.2.4 (2026-05-26)
 
 ### Added

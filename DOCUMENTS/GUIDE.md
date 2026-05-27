@@ -212,6 +212,19 @@ If you selected Power User mode, you can compile packages from source instead of
 
 ---
 
+## 15.1. Community Recipes
+
+ArtixTUI can download additional recipes from the community repository at
+[ArtixTUI-recipes](https://github.com/realvolk/ArtixTUI-recipes).
+
+Use `gartix sync` to pull the latest recipe list and download new recipes.
+By default, only tested OFFICIAL recipes are included. You can enable
+COMMUNITY recipes through the "Manage recipe sections" option in `gartix --tui`.
+
+To contribute your own recipes, see the [ArtixTUI-recipes](https://github.com/realvolk/ArtixTUI-recipes) repository.
+
+---
+
 ## 16. Quick Install Profiles
 
 Instead of answering every question, you can pick a pre‑made profile:
