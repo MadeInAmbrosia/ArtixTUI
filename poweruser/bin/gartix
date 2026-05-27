@@ -11,47 +11,31 @@ GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
 theme_ansi() {
     local gum_code="${1:-212}"
     case "${gum_code}" in
-        212) printf '\e[38;5;212m' ;;  # gentoo purple
-        39)  printf '\e[38;5;39m' ;;   # artix blue
-        245) printf '\e[38;5;245m' ;;  # light grey
-        250) printf '\e[38;5;250m' ;;  # lighter grey
-        3)   printf '\e[38;5;3m' ;;    # amber
-        34)  printf '\e[38;5;34m' ;;   # gentoo green accent
-        117) printf '\e[38;5;117m' ;;  # baby blue accent
-        196) printf '\e[38;5;196m' ;;  # red accent
-        255) printf '\e[38;5;255m' ;;  # white accent
-        11)  printf '\e[38;5;11m' ;;   # yellow accent
+        212) printf '\e[38;5;212m' ;;  34)  printf '\e[38;5;34m' ;;
+        39)  printf '\e[38;5;39m' ;;   117) printf '\e[38;5;117m' ;;
+        245) printf '\e[38;5;245m' ;;  196) printf '\e[38;5;196m' ;;
+        250) printf '\e[38;5;250m' ;;  255) printf '\e[38;5;255m' ;;
+        3)   printf '\e[38;5;3m' ;;    11)  printf '\e[38;5;11m' ;;
         *)   printf '\e[38;5;%sm' "${gum_code}" ;;
     esac
 }
 
-die() {
-    printf '\e[1;31m[✗] %s\e[0m\n' "${1:-fatal error}" >&2
-    exit 1
-}
-
-log_info() {
-    local colour
-    colour=$(theme_ansi "${GUM_ACCENT_COLOR:-34}")
-    printf '%s[*] %s\e[0m\n' "${colour}" "$*" >&2
-}
-
-log_warn() {
-    local colour
-    colour=$(theme_ansi "${GUM_TITLE_COLOR:-212}")
-    printf '%s[!] %s\e[0m\n' "${colour}" "$*" >&2
-}
-
-log_error() {
-    printf '\e[1;31m[✗] %s\e[0m\n' "$*" >&2
-}
-
+die()   { printf '\e[1;31m[✗] %s\e[0m\n' "${1:-fatal error}" >&2; exit 1; }
+log_info()  { local c; c=$(theme_ansi "${GUM_ACCENT_COLOR:-34}"); printf '%s[*] %s\e[0m\n' "${c}" "$*" >&2; }
+log_warn()  { local c; c=$(theme_ansi "${GUM_TITLE_COLOR:-212}"); printf '%s[!] %s\e[0m\n' "${c}" "$*" >&2; }
+log_error() { printf '\e[1;31m[✗] %s\e[0m\n' "$*" >&2; }
 require_root() { [[ $EUID -eq 0 ]] || die "This command must be run as root"; }
 
 if ! command -v gum &>/dev/null; then
     echo "[*] Installing gum..."
     pacman -Sy --noconfirm gum || die "Failed to install gum. Install it manually and retry."
 fi
+
+RECIPES_REPO="https://raw.githubusercontent.com/realvolk/ArtixTUI-recipes/main"
+LIST_URL="${RECIPES_REPO}/.LIST"
+LOCAL_LIST="${POWERUSER_DIR}/.recipes.list"
+SECTION_CONFIG="${POWERUSER_DIR}/recipe-sections.conf"
+DEFAULT_SECTIONS="OFFICIAL/Base"
 
 usage() {
     cat <<EOF
@@ -66,13 +50,154 @@ Commands:
   edit <name>       Edit an existing recipe
   config            Edit the running kernel's .config
   menuconfig        Launch make menuconfig (needs kernel source)
+  fetch-recipe <name>  Download a single recipe from the community repo
   fetch-all         Download all recipe sources for offline use
   lint <name>       Validate a recipe
   upgrade           Backup recipes and update from remote
   cache-clean       Remove obsolete cached packages
-  sync              Update recipes (git pull)
+  sync              Update .LIST and recipes from community repo
+  sections          Manage which recipe sections are enabled
   --tui             Launch interactive TUI
 EOF
+}
+
+load_sections() {
+    if [[ -f "${SECTION_CONFIG}" ]]; then
+        source "${SECTION_CONFIG}"
+    fi
+    GARTIX_SECTIONS="${GARTIX_SECTIONS:-${DEFAULT_SECTIONS}}"
+}
+
+save_sections() {
+    printf 'GARTIX_SECTIONS="%s"\n' "${GARTIX_SECTIONS}" > "${SECTION_CONFIG}"
+}
+
+fetch_list() {
+    log_info "Fetching recipe list..."
+    curl -sL "${LIST_URL}" -o "${LOCAL_LIST}" || {
+        log_warn "Failed to download recipe list from ${LIST_URL}"
+        return 1
+    }
+    log_info "Recipe list updated."
+}
+
+list_available() {
+    load_sections
+    [[ -f "${LOCAL_LIST}" ]] || fetch_list || { echo "No recipe list available."; return 1; }
+    local IFS='|'
+    while read -r name section desc; do
+        for s in ${GARTIX_SECTIONS}; do
+            if [[ "${section}" == "${s}" ]]; then
+                echo "${name} - ${desc:-no description} [${section}]"
+                break
+            fi
+        done
+    done < "${LOCAL_LIST}"
+}
+
+fetch_recipe() {
+    local name="${1}"
+    require_root
+    load_sections
+    [[ -f "${LOCAL_LIST}" ]] || fetch_list || die "No recipe list available."
+
+    local section
+    section=$(awk -F'|' -v pkg="${name}" '$1 == pkg {print $2}' "${LOCAL_LIST}")
+    [[ -n "${section}" ]] || { echo "Recipe '${name}' not found in .LIST"; return 1; }
+
+    local allowed=0
+    for s in ${GARTIX_SECTIONS}; do
+        [[ "${section}" == "${s}" ]] && allowed=1 && break
+    done
+    [[ ${allowed} -eq 1 ]] || {
+        echo "Section '${section}' is not enabled. Enable it with: gartix sections"
+        return 1
+    }
+
+    local url="${RECIPES_REPO}/${section}/${name}.sh"
+    local dest="${POWERUSER_DIR}/recipes/${name}.sh"
+
+    if [[ -f "${dest}" ]]; then
+        if ! tui_yesno "Overwrite?" "${name}.sh already exists. Overwrite?"; then
+            return 0
+        fi
+        cp "${dest}" "${POWERUSER_DIR}/recipes.old/${name}.sh.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+    fi
+
+    mkdir -p "${POWERUSER_DIR}/recipes.old"
+    log_info "Downloading ${name}.sh from ${section}..."
+    curl -sL "${url}" -o "${dest}" || { log_error "Failed to download ${url}"; return 1; }
+    echo "Recipe ${name} downloaded to ${dest}"
+}
+
+fetch_all_sources() {
+    require_root
+    load_sections
+    [[ -f "${LOCAL_LIST}" ]] || fetch_list || { echo "No recipe list."; return 1; }
+
+    source "${POWERUSER_DIR}/lib/common.sh"
+    source "${POWERUSER_DIR}/lib/recipe.bash"
+    source "${POWERUSER_DIR}/lib/builder.bash"
+
+    local IFS='|'
+    while read -r name section desc; do
+        local allowed=0
+        for s in ${GARTIX_SECTIONS}; do
+            [[ "${section}" == "${s}" ]] && allowed=1 && break
+        done
+        [[ ${allowed} -eq 0 ]] && continue
+        echo "[*] Fetching sources for ${name}..."
+        load_recipe "${name}" 2>/dev/null || {
+            log_warn "Recipe ${name} not installed locally — skipping source fetch. Use 'fetch-recipe ${name}' first."
+            continue
+        }
+        fetch_sources "${name}" 2>&1 || log_warn "Failed to fetch ${name}"
+    done < "${LOCAL_LIST}"
+    echo "[*] All available sources downloaded. You can now build offline."
+}
+
+sync_recipes() {
+    require_root
+    load_sections
+    fetch_list || return 1
+
+    echo "Available recipes (enabled sections: ${GARTIX_SECTIONS}):"
+    list_available
+    echo ""
+    if tui_yesno "Update all?" "Download/update all enabled recipes from the community repo?"; then
+        local IFS='|'
+        while read -r name section desc; do
+            local allowed=0
+            for s in ${GARTIX_SECTIONS}; do
+                [[ "${section}" == "${s}" ]] && allowed=1 && break
+            done
+            [[ ${allowed} -eq 0 ]] && continue
+            echo "[*] Updating ${name}..."
+            local url="${RECIPES_REPO}/${section}/${name}.sh"
+            local dest="${POWERUSER_DIR}/recipes/${name}.sh"
+            curl -sL "${url}" -o "${dest}" || log_warn "Failed to download ${name}"
+        done < "${LOCAL_LIST}"
+        echo "All enabled recipes updated."
+    fi
+}
+
+tui_manage_sections() {
+    load_sections
+    local available_sections=("OFFICIAL/Base" "OFFICIAL/Other" "COMMUNITY/Base" "COMMUNITY/Other")
+    local current=()
+    for s in ${GARTIX_SECTIONS}; do current+=("${s}"); done
+
+    local chosen
+    chosen=$(tui_checklist "Recipe Sections" "Select which recipe sections to enable:" \
+        "OFFICIAL/Base (recommended)" \
+        "OFFICIAL/Other (extended, tested)" \
+        "COMMUNITY/Base (pending review)" \
+        "COMMUNITY/Other (experimental)") || return 0
+
+    GARTIX_SECTIONS="${chosen//$'\n'/ }"
+    [[ -z "${GARTIX_SECTIONS}" ]] && GARTIX_SECTIONS="${DEFAULT_SECTIONS}"
+    save_sections
+    tui_msg "Sections Updated" "Enabled sections: ${GARTIX_SECTIONS}"
 }
 
 list_packages() {
@@ -187,24 +312,6 @@ fetch_source() {
     echo "Source ready in ${src_dir}"
 }
 
-fetch_all_sources() {
-    require_root
-    source "${POWERUSER_DIR}/lib/common.sh"
-    source "${POWERUSER_DIR}/lib/recipe.bash"
-    source "${POWERUSER_DIR}/lib/builder.bash"
-
-    local recipes
-    recipes=$(list_recipes 2>/dev/null | awk '{print $1}')
-    [[ -n "${recipes}" ]] || { echo "No recipes found."; return 1; }
-
-    for pkg in ${recipes}; do
-        echo "[*] Fetching sources for ${pkg}..."
-        load_recipe "${pkg}"
-        fetch_sources "${pkg}" 2>&1 || log_warn "Failed to fetch ${pkg}"
-    done
-    echo "[*] All available sources downloaded. You can now build offline."
-}
-
 lint_recipe() {
     local name="${1}"
     source "${POWERUSER_DIR}/lib/recipe.bash"
@@ -305,16 +412,6 @@ cache_clean() {
     cache_clean
 }
 
-sync_recipes() {
-    local recipe_dir="${POWERUSER_DIR}/recipes"
-    if [[ -d "${recipe_dir}/.git" ]]; then
-        ( cd "${recipe_dir}" && git pull )
-        echo "Recipes updated."
-    else
-        echo "Recipe directory is not a git repository. Skipping sync."
-    fi
-}
-
 tui_menu() {
     local title="${1}" msg="${2}"
     shift 2
@@ -353,6 +450,7 @@ tui_yesno() {
     gum confirm </dev/tty
 }
 
+# ─── TUI ──────────────────────────────────────────────────────
 tui_main() {
     while true; do
         clear
@@ -367,10 +465,12 @@ tui_main() {
             "Edit kernel config" \
             "Menuconfig" \
             "Fetch kernel source" \
+            "Fetch a recipe from repo" \
             "Fetch all sources" \
+            "Manage recipe sections" \
             "Lint recipe" \
-            "Upgrade recipes" \
             "Sync recipes" \
+            "Upgrade recipes" \
             "Clean cache" \
             "Quit") || break
 
@@ -429,9 +529,23 @@ tui_main() {
                 fetch_source linux
                 tui_msg "Source" "Kernel source ready in /usr/src/linux-custom"
                 ;;
+            "Fetch a recipe from repo")
+                local remote_recipes
+                remote_recipes=$(list_available 2>/dev/null | awk '{print $1}')
+                if [[ -z "$remote_recipes" ]]; then
+                    tui_msg "No recipes" "No recipes available from the community repo."
+                    continue
+                fi
+                local to_fetch=$(tui_menu "Select recipe" "" ${remote_recipes}) || continue
+                fetch_recipe "$to_fetch"
+                tui_msg "Fetch Recipe" "${to_fetch} downloaded."
+                ;;
             "Fetch all sources")
                 fetch_all_sources
                 tui_msg "Fetch All" "All recipe sources downloaded."
+                ;;
+            "Manage recipe sections")
+                tui_manage_sections
                 ;;
             "Lint recipe")
                 local avail3=$(list_recipes 2>/dev/null | awk '{print $1}')
@@ -443,13 +557,13 @@ tui_main() {
                 local lint_result=$(lint_recipe "$to_lint" 2>&1)
                 tui_msg "Lint Result: $to_lint" "$lint_result"
                 ;;
-            "Upgrade recipes")
-                upgrade_gartix
-                tui_msg "Upgrade" "Recipes upgraded. Old recipes backed up."
-                ;;
             "Sync recipes")
                 sync_recipes
                 tui_msg "Sync" "Recipes synchronized."
+                ;;
+            "Upgrade recipes")
+                upgrade_gartix
+                tui_msg "Upgrade" "Recipes upgraded. Old recipes backed up."
                 ;;
             "Clean cache")
                 cache_clean
@@ -462,6 +576,8 @@ tui_main() {
 }
 
 main() {
+    load_sections
+
     if [[ "${1:-}" == "--tui" || "${1:-}" == "-tui" ]]; then
         tui_main
         exit 0
@@ -477,11 +593,13 @@ main() {
         config)        edit_config ;;
         menuconfig)    launch_menuconfig ;;
         fetch-source)  [[ -n "${2:-}" ]] || { usage; exit 1; }; fetch_source "${2}" ;;
+        fetch-recipe)  [[ -n "${2:-}" ]] || { usage; exit 1; }; fetch_recipe "${2}" ;;
         fetch-all)     fetch_all_sources ;;
         lint)          [[ -n "${2:-}" ]] || { usage; exit 1; }; lint_recipe "${2}" ;;
         upgrade)       upgrade_gartix ;;
         cache-clean)   cache_clean ;;
         sync)          sync_recipes ;;
+        sections)      tui_manage_sections ;;
         *)             usage ;;
     esac
 }

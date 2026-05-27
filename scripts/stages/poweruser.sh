@@ -113,7 +113,7 @@ stage_poweruser() {
     echo "${profile_name}" > /mnt/usr/share/artix-poweruser/profile/active
 
     cp "${POWERUSER_DIR}/VERSION" /mnt/usr/share/artix-poweruser/VERSION
-    cp "${POWERUSER_DIR}/recipes"/*.sh /mnt/usr/share/artix-poweruser/recipes/
+    cp "${POWERUSER_DIR}/recipes"/template.sh /mnt/usr/share/artix-poweruser/recipes/
 
     touch /mnt/usr/share/artix-poweruser/db/local.db
     cp "${POWERUSER_DIR}/db/local.db" /mnt/usr/share/artix-poweruser/db/local.db 2>/dev/null || true

@@ -312,6 +312,21 @@ tui_poweruser_feature_flags() {
     done
 }
 
+tui_poweruser_recipe_sections() {
+    local sections
+    sections=$(tui_checklist "Recipe Sources" "Which recipe sections to include?" \
+        "OFFICIAL/Base (recommended)" \
+        "OFFICIAL/Other (extended, tested)" \
+        "COMMUNITY/Base (pending review)" \
+        "COMMUNITY/Other (experimental)") || true
+
+    if [[ -n "${sections}" ]]; then
+        state_set RECIPE_SECTIONS "${sections//$'\n'/ }"
+    else
+        state_set RECIPE_SECTIONS "OFFICIAL/Base"
+    fi
+}
+
 tui_poweruser_hw_summary() {
     source "${POWERUSER_DIR}/lib/hwdetect.bash"
     local cpu gpu net storage
@@ -410,6 +425,7 @@ tui_poweruser_config() {
         return 1
     }
     tui_poweruser_select_coreutils
+    tui_poweruser_recipe_sections
     tui_poweruser_fallback_kernel
     tui_poweruser_create_recipe
     tui_poweruser_feature_flags
