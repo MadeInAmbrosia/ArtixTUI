@@ -209,7 +209,6 @@ handle_build_failure() {
                 ;;
             "Update ArtixForge and retry")
                 log_info "Updating ArtixForge from GitHub..."
-                # This sucks so much it's unreal.
                 local update_dir="/tmp/artixforge-update"
                 rm -rf "${update_dir}"
                 git clone --depth 1 https://github.com/realvolk/ArtixForge.git "${update_dir}" || {
@@ -217,6 +216,7 @@ handle_build_failure() {
                     continue
                 }
                 cp -a "${update_dir}/." "${BASE_DIR}/"
+                chmod +x "${BASE_DIR}/install"
                 rm -rf "${update_dir}"
                 log_info "ArtixForge updated. Restarting pipeline..."
                 exec "${BASE_DIR}/install"
