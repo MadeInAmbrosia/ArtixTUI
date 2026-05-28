@@ -21,6 +21,7 @@ ensure_boot_essentials() {
     scripts/config --enable VIRTIO_MENU
     scripts/config --enable VIRTIO_PCI
     scripts/config --module VIRTIO_BLK
+    scripts/config --module USB_HID
     scripts/config --enable BLK_DEV_SD
     scripts/config --enable BLK_DEV_NVME
     scripts/config --enable ATA
