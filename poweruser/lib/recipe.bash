@@ -25,6 +25,7 @@ list_recipes() {
         [[ -f "${recipe}" ]] || continue
         local name
         name="$(basename "${recipe}" .sh)"
+        [[ "${name}" == "template" ]] && continue
         local d
         d="$(grep -m1 '^desc=' "${recipe}" | cut -d'"' -f2)"
         printf '%s — %s\n' "${name}" "${d:-no description}"
