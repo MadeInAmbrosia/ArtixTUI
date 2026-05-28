@@ -20,6 +20,8 @@ stage_poweruser() {
     source "${POWERUSER_DIR}/lib/cache.bash"
     source "${POWERUSER_DIR}/lib/validate.bash"
     source "${POWERUSER_DIR}/tui/progress.sh"
+    source "${SCRIPT_DIR}/tui/core.sh"
+    source "${SCRIPT_DIR}/common.sh"
 
     local profile_name
     profile_name="$(state_get POWERUSER_PROFILE default)"
