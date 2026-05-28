@@ -341,9 +341,7 @@ tui_select_btrfs_layout() {
 }
 
 tui_select_poweruser() {
-    local mode
-    mode="$(state_get MODE auto)"
-    [[ "${mode}" == "power" ]] || return 0
+    [[ "$(state_get POWER_USER no)" == "yes" ]] || return 0
 
     state_set POWER_USER "yes"
 
