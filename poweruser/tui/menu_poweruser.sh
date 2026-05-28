@@ -61,7 +61,7 @@ tui_poweruser_select_coreutils() {
         "GNU (default) – standard Artix coreutils" \
         "BusyBox – lightweight multi-call binary" \
         "uutils – Rust rewrite of GNU coreutils" \
-        "ArtixTUI – debloated minimal coreutils" \
+        "ArtixForge – debloated minimal coreutils" \
         "Custom – write your own recipe" \
         "None – keep whatever is installed") || return 1
 
@@ -69,7 +69,7 @@ tui_poweruser_select_coreutils() {
         GNU*)      state_set COREUTILS "gnu" ;;
         BusyBox*)  state_set COREUTILS "busybox" ;;
         uutils*)   state_set COREUTILS "uutils" ;;
-        ArtixTUI*) state_set COREUTILS "artix" ;;
+        ArtixForge*) state_set COREUTILS "artix" ;;
         Custom*)
             state_set COREUTILS "custom"
             tui_poweruser_create_recipe

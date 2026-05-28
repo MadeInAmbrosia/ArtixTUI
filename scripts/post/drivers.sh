@@ -47,8 +47,8 @@ install_drivers() {
     wm_de="$(state_get WM_DE none | tr -d '[:space:]')"
     kernel_choice="$(state_get KERNEL_CHOICE linux | tr -d '[:space:]')"
 
-    mkdir -p /root/ArtixTUI
-    : > /root/ArtixTUI/drivers-debug.log
+    mkdir -p /root/ArtixForge
+    : > /root/ArtixForge/drivers-debug.log
 
     case "${kernel_choice}" in
         linux)                   pkgs+=(linux-headers) ;;
@@ -168,7 +168,7 @@ install_drivers() {
         else
             log_error "Driver installation failed."
         fi
-    } >> /root/ArtixTUI/drivers-debug.log 2>&1
+    } >> /root/ArtixForge/drivers-debug.log 2>&1
 
     if [[ ${rc} -ne 0 && "${gpu_vendor}" == 'nvidia' ]]; then
         log_error "NVIDIA failed. Trying nouveau fallback..."
@@ -180,7 +180,7 @@ install_drivers() {
                 retry_command "nouveau fallback" pacman --color=never --noconfirm --needed -S xf86-video-nouveau mesa
             fi
             rc=$?
-        } >> /root/ArtixTUI/drivers-debug.log 2>&1
+        } >> /root/ArtixForge/drivers-debug.log 2>&1
     fi
 
     return "${rc}"

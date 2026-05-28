@@ -26,6 +26,7 @@ install_desktop() {
         lxqt)     pkgs+=(lxqt) ;;
         lxde)     pkgs+=(lxde lxappearance) ;;
         i3wm)     pkgs+=(i3-wm i3status i3lock dmenu xterm) ;;
+        vxwm)     pkgs+=(base-devel git libx11 libxft libxinerama freetype2 xorg-server xorg-xinit xterm) ;;
         dwm)      pkgs+=(dwm dmenu xterm) ;;
         icewm)    pkgs+=(icewm icewm-themes xterm) ;;
         none)     return 0 ;;
@@ -36,6 +37,10 @@ install_desktop() {
                 full|edge)     pkgs+=(plasma kde-applications xdg-desktop-portal-kde) ;;
                 desktop|*)     pkgs+=(plasma xdg-desktop-portal-kde) ;;
             esac
+
+            if [[ "${display_manager}" == "lightdm" ]]; then
+                pkgs+=(lightdm lightdm-gtk-greeter "lightdm-${init}")
+            fi
 
             if [[ "${x_stack:-xorg}" == 'xlibre' ]]; then
                 pacman -S --noconfirm --needed xlibre-input-wacom 2>/dev/null || true
@@ -69,7 +74,11 @@ EOF
     esac
 
     case "${display_manager}" in
-        lightdm) pkgs+=(lightdm lightdm-gtk-greeter "lightdm-${init}") ;;
+        lightdm)
+            if [[ "${wm_de}" != "kde" ]]; then
+                pkgs+=(lightdm lightdm-gtk-greeter "lightdm-${init}")
+            fi
+            ;;
         sddm)    pkgs+=(sddm "sddm-${init}") ;;
     esac
 
@@ -91,6 +100,23 @@ EOF
         su - "${USER_NAME}" -c "cd '${build_dir}' && makepkg --noconfirm" || { log_error "Failed to build MangoWM."; return 1; }
         retry_command "MangoWM install" pacman -U --noconfirm "${build_dir}"/*.pkg.tar.* || { log_error "Failed to install MangoWM package."; return 1; }
         rm -rf "${build_dir}"
+    fi
+
+    if [[ "${wm_de}" == 'vxwm' ]]; then
+        log_info "Building vxwm from source..."
+        local vxwm_dir='/tmp/vxwm'
+        rm -rf "${vxwm_dir}"
+        git clone 'https://codeberg.org/wh1tepearl/vxwm.git' "${vxwm_dir}" || { log_error "Failed to clone vxwm repo."; return 1; }
+        chown -R "${USER_NAME}:${USER_NAME}" "${vxwm_dir}"
+        su - "${USER_NAME}" -c "cd '${vxwm_dir}' && make clean && make" || { log_error "Failed to build vxwm."; return 1; }
+        make -C "${vxwm_dir}" install || { log_error "Failed to install vxwm."; return 1; }
+        rm -rf "${vxwm_dir}"
+        log_info "vxwm installed successfully."
+    fi
+
+    if [[ "${wm_de}" == "kde" && "${display_manager}" == "lightdm" ]]; then
+        log_info "Replacing SDDM with LightDM..."
+        pacman -Rdd --noconfirm sddm "sddm-${init}" 2>/dev/null || true
     fi
 
     case "${display_manager}" in

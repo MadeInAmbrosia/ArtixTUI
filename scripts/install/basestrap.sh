@@ -174,7 +174,7 @@ EOF
     esac
 
     case "${fs_type}" in
-        btrfs)     pkgs+=(btrfs-progs) ;;
+        btrfs)     pkgs+=(btrfs-progs snapper snap-pac grub-btrfs) ;;
         ext4)      pkgs+=(e2fsprogs) ;;
         xfs)       pkgs+=(xfsprogs) ;;
         f2fs)      pkgs+=(f2fs-tools) ;;

@@ -1,5 +1,34 @@
 # Changelog
 
+## v8.2.0.0 (2026-05-28) — ArtixForge
+
+### Added
+- BTRFS snapshot integration with snapper + GRUB boot menu entries via `grub-btrfs`
+- Snapper timeline and cleanup services enabled automatically for BTRFS installs
+- `gartix checksum <recipe>` command for generating SHA256 hashes from upstream sources
+- SKIP checksum warning in builder with user confirmation prompt
+- Categorized extras: System Tools, Editors, Browsers, File Managers, Terminals, Shell & Prompt, Monitoring, Media
+- 18 new extra packages: nano, vim, neovim, micro, helix, firefox, chromium, qutebrowser, ranger, lf, nnn, thunar, alacritty, kitty, foot, mpv, feh
+- DNS lookup fallback in network connectivity check (dig/nslookup before curl/ping)
+- vxwm window manager support (dwm fork with modules, compiled from source)
+- Volk's Personal Quick Profile (dinit, KDE minimal, LightDM, source-built kernel)
+- LightDM support for KDE Plasma with automatic SDDM replacement
+- Recovery repair system: automatic fstab regeneration, pacman lock removal, base package reinstall, kernel reinstall, initramfs rebuild, and GRUB EFI entry repair
+- Rootkit scanning via rkhunter in Recovery mode
+
+### Changed
+- Replaced `ufw` with `firewalld` across all profiles, extras, and sanity warnings
+- ZFS services now use `enable_service` for init-agnostic configuration
+- Project renamed to ArtixForge — installer paths, config files, and documentation updated
+- Community recipes repository renamed to `ArtixForge-recipes`
+- Desktop Quick Install profile now includes firefox, neovim, and alacritty
+- Recovery mode now detects LVM, ZFS, UKI, coreutils, Power User state, privilege escalation, install progress, fstab health, boot health, and pacman integrity
+
+### Fixed
+- XFS bigtime check in post.sh now runs inside chroot with correct variable escaping
+- `enable_service` used consistently for ZFS and snapper across all init systems
+- KDE Plasma with LightDM no longer leaves SDDM installed as a conflicting dependency
+
 ## v8.1.1.0 (2026-05-27)
 
 ### Added

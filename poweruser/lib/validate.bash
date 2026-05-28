@@ -82,6 +82,4 @@ validate_system() {
     fi
 
     log_info "Post-build validation complete."
-
-    log_info "Post-build validation complete."
 }

@@ -27,7 +27,7 @@ No. OSI approval is relevant for:
 - Corporate legal departments that mandate OSI compliance
 - Formal procurement processes
 
-ArtixTUI is an installer script for personal and community use. It is not
+ArtixForge is an installer script for personal and community use. It is not
 a library, a framework, or a component of a larger distribution. The license
 protects what the author cares about — preventing plagiarism — while
 preserving all the freedoms users expect from open source software.
@@ -41,9 +41,9 @@ and integrity requirement, not a field-of-use restriction. The software
 may be used commercially, academically, militarily, or for any other
 purpose without limitation.
 
-## Is ArtixTUI a fork of Artix Linux?
+## Is ArtixForge a fork of Artix Linux?
 
-No. ArtixTUI is an independent installer for Artix Linux. It does not
+No. ArtixForge is an independent installer for Artix Linux. It does not
 repackage, relicense, or redistribute Artix Linux. The installed system
 is standard Artix Linux, fully compatible with all official repositories
 and packages.
@@ -57,7 +57,7 @@ Power User Mode is a build overlay, not a distribution.
 
 ## What if the Artix Linux project objects to this project?
 
-ArtixTUI exists to serve the Artix community. It drives adoption, eases
+ArtixForge exists to serve the Artix community. It drives adoption, eases
 installation, and respects the Artix ecosystem. If Artix maintainers ever
 express concerns about branding, attribution, or scope, the project will
 engage in good faith to address them.
@@ -74,9 +74,9 @@ that priority. There is no plan to seek OSI approval or change the license.
 Possibly. Some distributions (notably Debian, Fedora, and openSUSE) require
 all software in their official repositories to carry an OSI-approved license.
 The Volk Open License has not been submitted for OSI review. This means
-ArtixTUI may not be eligible for inclusion in those distributions'
+ArtixForge may not be eligible for inclusion in those distributions'
 official package repositories.
 
-However, ArtixTUI is an installer — it is run from a live ISO, not
+However, ArtixForge is an installer — it is run from a live ISO, not
 installed as a package. It does not need to be in any distribution's
 repositories to be useful. Users clone it from GitHub and run it directly.

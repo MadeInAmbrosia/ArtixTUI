@@ -50,7 +50,15 @@ require_efi() {
 }
 
 require_internet() {
-    if command -v curl &>/dev/null; then
+    if command -v dig &>/dev/null; then
+        if dig +short +timeout=3 cloudflare.com &>/dev/null; then
+            return 0
+        fi
+    elif command -v nslookup &>/dev/null; then
+        if nslookup -timeout=3 cloudflare.com &>/dev/null; then
+            return 0
+        fi
+    elif command -v curl &>/dev/null; then
         if curl -fsSL --max-time 5 https://1.1.1.1 &>/dev/null; then
             return 0
         fi

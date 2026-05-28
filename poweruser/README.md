@@ -1,13 +1,13 @@
 # Power User Mode
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Power_User-v1.5.1.0-blue?style=flat-square" alt="Power User Version">
-  <img src="https://img.shields.io/badge/ArtixTUI-v8.1.1.0-212?style=flat-square" alt="ArtixTUI">
+  <img src="https://img.shields.io/badge/Power_User-v1.5.2.0-blue?style=flat-square" alt="Power User Version">
+  <img src="https://img.shields.io/badge/ArtixForge-v8.2.0.0-212?style=flat-square" alt="ArtixForge">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/Build_Engine-makepkg-FFB6C1?style=flat-square" alt="makepkg">
 </p>
 
-Power User Mode is ArtixTUI's source-based package compilation subsystem.
+Power User Mode is ArtixForge's source-based package compilation subsystem.
 
 It brings Gentoo-style control to Artix Linux — build kernels, drivers, init systems, coreutils, and userspace packages from source with custom compilation flags and feature toggles.
 
@@ -30,7 +30,7 @@ After the base system is installed, you'll configure:
    - GNU coreutils
    - BusyBox
    - uutils (Rust)
-   - ArtixTUI minimal coreutils
+   - ArtixForge minimal coreutils
    - Custom recipe
 6. Init configuration:
    - OpenRC
@@ -63,20 +63,23 @@ Use it to manage your source-built packages.
 ## Commands
 
 ```bash
-gartix list              # List installed source packages
-gartix list-recipes      # List all available recipes
-gartix info <pkg>        # Show build details
-gartix rebuild <pkg>     # Rebuild package with current flags
-gartix new <name>        # Create a new recipe
-gartix edit <name>       # Edit recipe
-gartix lint <name>       # Validate recipe
-gartix config            # Edit running kernel config
-gartix menuconfig        # Launch make menuconfig
-gartix fetch-all         # Download all recipe sources for offline builds
-gartix upgrade           # Backup recipes and update from remote
-gartix cache-clean       # Remove obsolete cached packages
-gartix sync              # Update recipes from remote
-gartix --tui             # Launch interactive TUI
+gartix list                 # List installed source packages
+gartix list-recipes         # List all available recipes
+gartix info <pkg>           # Show build details
+gartix rebuild <pkg>        # Rebuild package with current flags
+gartix new <name>           # Create a new recipe
+gartix edit <name>          # Edit recipe
+gartix lint <name>          # Validate recipe
+gartix config               # Edit running kernel config
+gartix menuconfig           # Launch make menuconfig
+gartix fetch-all            # Download all recipe sources for offline builds
+gartix upgrade              # Backup recipes and update from remote
+gartix cache-clean          # Remove obsolete cached packages
+gartix sync                 # Update recipes from remote
+gartix checksum <recipe>    # Download sources and print SHA256 checksums
+gartix fetch-recipe <name>  # Download a single recipe from the community repo
+gartix sections             # Manage which recipe sections are enabled
+gartix --tui                # Launch interactive TUI
 ```
 
 `gartix` automatically inherits the colour theme you chose during installation. Your theme choice is saved to `/etc/gartix-theme.conf` and loaded on every run.
@@ -85,11 +88,7 @@ gartix --tui             # Launch interactive TUI
 
 # Recipes
 
-Recipes are simple Bash files located in:
-
-```text
-poweruser/recipes/
-```
+Recipes are simple Bash files stored in the [ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes) community repository. The local `poweruser/recipes/` directory ships with only `template.sh` — all other recipes are fetched from the repository during installation or via `gartix fetch-recipe`.
 
 Each recipe defines:
 
@@ -131,14 +130,18 @@ Built packages are cached in:
 
 ```text
 poweruser/build/artifacts/
+or
+/var/cache/artix-poweruser/artifacts/
 ```
 
 The package database is stored at:
 
 ```text
 poweruser/db/local.db
+or
+/usr/share/artix-poweruser/db/local.db
 ```
-
+Depending if you're installing or in the installed system.
 This tracks:
 
 - Installed packages

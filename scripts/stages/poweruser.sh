@@ -37,8 +37,8 @@ stage_poweruser() {
     recipe_count=$(find "${POWERUSER_DIR}/recipes" -name '*.sh' ! -name 'template.sh' | wc -l)
     if [[ ${recipe_count} -eq 0 ]]; then
         log_info "No recipes found. Fetching OFFICIAL/Base from community repository..."
-        local list_url="https://raw.githubusercontent.com/realvolk/ArtixTUI-recipes/main/.LIST"
-        local repo_base="https://raw.githubusercontent.com/realvolk/ArtixTUI-recipes/main"
+        local list_url="https://raw.githubusercontent.com/realvolk/ArtixForge-recipes/main/.LIST"
+        local repo_base="https://raw.githubusercontent.com/realvolk/ArtixForge-recipes/main"
         if curl -fsSL "${list_url}" -o /tmp/artix-recipes.list 2>/dev/null; then
             while IFS='|' read -r name section desc; do
                 if [[ "${section}" == "OFFICIAL/Base" ]]; then

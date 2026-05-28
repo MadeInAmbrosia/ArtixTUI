@@ -31,7 +31,7 @@ if ! command -v gum &>/dev/null; then
     pacman -Sy --noconfirm gum || die "Failed to install gum. Install it manually and retry."
 fi
 
-RECIPES_REPO="https://raw.githubusercontent.com/realvolk/ArtixTUI-recipes/main"
+RECIPES_REPO="https://raw.githubusercontent.com/realvolk/ArtixForge-recipes/main"
 LIST_URL="${RECIPES_REPO}/.LIST"
 LOCAL_LIST="${POWERUSER_DIR}/.recipes.list"
 SECTION_CONFIG="${POWERUSER_DIR}/recipe-sections.conf"
@@ -53,6 +53,7 @@ Commands:
   fetch-recipe <name>  Download a single recipe from the community repo
   fetch-all         Download all recipe sources for offline use
   lint <name>       Validate a recipe
+  checksum <recipe> Download sources and print SHA256 checksums
   upgrade           Backup recipes and update from remote
   cache-clean       Remove obsolete cached packages
   sync              Update .LIST and recipes from community repo
@@ -324,6 +325,24 @@ lint_recipe() {
     fi
 }
 
+checksum_recipe() {
+    local name="${1}"
+    source "${POWERUSER_DIR}/lib/common.sh"
+    source "${POWERUSER_DIR}/lib/recipe.bash"
+    load_recipe "${name}"
+    
+    local url filename hash
+    for src in "${sources[@]}"; do
+        url="${src%%|*}"
+        filename="${src##*|}"
+        log_info "Fetching ${filename}..."
+        curl -L -o "/tmp/${filename}" "${url}" || { log_error "Failed to fetch ${url}"; continue; }
+        hash=$(sha256sum "/tmp/${filename}" | cut -d' ' -f1)
+        printf '%s|%s|%s\n' "${url}" "${hash}" "${filename}"
+        rm -f "/tmp/${filename}"
+    done
+}
+
 upgrade_gartix() {
     require_root
     local recipe_dir="${POWERUSER_DIR}/recipes"
@@ -450,7 +469,6 @@ tui_yesno() {
     gum confirm </dev/tty
 }
 
-# ─── TUI ──────────────────────────────────────────────────────
 tui_main() {
     while true; do
         clear
@@ -469,6 +487,7 @@ tui_main() {
             "Fetch all sources" \
             "Manage recipe sections" \
             "Lint recipe" \
+            "Checksum recipe" \
             "Sync recipes" \
             "Upgrade recipes" \
             "Clean cache" \
@@ -557,6 +576,16 @@ tui_main() {
                 local lint_result=$(lint_recipe "$to_lint" 2>&1)
                 tui_msg "Lint Result: $to_lint" "$lint_result"
                 ;;
+            "Checksum recipe")
+                local avail4=$(list_recipes 2>/dev/null | awk '{print $1}')
+                if [[ -z "$avail4" ]]; then
+                    tui_msg "No recipes" "No recipes found."
+                    continue
+                fi
+                local to_checksum=$(tui_menu "Select recipe" "" $avail4) || continue
+                local checksum_result=$(checksum_recipe "$to_checksum" 2>&1)
+                tui_msg "Checksums: $to_checksum" "${checksum_result}"
+                ;;
             "Sync recipes")
                 sync_recipes
                 tui_msg "Sync" "Recipes synchronized."
@@ -596,6 +625,7 @@ main() {
         fetch-recipe)  [[ -n "${2:-}" ]] || { usage; exit 1; }; fetch_recipe "${2}" ;;
         fetch-all)     fetch_all_sources ;;
         lint)          [[ -n "${2:-}" ]] || { usage; exit 1; }; lint_recipe "${2}" ;;
+        checksum)      [[ -n "${2:-}" ]] || { usage; exit 1; }; checksum_recipe "${2}" ;;
         upgrade)       upgrade_gartix ;;
         cache-clean)   cache_clean ;;
         sync)          sync_recipes ;;

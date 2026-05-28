@@ -227,6 +227,11 @@ fetch_sources() {
             local actual
             actual="$(sha256sum "${dest}" | cut -d' ' -f1)"
             [[ "${actual}" == "${checksum}" ]] || { log_error "Checksum mismatch: ${filename}"; return 1; }
+        elif [[ "${checksum}" == "SKIP" ]]; then
+            log_warn "Checksum verification SKIPPED for ${filename} — source integrity NOT verified"
+            if ! tui_yesno "Unverified Source" "${filename} has no checksum. Continue anyway?"; then
+                die "User aborted due to missing checksum"
+            fi
         fi
     done
 }

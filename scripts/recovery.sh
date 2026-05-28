@@ -3,6 +3,16 @@ set -Eeuo pipefail;
 
 readonly ROOT="/mnt";
 
+recovery_detect_install() {
+    mountpoint -q "${ROOT}" || return 1
+    [[ -d "${ROOT}/etc" ]] || return 1
+    return 0
+}
+
+recovery_import_state() {
+    reconstruct_state_from_system
+}
+
 validate_recovery_root() {
     mountpoint -q "${ROOT}" \
         || die "recovery root is not mounted: ${ROOT}"
@@ -60,6 +70,20 @@ detect_filesystem() {
     state_set FS_TYPE "${fs}";
 }
 
+detect_zfs() {
+    if pacman_root_has zfs-utils || pacman_root_has zfs-dkms; then
+        state_set FS_TYPE zfs
+    fi
+}
+
+detect_lvm() {
+    if [[ -f "${ROOT}/etc/lvm/lvm.conf" ]] || pacman_root_has lvm2; then
+        state_set USE_LVM yes
+    else
+        state_set USE_LVM no
+    fi
+}
+
 detect_bootloader() {
     if [[ -d "${ROOT}/boot/grub" ]] \
         || [[ -f "${ROOT}/boot/grub/grub.cfg" ]]; then
@@ -73,6 +97,109 @@ detect_bootloader() {
 
     else
         state_set BOOTLOADER efistub
+    fi
+}
+
+detect_uki() {
+    if [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]] || grep -q 'uki' "${ROOT}/etc/mkinitcpio.d/"*.preset 2>/dev/null; then
+        state_set GENERATE_UKI yes
+    else
+        state_set GENERATE_UKI no
+    fi
+}
+
+repair_fstab() {
+    local issues
+    issues=$(state_get FSTAB_ISSUES none)
+    if [[ "${issues}" == "missing" ]]; then
+        log_warn "fstab is missing. Regenerating..."
+        if tui_yesno "Repair fstab" "Regenerate fstab from current mounts?"; then
+            fstabgen -U /mnt > /mnt/etc/fstab
+            log_info "fstab regenerated."
+        fi
+    elif [[ "${issues}" != "none" ]]; then
+        log_warn "fstab has stale UUIDs: ${issues}"
+        if tui_yesno "Repair fstab" "Regenerate fstab to fix UUIDs?"; then
+            fstabgen -U /mnt > /mnt/etc/fstab
+            log_info "fstab regenerated."
+        fi
+    fi
+}
+
+repair_pacman() {
+    local issues
+    issues=$(state_get PACMAN_ISSUES none)
+    if [[ "${issues}" =~ stale-lock ]]; then
+        log_warn "Pacman lock found."
+        if tui_yesno "Remove lock" "Remove stale pacman lock?"; then
+            rm -f /mnt/var/lib/pacman/db.lck
+            log_info "Lock removed."
+        fi
+    fi
+    if [[ "${issues}" =~ base-missing ]]; then
+        log_warn "Base system packages missing or corrupted."
+        if tui_yesno "Reinstall base" "Reinstall base packages?"; then
+            basestrap /mnt base base-devel
+            log_info "Base packages reinstalled."
+        fi
+    fi
+    if [[ "${issues}" =~ broken-pkgs ]]; then
+        log_warn "Some packages have missing files. Run 'pacman -Qk' to list them."
+    fi
+}
+
+repair_boot() {
+    local issues
+    issues=$(state_get BOOT_ISSUES none)
+    if [[ "${issues}" =~ no-kernel ]]; then
+        log_warn "Kernel image missing from /boot."
+        if tui_yesno "Reinstall kernel" "Reinstall kernel package?"; then
+            local kernel_choice kernel_pkg
+            kernel_choice=$(state_get KERNEL_CHOICE linux)
+            case "${kernel_choice}" in
+                linux)          kernel_pkg="linux" ;;
+                linux-zen)      kernel_pkg="linux-zen" ;;
+                linux-lts)      kernel_pkg="linux-lts" ;;
+                linux-hardened) kernel_pkg="linux-hardened" ;;
+                *)              kernel_pkg="linux" ;;
+            esac
+            artix-chroot /mnt pacman -S --noconfirm "${kernel_pkg}" "${kernel_pkg}-headers"
+        fi
+    fi
+    if [[ "${issues}" =~ no-initramfs ]]; then
+        log_warn "Initramfs missing."
+        if tui_yesno "Regenerate initramfs" "Run mkinitcpio?"; then
+            artix-chroot /mnt mkinitcpio -P
+        fi
+    fi
+    if [[ "${issues}" =~ no-efi-entry ]]; then
+        log_warn "No EFI boot entry for Artix."
+        if tui_yesno "Reinstall bootloader" "Reinstall GRUB?"; then
+            artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX
+            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+        fi
+    fi
+}
+
+repair_system() {
+    repair_fstab
+    repair_pacman
+    repair_boot
+    if [[ -x /mnt/usr/bin/mkinitcpio ]]; then
+        artix-chroot /mnt mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
+    fi
+    log_info "Repair complete. You may now reboot."
+}
+
+detect_rootkits() {
+    if ! command -v rkhunter &>/dev/null; then
+        pacman -S --noconfirm rkhunter
+    fi
+    rkhunter --check --skip-keypress 2>&1 | tee /tmp/rkhunter.log
+    if grep -q 'Warning' /tmp/rkhunter.log; then
+        log_warn "Rootkit warnings found. Review /tmp/rkhunter.log"
+    else
+        log_info "No rootkit warnings detected."
     fi
 }
 
@@ -143,8 +270,21 @@ detect_desktop() {
     elif pacman_root_has dwm; then
         state_set WM_DE dwm
 
+    elif pacman_root_has vxwm || [[ -f "${ROOT}/usr/local/bin/vxwm" ]]; then
+        state_set WM_DE vxwm
+
     elif pacman_root_has icewm; then
         state_set WM_DE icewm
+
+    elif pacman_root_has plasma-desktop; then
+        state_set WM_DE kde
+        if pacman_root_has kde-applications; then
+            state_set KDE_PROFILE full
+        elif pacman_root_has dolphin; then
+            state_set KDE_PROFILE minimal
+        else
+            state_set KDE_PROFILE desktop
+        fi
 
     else
         state_set WM_DE none
@@ -254,7 +394,7 @@ detect_extras() {
     pacman_root_has git && extras+=(git)
     pacman_root_has flatpak && extras+=(flatpak)
     pacman_root_has fastfetch && extras+=(fastfetch)
-    pacman_root_has ufw && extras+=(ufw)
+    pacman_root_has firewalld && extras+=(firewalld)
     pacman_root_has bluez && extras+=(bluez)
 
     if pacman_root_has zram-generator || pacman_root_has zramen; then
@@ -271,6 +411,24 @@ detect_extras() {
     pacman_root_has tmux && extras+=(tmux)
     pacman_root_has usb_modeswitch && extras+=(usb_modeswitch)
     pacman_root_has rsvc && extras+=(rsvc)
+
+    pacman_root_has nano && extras+=(nano)
+    pacman_root_has vim && extras+=(vim)
+    pacman_root_has neovim && extras+=(neovim)
+    pacman_root_has micro && extras+=(micro)
+    pacman_root_has helix && extras+=(helix)
+    pacman_root_has firefox && extras+=(firefox)
+    pacman_root_has chromium && extras+=(chromium)
+    pacman_root_has qutebrowser && extras+=(qutebrowser)
+    pacman_root_has ranger && extras+=(ranger)
+    pacman_root_has lf && extras+=(lf)
+    pacman_root_has nnn && extras+=(nnn)
+    pacman_root_has thunar && extras+=(thunar)
+    pacman_root_has alacritty && extras+=(alacritty)
+    pacman_root_has kitty && extras+=(kitty)
+    pacman_root_has foot && extras+=(foot)
+    pacman_root_has mpv && extras+=(mpv)
+    pacman_root_has feh && extras+=(feh)
 
     state_set EXTRAS "${extras[*]}";
 }
@@ -425,13 +583,148 @@ detect_hostname() {
     state_set HOSTNAME "${hostname}";
 }
 
+detect_coreutils() {
+    if pacman_root_has busybox && [[ "$(readlink "${ROOT}/usr/bin/ls" 2>/dev/null)" == *"busybox"* ]]; then
+        state_set COREUTILS busybox
+    elif pacman_root_has uutils-coreutils; then
+        state_set COREUTILS uutils
+    elif [[ -f "${ROOT}/etc/artix-poweruser/world.txt" ]] && grep -q 'artix-coreutils' "${ROOT}/etc/artix-poweruser/world.txt" 2>/dev/null; then
+        state_set COREUTILS artix
+    else
+        state_set COREUTILS gnu
+    fi
+}
+
+detect_poweruser() {
+    if [[ -f "${ROOT}/etc/artix-poweruser/world.txt" ]] || [[ -f "${ROOT}/usr/local/bin/gartix" ]]; then
+        state_set POWER_USER yes
+        if [[ -f "${ROOT}/etc/artix-poweruser/world.txt" ]]; then
+            local pkgs
+            pkgs=$(tr '\n' ' ' < "${ROOT}/etc/artix-poweruser/world.txt")
+            state_set POWERUSER_PACKAGES "${pkgs}"
+        fi
+        if [[ -f "${ROOT}/usr/share/artix-poweruser/profile/active" ]]; then
+            state_set POWERUSER_PROFILE "$(tr -d '[:space:]' < "${ROOT}/usr/share/artix-poweruser/profile/active")"
+        fi
+    else
+        state_set POWER_USER no
+    fi
+}
+
+detect_priv_escalation() {
+    if pacman_root_has doas && [[ -f "${ROOT}/etc/doas.conf" ]]; then
+        state_set PRIV_ESCALATION doas
+    elif pacman_root_has sudo; then
+        state_set PRIV_ESCALATION sudo
+    else
+        state_set PRIV_ESCALATION none
+    fi
+}
+
+detect_install_stage() {
+    local status=""
+    [[ -f "${ROOT}/etc/fstab" ]] && status+="fstab "
+    [[ -x "${ROOT}/usr/bin/bash" ]] && status+="basestrap "
+    [[ -f "${ROOT}/boot/grub/grub.cfg" ]] && status+="grub "
+    [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]] && status+="uki "
+    [[ -d "${ROOT}/home" ]] && status+="home "
+    [[ -f "${ROOT}/etc/hostname" ]] && status+="hostname "
+    [[ -f "${ROOT}/etc/locale.conf" ]] && status+="locale "
+    [[ -f "${ROOT}/root/.artix-post-complete" ]] && status+="post-complete "
+    if pacman_root_has xfce4 || pacman_root_has plasma-desktop || pacman_root_has hyprland; then
+        status+="desktop "
+    fi
+    [[ -z "${status}" ]] && status="minimal (base system only)"
+    state_set RECOVERY_STATUS "${status}"
+}
+
+detect_fstab_health() {
+    if [[ -f "${ROOT}/etc/fstab" ]]; then
+        local issues=""
+        while IFS= read -r line; do
+            [[ -z "${line}" || "${line}" == \#* ]] && continue
+            local device
+            device=$(echo "${line}" | awk '{print $1}')
+            if [[ "${device}" == UUID=* ]]; then
+                local uuid="${device#UUID=}"
+                if ! blkid -U "${uuid}" &>/dev/null; then
+                    issues+="missing-uuid:${uuid} "
+                fi
+            fi
+        done < "${ROOT}/etc/fstab"
+        state_set FSTAB_ISSUES "${issues:-none}"
+    else
+        state_set FSTAB_ISSUES "missing"
+    fi
+}
+
+detect_boot_health() {
+    local issues=""
+    if [[ -d "${ROOT}/boot" ]]; then
+        if ! ls "${ROOT}/boot/vmlinuz-"* &>/dev/null; then
+            issues+="no-kernel "
+        fi
+        if ! ls "${ROOT}/boot/initramfs-"*.img &>/dev/null; then
+            issues+="no-initramfs "
+        fi
+    else
+        issues+="no-boot-dir "
+    fi
+    if command -v efibootmgr &>/dev/null; then
+        if ! efibootmgr 2>/dev/null | grep -qi 'Artix'; then
+            issues+="no-efi-entry "
+        fi
+    fi
+    state_set BOOT_ISSUES "${issues:-none}"
+}
+
+detect_pacman_health() {
+    local issues=""
+    if [[ -f "${ROOT}/var/lib/pacman/db.lck" ]]; then
+        issues+="stale-lock "
+    fi
+    if ! pacman --root "${ROOT}" -Q base &>/dev/null 2>&1; then
+        issues+="base-missing "
+    fi
+    local broken
+    broken=$(pacman --root "${ROOT}" -Qk 2>/dev/null | grep -c 'missing' || true)
+    if [[ "${broken}" -gt 0 ]]; then
+        issues+="broken-pkgs:${broken} "
+    fi
+    state_set PACMAN_ISSUES "${issues:-none}"
+}
+
+recovery_get_status() {
+    local status=""
+    status+="Install stage: $(state_get RECOVERY_STATUS unknown)"$'\n'
+    status+="Filesystem: $(state_get FS_TYPE ext4)"$'\n'
+    status+="LVM: $(state_get USE_LVM no)"$'\n'
+    status+="LUKS: $(state_get USE_LUKS no)"$'\n'
+    status+="UKI: $(state_get GENERATE_UKI no)"$'\n'
+    status+="Bootloader: $(state_get BOOTLOADER unknown)"$'\n'
+    status+="Kernel: $(state_get KERNEL_CHOICE unknown)"$'\n'
+    status+="Power User: $(state_get POWER_USER no)"$'\n'
+    status+="Coreutils: $(state_get COREUTILS unknown)"$'\n'
+    local fstab_issues boot_issues pacman_issues
+    fstab_issues=$(state_get FSTAB_ISSUES none)
+    boot_issues=$(state_get BOOT_ISSUES none)
+    pacman_issues=$(state_get PACMAN_ISSUES none)
+    [[ "${fstab_issues}" != "none" ]] && status+=$'\n'"FSTAB issues: ${fstab_issues}"
+    [[ "${boot_issues}" != "none" ]] && status+=$'\n'"Boot issues: ${boot_issues}"
+    [[ "${pacman_issues}" != "none" ]] && status+=$'\n'"Pacman issues: ${pacman_issues}"
+    printf '%s\n' "${status}"
+}
+
 reconstruct_state_from_system() {
     validate_recovery_root
 
     detect_disk
     detect_init
     detect_filesystem
+    detect_zfs
+    detect_lvm
     detect_bootloader
+    detect_uki
     detect_kernel
     detect_desktop
     detect_display_manager
@@ -449,6 +742,13 @@ reconstruct_state_from_system() {
     detect_nvidia
     detect_virtualization
     detect_hostname
+    detect_coreutils
+    detect_poweruser
+    detect_priv_escalation
+    detect_install_stage
+    detect_fstab_health
+    detect_boot_health
+    detect_pacman_health
 
     state_save
 }

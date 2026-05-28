@@ -1,4 +1,4 @@
-# ArtixTUI — Installation Guide
+# ArtixForge — Installation Guide
 
 Welcome! This guide explains every option you’ll see in the installer.
 Don’t worry if you don’t know what something means – that’s what this is for.
@@ -177,7 +177,7 @@ The basic command‑line tools (`ls`, `cp`, `cat`, …).
 | GNU | Full‑featured, standard on most Linux systems |
 | BusyBox | Lightweight, fewer options, smaller footprint |
 | uutils | Rust rewrite of GNU coreutils, modern |
-| ArtixTUI | Our own debloated set (based on BusyBox with selectable features) |
+| ArtixForge | Our own debloated set (based on BusyBox with selectable features) |
 | Custom | Write your own recipe – full control |
 
 GNU coreutils are the safest choice for compatibility with scripts and existing habits. BusyBox is perfect for minimal systems. uutils is exciting but still maturing.
@@ -214,14 +214,14 @@ If you selected Power User mode, you can compile packages from source instead of
 
 ## 15.1. Community Recipes
 
-ArtixTUI can download additional recipes from the community repository at
-[ArtixTUI-recipes](https://github.com/realvolk/ArtixTUI-recipes).
+ArtixForge can download additional recipes from the community repository at
+[ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes).
 
 Use `gartix sync` to pull the latest recipe list and download new recipes.
 By default, only tested OFFICIAL recipes are included. You can enable
 COMMUNITY recipes through the "Manage recipe sections" option in `gartix --tui`.
 
-To contribute your own recipes, see the [ArtixTUI-recipes](https://github.com/realvolk/ArtixTUI-recipes) repository.
+To contribute your own recipes, see the [ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes) repository.
 
 ---
 
@@ -266,7 +266,7 @@ Yes. Use Manual mode, create partitions for Artix alongside your existing OS, an
 Reboot, start the installer again, and pick **Resume** from the main menu. It will continue from the last completed stage.
 
 **Where can I get help?**
-Open an issue on [GitHub](https://github.com/realvolk/ArtixTUI/issues) or visit the Artix community forums.
+Open an issue on [GitHub](https://github.com/realvolk/ArtixForge/issues) or visit the Artix community forums.
 
 ---
 

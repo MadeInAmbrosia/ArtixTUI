@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in ArtixTUI, please report it privately
+If you discover a security vulnerability in ArtixForge, please report it privately
 to **realvolk** via a private GitHub security advisory or email.
 
 Do not open a public issue for security issues.
@@ -11,10 +11,10 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v8.0.1.x | Yes |
-| v8.0.0.x | Critical fixes only |
-| v7.2.0.0 | Critical fixes only |
-| < v7.2.0.0 | No |
+| v8.2.0.x | Yes |
+| v8.1.1.x | Critical fixes only |
+| v8.0.1.x | Critical fixes only |
+| < v8.0.0.0 | No |
 
 ## Scope
 
@@ -31,10 +31,12 @@ Security concerns include, but are not limited to:
 - `doas` or `sudo` misconfiguration that grants unintended access
 - Custom coreutils recipes that replace security‑sensitive binaries (`su`, `passwd`, `mount`)
 - State files (`state.conf`, `artix-installer.conf`) that may contain sensitive configuration
+- Recovery mode operations that mount, repair, or modify an existing installation
+- Rootkit scanning results that may reveal sensitive system information
 
 ## Best Practices
 
-- ArtixTUI never writes plaintext passwords to disk. Passwords are hashed with `openssl passwd -6` before being passed to the target system.
+- ArtixForge never writes plaintext passwords to disk. Passwords are hashed with `openssl passwd -6` before being passed to the target system.
 - LUKS passphrases are held in memory only during the installation and are not persisted.
 - Recipe sources should use verified checksums. The `SKIP` placeholder is for development only and should never appear in published recipes.
 - The installer does not expose network services during installation. Any network configuration (WiFi passwords, static IPs) is applied to the target system, not the live environment.

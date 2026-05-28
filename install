@@ -30,7 +30,7 @@ installer_error() {
 
 self_update_installer() {
     local -a restart_args=("$@")
-    local repo_url='https://github.com/realvolk/ArtixTUI.git' tmp_dir
+    local repo_url='https://github.com/realvolk/ArtixForge.git' tmp_dir
     tmp_dir="$(mktemp -d)"
     printf '[*] Downloading latest installer...\n'
     if ! git clone --depth 1 "${repo_url}" "${tmp_dir}" >/dev/null 2>&1; then
@@ -56,7 +56,7 @@ check_installer_version() {
     local local_version remote_version
     [[ -f "${BASE_DIR}/VERSION" ]] || return 0
     local_version="$(tr -d '[:space:]' < "${BASE_DIR}/VERSION")"
-    remote_version="$(curl -fsSL 'https://raw.githubusercontent.com/realvolk/ArtixTUI/main/VERSION' 2>/dev/null | tr -d '[:space:]' || true)"
+    remote_version="$(curl -fsSL 'https://raw.githubusercontent.com/realvolk/ArtixForge/main/VERSION' 2>/dev/null | tr -d '[:space:]' || true)"
     [[ -n "${remote_version}" ]] || return 0
     if [[ "${local_version}" == "${remote_version}" ]]; then return 0; fi
     if [[ "$(printf '%s\n%s\n' "${local_version}" "${remote_version}" | sort -V | tail -n1)" != "${remote_version}" ]]; then return 0; fi
@@ -110,7 +110,7 @@ DEBUG="false"
 
 main_menu() {
     local mode
-    mode=$(tui_menu "ArtixTUI v8" "Select installation mode:" \
+    mode=$(tui_menu "ArtixForge v8" "Select installation mode:" \
         "Automatic – guided installation" \
         "Manual – detect existing partitions" \
         "Resume – resume interrupted install" \
@@ -191,7 +191,29 @@ Attempt recovery and continue installation?"; then
         clear; printf '[*] Recovery cancelled.\n'; exit 0
     fi
     log_info "Entering recovery mode..."
-    run_install_pipeline
+    local recovery_choice
+    recovery_choice=$(tui_menu "Recovery Options" "What would you like to do?" \
+        "View system status" \
+        "Repair detected issues" \
+        "Scan for rootkits" \
+        "Full reinstall (run installer)" \
+        "Abort") || exit 1
+
+    case "${recovery_choice}" in
+        "View system status")
+            tui_msg "System Status" "$(recovery_get_status)"
+            ;;
+        "Repair detected issues")
+            repair_system
+            ;;
+        "Scan for rootkits")
+            detect_rootkits
+            ;;
+        "Full reinstall"*)
+            run_install_pipeline
+            ;;
+        *) exit 0 ;;
+    esac
 }
 
 main() {

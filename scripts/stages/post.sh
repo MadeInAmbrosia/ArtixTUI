@@ -18,8 +18,8 @@ stage_post() {
 
     log_info "Preparing installer environment..."
     mkdir -p /mnt/root
-    rm -rf /mnt/root/ArtixTUI
-    cp -r . /mnt/root/ArtixTUI
+    rm -rf /mnt/root/ArtixForge
+    cp -r . /mnt/root/ArtixForge
 
     [[ -x /mnt/bin/bash ]] || die "chroot environment missing /bin/bash"
     [[ -f /mnt/etc/os-release ]] || die "invalid target root filesystem"
@@ -44,7 +44,7 @@ export FS_TYPE="${fs_type}"
 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR}"
 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR}"
 
-cd /root/ArtixTUI || exit 1
+cd /root/ArtixForge || exit 1
 
 source ./scripts/state.sh
 source ./scripts/common.sh
@@ -78,9 +78,17 @@ install_extras
 
 if [[ "${FS_TYPE}" == 'zfs' ]]; then
     log_info "Enabling ZFS services..."
-    rc-update add zfs-import boot
-    rc-update add zfs-mount boot
-    rc-update add zfs-zed default || true
+    enable_service zfs-import 2>/dev/null || true
+    enable_service zfs-mount 2>/dev/null || true
+    enable_service zfs-zed 2>/dev/null || true
+fi
+
+if [[ "${FS_TYPE}" == 'btrfs' ]]; then
+    log_info "Setting up snapper for BTRFS snapshots..."
+    snapper -c root create-config / 2>/dev/null || log_warn "snapper config may already exist"
+    snapper -c root set-config TIMELINE_CREATE=yes TIMELINE_CLEANUP=yes 2>/dev/null || true
+    enable_service snapper-timeline 2>/dev/null || true
+    enable_service snapper-cleanup 2>/dev/null || true
 fi
 
 if [[ "${FS_TYPE}" == "xfs" ]]; then
@@ -106,8 +114,8 @@ EOF
     fi
 
     if [[ ${rc} -ne 0 ]]; then
-        if [[ -f /mnt/root/ArtixTUI/drivers-debug.log ]]; then
-            cp /mnt/root/ArtixTUI/drivers-debug.log /tmp/drivers-debug.log 2>/dev/null || true
+        if [[ -f /mnt/root/ArtixForge/drivers-debug.log ]]; then
+            cp /mnt/root/ArtixForge/drivers-debug.log /tmp/drivers-debug.log 2>/dev/null || true
         fi
         tui_msg "Post Installation Failed" \
             "The post-install stage failed.\n\nLogs:\n- ${log_file}\n- /tmp/drivers-debug.log\n\nThe installation was NOT marked complete."

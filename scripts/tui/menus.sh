@@ -78,7 +78,7 @@ tui_select_desktop() {
     local d
     d=$(tui_menu "Desktop Environment" "Select desktop:" \
         "xfce4" "lxqt" "kde" "lxde" "mango" "hyprland" "niri" "sway" \
-        "i3wm" "dwm" "icewm" "none") || return 1
+        "i3wm" "dwm" "vxwm" "icewm" "none") || return 1
     state_set WM_DE "${d}"
 
     if [[ "${d}" == "kde" ]]; then
@@ -133,12 +133,69 @@ tui_select_shell() {
 }
 
 tui_select_extras() {
-    local extras
-    extras=$(tui_checklist "Extras" "Select optional packages:" \
-        "git" "flatpak" "fastfetch" "ufw" "bluez" "zram-tools" \
-        "fzf" "zoxide" "starship" "eza" "btop" "htop" "nvtop" \
-        "tmux" "usb_modeswitch" "rsvc") || return 1
-    state_set EXTRAS "${extras//$'\n'/ }"
+    local extras category
+
+    category=$(tui_menu "Extras" "Select category:" \
+        "System Tools" \
+        "Editors" \
+        "Browsers" \
+        "File Managers" \
+        "Terminals" \
+        "Shell & Prompt" \
+        "Monitoring" \
+        "Media" \
+        "Done (finish selection)") || return 1
+
+    local selected=""
+    while [[ "${category}" != "Done"* ]]; do
+        case "${category}" in
+            "System Tools")
+                selected+=$(tui_checklist "System Tools" "Select system packages:" \
+                    "git" "flatpak" "firewalld" "bluez" "zram-tools" "usb_modeswitch") || true
+                ;;
+            "Editors")
+                selected+=$(tui_checklist "Editors" "Select text editors:" \
+                    "nano" "vim" "neovim" "micro" "helix") || true
+                ;;
+            "Browsers")
+                selected+=$(tui_checklist "Browsers" "Select web browsers:" \
+                    "firefox" "chromium" "qutebrowser") || true
+                ;;
+            "File Managers")
+                selected+=$(tui_checklist "File Managers" "Select file managers:" \
+                    "ranger" "lf" "nnn" "thunar") || true
+                ;;
+            "Terminals")
+                selected+=$(tui_checklist "Terminals" "Select terminal emulators:" \
+                    "alacritty" "kitty" "foot") || true
+                ;;
+            "Shell & Prompt")
+                selected+=$(tui_checklist "Shell & Prompt" "Select shell tools:" \
+                    "fastfetch" "fzf" "zoxide" "starship" "eza" "tmux") || true
+                ;;
+            "Monitoring")
+                selected+=$(tui_checklist "Monitoring" "Select monitoring tools:" \
+                    "btop" "htop" "nvtop") || true
+                ;;
+            "Media")
+                selected+=$(tui_checklist "Media" "Select media tools:" \
+                    "mpv" "feh") || true
+                ;;
+        esac
+        selected+=$'\n'
+        category=$(tui_menu "Extras" "Select category:" \
+            "System Tools" \
+            "Editors" \
+            "Browsers" \
+            "File Managers" \
+            "Terminals" \
+            "Shell & Prompt" \
+            "Monitoring" \
+            "Media" \
+            "Done (finish selection)") || break
+    done
+
+    state_set EXTRAS "${selected//$'\n'/ }"
 }
 
 tui_select_luks() {
@@ -363,9 +420,10 @@ tui_quick_install() {
     local profile
     profile=$(tui_menu "Quick Profile" "Select a preset:" \
         "Desktop – KDE, NetworkManager, PipeWire, flatpak" \
-        "Server – no desktop, SSH, ufw, zram" \
+        "Server – no desktop, SSH, firewalld, zram" \
         "Minimal – no extras, basic system only" \
-        "Embedded – BusyBox init, minimal kernel, no X") || return 1
+        "Embedded – BusyBox init, minimal kernel, no X" \
+        "Volk's Personal – dinit, KDE minimal, source-built kernel") || return 1
 
     case "${profile}" in
         *Desktop*)
@@ -390,7 +448,7 @@ tui_quick_install() {
             state_set AUDIO_STACK "pipewire"
             state_set X_STACK "xlibre"
             state_set USER_SHELL "bash"
-            state_set EXTRAS "git flatpak fastfetch ufw bluez zram-tools fzf zoxide starship eza btop htop tmux"
+            state_set EXTRAS "git flatpak fastfetch firewalld bluez zram-tools firefox neovim alacritty fzf zoxide starship eza btop htop tmux mpv"
             ;;
         *Server*)
             state_set FS_TYPE "ext4"
@@ -413,7 +471,7 @@ tui_quick_install() {
             state_set AUDIO_STACK "none"
             state_set X_STACK "none"
             state_set USER_SHELL "bash"
-            state_set EXTRAS "git ufw zram-tools tmux"
+            state_set EXTRAS "git firewalld zram-tools tmux"
             ;;
         *Minimal*)
             state_set FS_TYPE "ext4"
@@ -461,6 +519,31 @@ tui_quick_install() {
             state_set X_STACK "none"
             state_set USER_SHELL "bash"
             state_set EXTRAS ""
+            ;;
+        *Volk*)
+            state_set FS_TYPE "ext4"
+            state_set BOOTLOADER "grub"
+            state_set KERNEL_CHOICE "linux"
+            state_set INIT "dinit"
+            state_set PRIV_ESCALATION "doas"
+            state_set USE_LUKS "no"
+            state_set USE_LVM "no"
+            state_set GENERATE_UKI "no"
+            state_set ALLOW_OFFLINE "no"
+            state_set ENABLE_ARCH_REPOS "yes"
+            state_set MICROCODE_OVERRIDE "auto"
+            state_set POWER_USER "yes"
+            state_set KEEP_BINARY_KERNEL "no"
+            state_set COREUTILS "gnu"
+            state_set KERNEL_CONFIG_DEPTH "auto"
+            state_set WM_DE "kde"
+            state_set KDE_PROFILE "minimal"
+            state_set DISPLAY_MANAGER "lightdm"
+            state_set NETWORK_STACK "dhcpcd+iwd"
+            state_set AUDIO_STACK "pipewire"
+            state_set X_STACK "xlibre"
+            state_set USER_SHELL "bash"
+            state_set EXTRAS "git fastfetch tmux htop kitty firewalld flatpak"
             ;;
     esac
 

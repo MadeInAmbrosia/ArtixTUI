@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**ArtixTUI collects nothing.**
+**ArtixForge collects nothing.**
 
 The installer runs entirely on your local machine. It does not:
 
@@ -10,7 +10,7 @@ The installer runs entirely on your local machine. It does not:
 - Include any analytics, tracking, or monitoring code
 - Store your passwords, passphrases, or personal data beyond what is needed to complete the installation
 
-## What ArtixTUI stores locally (and how it's handled)
+## What ArtixForge stores locally (and how it's handled)
 
 | Data | Location | Fate |
 |------|----------|------|
@@ -21,15 +21,19 @@ The installer runs entirely on your local machine. It does not:
 | Target system config | `/mnt/etc/artix-installer.conf` | Shredded or removed during finalize stage |
 | Installer log | `/mnt/var/log/artix-installer.log` | Remains on the installed system for debugging |
 
-The installed system itself contains no ArtixTUI-specific data collection. The installer
+The installed system itself contains no ArtixForge-specific data collection. The installer
 removes its own configuration from the target before finishing.
 
 ## Network access
 
-ArtixTUI downloads packages from Artix Linux mirrors and source tarballs from
+ArtixForge downloads packages from Artix Linux mirrors and source tarballs from
 upstream URLs specified in recipes. These are standard package manager operations
 — the same as running `pacman -Syu` or `git clone`. No additional network requests
 are made.
+
+The recovery mode rootkit scanner (`rkhunter`) downloads its database updates
+from the rkhunter project servers when first run. This is the only optional
+third-party network request outside of package management.
 
 ## Third-party services
 
@@ -39,4 +43,4 @@ or data collection services. Zero. None.
 ## Questions
 
 If you have any questions about privacy, open an issue on
-[GitHub](https://github.com/realvolk/ArtixTUI/issues).
+[GitHub](https://github.com/realvolk/ArtixForge/issues).

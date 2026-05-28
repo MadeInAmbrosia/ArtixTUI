@@ -1,16 +1,12 @@
-<p align="center">
-  <img src="https://github.com/realvolk/ArtixTUI/blob/main/.github/artixtui.png" width="196" alt="Artix Linux">
-</p>
-
-<h1 align="center">ArtixTUI</h1>
+<h1 align="center">ArtixForge</h1>
 
 <p align="center">
-  <strong>A beautiful, modular, TUI-first installer for Artix Linux</strong><br>
-  No flags. No confusion. Just a gorgeous terminal interface.
+  <strong>A modular, TUI-first installer and distribution toolkit for Artix Linux</strong><br>
+  No flags. No confusion. Just a terminal interface that works.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.1.1.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.2.0.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
@@ -18,13 +14,13 @@
 
 ---
 
-# What is ArtixTUI?
+# What is ArtixForge?
 
-ArtixTUI is a **TUI-first, modular installer** for Artix Linux (OpenRC, runit, dinit, s6).
+ArtixForge is a **TUI-first, modular installer** for Artix Linux (OpenRC, runit, dinit, s6).
 
-It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools — all from a single, beautiful terminal interface.
+It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools — all from a single terminal interface.
 
-- Built with **gum** by Charmbracelet, it looks better than `archinstall` and supports all major Artix init systems — including BusyBox init in Power User mode.
+- Built with gum by Charmbracelet, it supports all major Artix init systems — including BusyBox init in Power User mode.
 - **Custom colour themes** — choose from Gentoo Purple, Artix Blue, Jet Black, Mono, or Retro Amber. Theme persists across install and is inherited by `gartix`.
 - **Resilience hardened** — automatic pacman lock recovery, retry with exponential backoff for failed downloads, mid‑build resume for interrupted compilations, disk space checks at every stage.
 
@@ -39,15 +35,11 @@ It walks you through partitioning, filesystem creation, base system installation
 # Quick Start
 
 ```bash
-git clone https://github.com/realvolk/ArtixTUI.git
-cd ArtixTUI
+git clone https://github.com/realvolk/ArtixForge.git
+cd ArtixForge
 chmod +x install
 sudo ./install
 ```
-
-That's it.
-
-No `--auto`, no `--manual`, no confusing flags.
 
 You'll be greeted by a main menu where you choose your installation mode.
 
@@ -62,7 +54,7 @@ You'll be greeted by a main menu where you choose your installation mode.
 | 🟡 Resume | Continue from the last saved installation stage. |
 | 🟠 Recovery | Reconstruct installer state from `/mnt` and repair installations. |
 | 🔴 Power User | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control. |
-| ⚡ Quick Profiles | Desktop, Server, Minimal, and Embedded presets for rapid deployment. |
+| ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Volk's Personal presets for rapid deployment. |
 
 A debug toggle is available for every mode from the same menu.
 
@@ -107,7 +99,7 @@ A debug toggle is available for every mode from the same menu.
 ### Supported Filesystems
 
 - `ext4`
-- `btrfs`
+- `btrfs` (with snapper snapshot support + GRUB boot entries)
 - `xfs`
 - `f2fs`
 - `bcachefs` (Unstable/Unsupported)
@@ -126,6 +118,7 @@ A debug toggle is available for every mode from the same menu.
 - Sway
 - i3
 - dwm
+- vxwm
 - IceWM
 
 ### GPU Detection
@@ -138,8 +131,11 @@ A debug toggle is available for every mode from the same menu.
 
 ### Extras
 
+Categorized package selection across System Tools, Editors, Browsers, File Managers,
+Terminals, Shell & Prompt, Monitoring, and Media. Includes:
+
 - flatpak
-- ufw
+- firewalld
 - bluez
 - zram
 - fzf
@@ -165,7 +161,7 @@ A debug toggle is available for every mode from the same menu.
   - GNU coreutils
   - BusyBox
   - uutils (Rust)
-  - ArtixTUI minimal coreutils
+  - ArtixForge minimal coreutils
   - Custom recipes
 - Hardware auto-detection
 - Manual kernel configuration
@@ -186,7 +182,7 @@ A debug toggle is available for every mode from the same menu.
 
 # Dependencies
 
-ArtixTUI requires `gum` for its TUI.
+ArtixForge requires `gum` for its TUI.
 
 If it is not already installed, the installer will build it from source during the preflight stage (requires `go`, which will also be installed automatically).
 
@@ -197,9 +193,7 @@ Everything else is handled by the installer itself.
 # Project Structure
 
 ```text
-ArtixTUI/
-├── .github/
-│   └── artixtui.png
+ArtixForge/
 ├── DOCUMENTS/
 │   ├── CHANGELOG.md
 │   ├── CONTRIBUTING
@@ -270,16 +264,6 @@ ArtixTUI/
     │   ├── performance.sh
     │   └── safe.sh
     ├── recipes/
-    │   ├── artix-coreutils.sh
-    │   ├── busybox-init.sh
-    │   ├── busybox.sh
-    │   ├── glibc.sh
-    │   ├── mesa.sh
-    │   ├── openssl.sh
-    │   ├── uutils-coreutils.sh
-    │   ├── zlib.sh
-    │   ├── zstd.sh
-    │   ├── linux.sh
     │   └── template.sh
     ├── tui/
     │   ├── menu_poweruser.sh
@@ -305,12 +289,12 @@ ArtixTUI/
 | Storage | Standard partitions, LVM, LUKS, LVM-on-LUKS |
 | Boot method | UKI, GRUB, rEFInd, EFIStub |
 | Kernel | linux, zen, lts, hardened, libre, cachyos-bore, bazzite, xanmod, tkg |
-| Desktop | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, IceWM, none |
+| Desktop | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, vxwm, IceWM, none |
 | Network | NetworkManager, dhcpcd+iwd, ConnMan, none |
 | Audio | PipeWire, PulseAudio, none |
 | Shell | bash, zsh, fish |
 | Display stack | X.Org, xLibre |
-| Coreutils | GNU, BusyBox, uutils, ArtixTUI minimal, Custom |
+| Coreutils | GNU, BusyBox, uutils, ArtixForge minimal, Custom |
 | Privilege escalation | sudo, doas |
 | Encryption | LUKS full-disk encryption |
 | Theme | Gentoo, Artix, Jet Black, Mono, Retro |

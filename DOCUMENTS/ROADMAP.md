@@ -9,33 +9,42 @@ This roadmap is updated regularly based on:
 
 *Version numbers are not strict release targets. Features may ship earlier or later depending on development pace, tester feedback, and available time. This roadmap reflects general direction, not fixed deadlines.*
 
-## v8.2 — Filesystem & Security Hardening (Artix Forums ideas)
-Target: Late May / Early June 2026
+## v8.2 — Filesystem & Security Hardening
+Target: Late May / Early June 2026 — Completed 2026-05-28
 
 - BTRFS snapshot integration with snapper + GRUB boot menu entries ([Suggested on the Artix forums](https://forum.artixlinux.org/index.php/topic,9865.msg59194.html#msg59194))
-- Replace `ufw` with something more modern.
-- Categorized extras (Editors, Browsers, File Managers, Terminals, etc.)
-- Real SHA256 checksums
-- Lighter network connectivity check (DNS lookup)
+- Replaced `ufw` with `firewalld`
+- Categorized extras (System Tools, Editors, Browsers, File Managers, Terminals, Shell & Prompt, Monitoring, Media)
+- Real SHA256 checksum tooling (`gartix checksum`) with SKIP warnings during build
+- Lighter network connectivity check (DNS lookup via dig/nslookup)
+- Recovery mode overhaul: detects LVM, ZFS, UKI, coreutils, Power User state, boot health, fstab health, pacman integrity
+- Recovery repair system: automatic fstab regen, pacman lock removal, base reinstall, kernel reinstall, initramfs rebuild, GRUB repair
+- Rootkit scanning via rkhunter in Recovery mode
+- vxwm window manager support (dwm fork, compiled from source)
+- Volk's Personal Quick Profile (dinit, KDE minimal, LightDM, source-built kernel)
+- LightDM support for KDE Plasma with automatic SDDM replacement
+- Project renamed to ArtixForge
+- Community recipes repository renamed to ArtixForge-recipes
+
+## v8.2.x — Community & Polish
+Target: June 2026?
+
 - Screenshots added to README
-- Any bug fixes needed as v8.1.1.0 is largely untested for it's current features.
-
-
-# The think-tank
-
-## Community & Ecosystem
-
-- More Quick Install profiles (Gaming, Development, Media, etc.)
+- Re-adding a new image / logo to the README
+- More Quick Install profiles (Gaming, Development, Media)
 - Custom template files for quick-install with saved configuration on the target system
 - Community recipe promotion workflow (COMMUNITY to OFFICIAL)
 - Recipe popularity tracking
+- Any bug fixes from v8.2 testing
+
+# The think-tank
 
 ## Distribution Toolkits / Poweruser Upgrades
 
 - Custom live ISO builder (Power User mode only)
 - ARM and RISC-V architecture detection
 - Full offline installation mode with bundled packages
-- `gartix-tools` — ArtixTUI's own "debloated" coreutils in C (in development)
+- `gartix-tools` — ArtixForge's own "debloated" coreutils in C (in development)
 
 ## Under Consideration
 
