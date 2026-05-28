@@ -112,7 +112,6 @@ build_package() {
     fi
 
     local artifact="${ARTIFACTS_DIR}/${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
-    mkdir -p "${PKG_DESTDIR}/.PKGINFO"
     cat > "${PKG_DESTDIR}/.PKGINFO" <<EOF
 pkgname = ${pkgname}
 pkgver = ${pkgver}-${pkgrel}
@@ -170,6 +169,7 @@ handle_build_failure() {
                 "Retry" \
                 "Skip" \
                 "Debug shell" \
+                "Update ArtixForge and retry" \
                 "Install binary kernel instead" \
                 "Abort") || action="Abort"
         else
@@ -177,6 +177,7 @@ handle_build_failure() {
                 "Retry" \
                 "Skip" \
                 "Debug shell" \
+                "Update ArtixForge and retry" \
                 "Abort") || action="Abort"
         fi
 
@@ -196,6 +197,20 @@ handle_build_failure() {
             "Debug shell")
                 log_info "Dropping to shell in ${work_dir}. Type 'exit' to return."
                 ( cd "${work_dir}" && bash )
+                ;;
+            "Update ArtixForge and retry")
+                log_info "Updating ArtixForge from GitHub..."
+                # This sucks so much it's unreal.
+                local update_dir="/tmp/artixforge-update"
+                rm -rf "${update_dir}"
+                git clone --depth 1 https://github.com/realvolk/ArtixForge.git "${update_dir}" || {
+                    log_error "Failed to clone ArtixForge"
+                    continue
+                }
+                cp -a "${update_dir}/." "${BASE_DIR}/"
+                rm -rf "${update_dir}"
+                log_info "ArtixForge updated. Restarting pipeline..."
+                exec "${BASE_DIR}/install"
                 ;;
             "Install binary kernel instead")
                 log_info "Installing binary kernel as fallback..."
