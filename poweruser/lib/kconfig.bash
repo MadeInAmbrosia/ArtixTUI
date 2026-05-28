@@ -15,10 +15,12 @@ apply_basic_config() {
 }
 
 ensure_boot_essentials() {
+    scripts/config --enable BLOCK
+    scripts/config --enable BLK_DEV
     scripts/config --enable VIRTIO
     scripts/config --enable VIRTIO_MENU
     scripts/config --enable VIRTIO_PCI
-    scripts/config --enable VIRTIO_BLK
+    scripts/config --module VIRTIO_BLK
     scripts/config --enable BLK_DEV_SD
     scripts/config --enable BLK_DEV_NVME
     scripts/config --enable ATA

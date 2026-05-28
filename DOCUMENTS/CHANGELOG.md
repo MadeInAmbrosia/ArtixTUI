@@ -24,6 +24,7 @@
 - ArtixForge self-update available from build failure menu with `exec sudo ./install` restart
 - `stage_validate` poweruser check now tests for kernel file existence instead of `pacman -Q` — resume no longer loops on direct-copy installs
 - Audio package install uses `--ask=1` to auto-resolve pipewire-jack/jack2 conflicts from KDE dependencies
+- Kernel recipe and `kconfig.bash` now enable full VirtIO dependency chain (`VIRTIO`, `VIRTIO_MENU`, `VIRTIO_PCI`, `VIRTIO_BLK`) to prevent `olddefconfig` from silently dropping block driver support
 
 ## v8.2.0.0 (2026-05-28) — ArtixForge
 
