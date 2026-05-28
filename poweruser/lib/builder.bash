@@ -70,6 +70,7 @@ build_package() {
             die "User aborted due to missing checksums"
         fi
     fi
+
     log_info "Build started for ${pkgname} — tail -f ${LOGS_DIR}/${recipe_name}.log to watch"
 
     if ! fetch_sources "${recipe_name}" >> "${log_file}" 2>&1; then
@@ -112,48 +113,36 @@ build_package() {
         return $?
     fi
 
-    local artifact="${ARTIFACTS_DIR}/${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
-    local installed_size
-    installed_size=$(du -sb "${PKG_DESTDIR}" | cut -f1)
-    cat > "${PKG_DESTDIR}/.PKGINFO" <<EOF
-pkgname = ${pkgname}
-pkgver = ${pkgver}
-pkgrel = ${pkgrel}
-pkgdesc = ${desc:-Source-built package}
-url = ${url:-}
-builddate = $(date +%s)
-packager = ArtixForge Power User
-size = ${installed_size}
-arch = x86_64
-license = GPL-2.0-only
-depend = coreutils
-depend = linux-firmware
-EOF
-    if ! ( cd "${PKG_DESTDIR}" && tar --zstd -cf "${artifact}" . 2>/dev/null ); then
-        log_error "Failed to create package archive"
-        rm -f "${PKG_DESTDIR}/.PKGINFO"
-        handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
-        return 1
-    fi
-    rm -f "${PKG_DESTDIR}/.PKGINFO"
+    if [[ "${pkgname}" == "linux-custom" ]]; then
+        log_info "  Installing ${pkgname} (direct copy)..."
+        if ! ( cd "${PKG_DESTDIR}" && cp -a . /mnt/ ) 2>>"${log_file}"; then
+            log_error "Failed to install ${pkgname} to /mnt"
+            handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
+            return 1
+        fi
+    else
+        local artifact="${ARTIFACTS_DIR}/${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
+        if ! ( cd "${PKG_DESTDIR}" && tar --zstd -cf "${artifact}" . 2>/dev/null ); then
+            log_error "Failed to create package archive"
+            handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
+            return 1
+        fi
 
-    log_info "  Installing ${pkgname}..."
-    if ! cp "${artifact}" /mnt/root/ 2>>"${log_file}"; then
-        log_error "Failed to copy ${artifact} to /mnt/root"
-        log_error "Source exists: $([[ -f "${artifact}" ]] && echo yes || echo no)"
-        log_error "Target writable: $([[ -w /mnt/root ]] && echo yes || echo no)"
-        log_error "Target space: $(df -h /mnt | tail -1)"
-        return 1
-    fi
-    sync
-    sleep 1
-    if ! artix-chroot /mnt pacman -U --noconfirm "/root/${artifact##*/}" >> "${log_file}" 2>&1; then
-        log_error "Failed to install ${pkgname}"
+        log_info "  Installing ${pkgname}..."
+        if ! cp "${artifact}" /mnt/root/ 2>>"${log_file}"; then
+            log_error "Failed to copy ${artifact} to /mnt/root"
+            return 1
+        fi
+        sync
+        sleep 1
+        if ! artix-chroot /mnt pacman -U --noconfirm "/root/${artifact##*/}" >> "${log_file}" 2>&1; then
+            log_error "Failed to install ${pkgname}"
+            rm -f "/mnt/root/${artifact##*/}"
+            handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
+            return 1
+        fi
         rm -f "/mnt/root/${artifact##*/}"
-        handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
-        return 1
     fi
-    rm -f "/mnt/root/${artifact##*/}"
 
     flags_h="$(flags_hash)"
     printf '%s|%s-%s|%s|%s|%s\n' \
