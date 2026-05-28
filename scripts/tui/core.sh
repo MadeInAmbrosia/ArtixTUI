@@ -71,7 +71,10 @@ tui_input() {
     local title="${1}" msg="${2}" default="${3:-}" result
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum input --value "${default}" --prompt "> " </dev/tty) || true
+    result=$(gum input --value "${default}" --prompt "> " </dev/tty 2>/dev/null) || true
+    if [[ "${result}" == *"Usage:"* ]] || [[ "${result}" == *"--help"* ]]; then
+        result="${default}"
+    fi
     printf '%s' "${result}"
 }
 
