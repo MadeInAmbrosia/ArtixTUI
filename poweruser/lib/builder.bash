@@ -107,22 +107,22 @@ build_package() {
     fi
 
     log_info "  Installing ${pkgname}..."
-    if ! cp "${artifact}" /mnt/tmp/ 2>>"${log_file}"; then
-        log_error "Failed to copy ${artifact} to /mnt/tmp"
+    if ! cp "${artifact}" /mnt/root/ 2>>"${log_file}"; then
+        log_error "Failed to copy ${artifact} to /mnt/root"
         log_error "Source exists: $([[ -f "${artifact}" ]] && echo yes || echo no)"
-        log_error "Target writable: $([[ -w /mnt/tmp ]] && echo yes || echo no)"
-        log_error "Target space: $(df -h /mnt/tmp | tail -1)"
+        log_error "Target writable: $([[ -w /mnt/root ]] && echo yes || echo no)"
+        log_error "Target space: $(df -h /mnt | tail -1)"
         return 1
     fi
     sync
     sleep 1
-    if ! artix-chroot /mnt pacman -U --noconfirm "/tmp/${artifact##*/}" >> "${log_file}" 2>&1; then
+    if ! artix-chroot /mnt pacman -U --noconfirm "/root/${artifact##*/}" >> "${log_file}" 2>&1; then
         log_error "Failed to install ${pkgname}"
-        rm -f "/mnt/tmp/${artifact##*/}"
+        rm -f "/mnt/root/${artifact##*/}"
         handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
         return 1
     fi
-    rm -f "/mnt/tmp/${artifact##*/}"
+    rm -f "/mnt/root/${artifact##*/}"
 
     flags_h="$(flags_hash)"
     printf '%s|%s-%s|%s|%s|%s\n' \
