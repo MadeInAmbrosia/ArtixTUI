@@ -113,35 +113,23 @@ build_package() {
         return $?
     fi
 
+    log_info "  Installing ${pkgname}..."
     if [[ "${pkgname}" == "linux-custom" ]]; then
-        log_info "  Installing ${pkgname} (direct copy)..."
+        mkdir -p /mnt/boot /mnt/usr/lib/modules
+        cp -a "${PKG_DESTDIR}/boot/." /mnt/boot/ 2>>"${log_file}" || {
+            log_error "Failed to copy kernel to /mnt/boot"
+            handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
+            return 1
+        }
+        if [[ -d "${PKG_DESTDIR}/lib/modules" ]]; then
+            cp -a "${PKG_DESTDIR}/lib/modules/." /mnt/usr/lib/modules/ 2>>"${log_file}" || true
+        fi
+    else
         if ! ( cd "${PKG_DESTDIR}" && cp -a . /mnt/ ) 2>>"${log_file}"; then
             log_error "Failed to install ${pkgname} to /mnt"
             handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
             return 1
         fi
-    else
-        local artifact="${ARTIFACTS_DIR}/${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
-        if ! ( cd "${PKG_DESTDIR}" && tar --zstd -cf "${artifact}" . 2>/dev/null ); then
-            log_error "Failed to create package archive"
-            handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
-            return 1
-        fi
-
-        log_info "  Installing ${pkgname}..."
-        if ! cp "${artifact}" /mnt/root/ 2>>"${log_file}"; then
-            log_error "Failed to copy ${artifact} to /mnt/root"
-            return 1
-        fi
-        sync
-        sleep 1
-        if ! artix-chroot /mnt pacman -U --noconfirm "/root/${artifact##*/}" >> "${log_file}" 2>&1; then
-            log_error "Failed to install ${pkgname}"
-            rm -f "/mnt/root/${artifact##*/}"
-            handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
-            return 1
-        fi
-        rm -f "/mnt/root/${artifact##*/}"
     fi
 
     flags_h="$(flags_hash)"
@@ -205,10 +193,10 @@ handle_build_failure() {
                     continue
                 }
                 cp -a "${update_dir}/." "${BASE_DIR}/"
-                chmod +x "${BASE_DIR}/install"
                 rm -rf "${update_dir}"
                 log_info "ArtixForge updated. Restarting pipeline..."
-                exec "${BASE_DIR}/install"
+                cd "${BASE_DIR}"
+                exec sudo ./install
                 ;;
             "Install binary kernel instead")
                 log_info "Installing binary kernel as fallback..."
