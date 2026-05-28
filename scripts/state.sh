@@ -51,6 +51,9 @@ state_save() {
         printf 'COREUTILS=%q\n'            "${COREUTILS:-gnu}"
         printf 'KERNEL_CONFIG_DEPTH=%q\n'  "${KERNEL_CONFIG_DEPTH:-auto}"
         printf 'QUICK_INSTALL=%q\n'        "${QUICK_INSTALL:-no}"
+        printf 'POWER_USER=%q\n'            "${POWER_USER:-no}"
+        printf 'POWERUSER_PACKAGES=%q\n'    "${POWERUSER_PACKAGES:-}"
+        printf 'POWERUSER_PROFILE=%q\n'     "${POWERUSER_PROFILE:-default}"
     } > "${STATE_FILE}"
     chmod 600 "${STATE_FILE}"
 }

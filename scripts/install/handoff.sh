@@ -21,6 +21,12 @@ prepare_handoff() {
             [[ ${#k[@]} -gt 0 ]] && kernel_image="${k[0]}"
             [[ ${#i[@]} -gt 0 ]] && initramfs_image="${i[0]}"
             ;;
+        linux-custom)
+            mapfile -t k < <(find /mnt/boot -maxdepth 1 -type f -name 'vmlinuz-linux-custom*' 2>/dev/null | sort)
+            mapfile -t i < <(find /mnt/boot -maxdepth 1 -type f -name 'initramfs-linux-custom*.img' ! -name '*fallback*' 2>/dev/null | sort)
+            [[ ${#k[@]} -gt 0 ]] && kernel_image="${k[0]}"
+            [[ ${#i[@]} -gt 0 ]] && initramfs_image="${i[0]}"
+            ;;
         *)
             mapfile -t k < <(find /mnt/boot -maxdepth 1 -type f -name 'vmlinuz-*' 2>/dev/null | sort)
             mapfile -t i < <(find /mnt/boot -maxdepth 1 -type f -name 'initramfs-*.img' ! -name '*fallback*' 2>/dev/null | sort)
@@ -88,6 +94,13 @@ ALLOW_OFFLINE="$(state_get ALLOW_OFFLINE)"
 X_STACK="$(state_get X_STACK)"
 ENABLE_ARCH_REPOS="$(state_get ENABLE_ARCH_REPOS)"
 QUICK_INSTALL="$(state_get QUICK_INSTALL)"
+KERNEL_CONFIG_DEPTH="$(state_get KERNEL_CONFIG_DEPTH)"
+KEEP_BINARY_KERNEL="$(state_get KEEP_BINARY_KERNEL)"
+COREUTILS="$(state_get COREUTILS)"
+POWER_USER="$(state_get POWER_USER)"
+POWERUSER_PACKAGES="$(state_get POWERUSER_PACKAGES)"
+POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
+KERNEL_IMAGE="$(state_get KERNEL_IMAGE)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
