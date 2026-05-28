@@ -14,5 +14,5 @@ setup_audio() {
         none) return 0 ;;
     esac
     log_info "Installing audio packages..."
-    pacman -S --noconfirm --needed "${pkgs[@]}" || { log_warn "Failed to install audio packages."; return 1; }
+    pacman -S --noconfirm --ask=1 --needed "${pkgs[@]}" || { log_warn "Failed to install audio packages."; return 1; }
 }

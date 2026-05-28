@@ -150,7 +150,7 @@ stage_validate() {
         preflight)  return 0 ;;
         storage)    [[ -b "$(state_get DISK)" ]] ;;
         base)       [[ -x /mnt/usr/bin/bash ]] && artix-chroot /mnt pacman -Q base &>/dev/null ;;
-        poweruser)  [[ -f /mnt/etc/artix-poweruser/world.txt ]] && artix-chroot /mnt pacman -Q linux-custom &>/dev/null ;;
+        poweruser)  [[ -f /mnt/etc/artix-poweruser/world.txt ]] && [[ -f /mnt/boot/vmlinuz-linux-custom ]] ;;
         chroot)     [[ -f /mnt/etc/fstab ]] && [[ -f /mnt/etc/hostname ]] ;;
         init)       return 0 ;;
         post)       [[ -d /mnt/home || -d /mnt/root ]] ;;

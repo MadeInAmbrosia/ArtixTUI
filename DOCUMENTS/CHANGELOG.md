@@ -1,5 +1,30 @@
 # Changelog
 
+## v8.2.3.3 (2026-05-28) — ArtixForge
+
+### Fixed
+- Power User kernel install bypasses `pacman -U` for `linux-custom`, copying files directly to `/mnt`
+- `curl_resume` called with correct argument order in `fetch_sources()`
+- SKIP checksum prompt moved outside log redirection — no more invisible prompts stuck in log files
+- Broken live-watch `gum pager` removed from build stage; users directed to `tail -f` the log instead
+- `POWER_USER` variable added to `state_save()` — Quick Profile Power User state now persists correctly
+- `mkinitcpio` added to base package list; no longer missing from minimal installs
+- `tui_select_poweruser` checks `POWER_USER` state instead of `MODE` — Quick Profile + Power User works
+- Template recipe excluded from `list_recipes()` display
+- Gum help text guard added to `tui_poweruser_tweak_profile` to prevent corrupted custom profiles
+- `linux.sh` recipe version bumped to 7.0.10 (was 7.0.8 — kernel.org removed the old tarball)
+- Recipe auto-fetch runs before Power User config menu — no more empty recipe list on first run
+- `tui_poweruser_config` streamlined with Yes/No gate for detailed config vs. auto-detected defaults
+- Build timing summary uses `tui_msg_quick` instead of broken `tui_msg` with literal `\n`
+- `recoverable_error` function added to `scripts/common.sh` — users can update ArtixForge and retry on critical failures
+- `recoverable_error` integrated into `basestrap.sh`, `bootloader.sh`, and `poweruser.sh`
+- `stage_poweruser` sources `tui/core.sh` and `scripts/common.sh` for TUI function availability
+- Power User kernel recipe install creates `mkinitcpio` preset for `linux-custom`
+- `configure_bootloader` validates initramfs by file existence, not `mkinitcpio` exit code — warnings no longer fatal
+- ArtixForge self-update available from build failure menu with `exec sudo ./install` restart
+- `stage_validate` poweruser check now tests for kernel file existence instead of `pacman -Q` — resume no longer loops on direct-copy installs
+- Audio package install uses `--ask=1` to auto-resolve pipewire-jack/jack2 conflicts from KDE dependencies
+
 ## v8.2.0.0 (2026-05-28) — ArtixForge
 
 ### Added
