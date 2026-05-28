@@ -79,15 +79,8 @@ stage_poweruser() {
         remaining="$(queue_remaining)"
         log_info "[${pkg}] Building... (${remaining} remaining)"
 
-        if gum confirm --timeout=10s --affirmative="Watch" --negative="Skip" \
-            "Press Enter to watch ${pkg} build live (auto-skips in 10s)"; then
-            log_info "Build starting — tail -f ${POWERUSER_DIR}/build/logs/${pkg}.log to watch"
-            build_package "${pkg}"
-            local build_rc=$?
-        else
-            build_package "${pkg}"
-            local build_rc=$?
-        fi
+        build_package "${pkg}"
+        local build_rc=$?
 
         if [[ ${build_rc} -eq 0 ]]; then
             queue_mark "${pkg}" "done"
