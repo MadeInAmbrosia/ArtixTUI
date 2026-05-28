@@ -115,7 +115,7 @@ build_package() {
 
     log_info "  Installing ${pkgname}..."
     if [[ "${pkgname}" == "linux-custom" ]]; then
-        mkdir -p /mnt/boot /mnt/usr/lib/modules
+        mkdir -p /mnt/boot /mnt/usr/lib/modules /mnt/etc/mkinitcpio.d
         cp -a "${PKG_DESTDIR}/boot/." /mnt/boot/ 2>>"${log_file}" || {
             log_error "Failed to copy kernel to /mnt/boot"
             handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
@@ -124,6 +124,13 @@ build_package() {
         if [[ -d "${PKG_DESTDIR}/lib/modules" ]]; then
             cp -a "${PKG_DESTDIR}/lib/modules/." /mnt/usr/lib/modules/ 2>>"${log_file}" || true
         fi
+        cat > /mnt/etc/mkinitcpio.d/linux-custom.preset <<'PRESET'
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux-custom"
+PRESETS=('default')
+default_config="/etc/mkinitcpio.conf"
+default_image="/boot/initramfs-linux-custom.img"
+PRESET
     else
         if ! ( cd "${PKG_DESTDIR}" && cp -a . /mnt/ ) 2>>"${log_file}"; then
             log_error "Failed to install ${pkgname} to /mnt"
