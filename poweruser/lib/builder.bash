@@ -221,7 +221,7 @@ fetch_sources() {
         fi
 
         log_info "  Fetching ${filename}..."
-        curl_resume -L -o "${dest}" "${url}" || { log_error "Download failed: ${url}"; return 1; }
+        curl_resume "${url}" "${dest}" || { log_error "Download failed: ${url}"; return 1; }
 
         if [[ -n "${checksum}" && "${checksum}" != "SKIP" ]]; then
             local actual
