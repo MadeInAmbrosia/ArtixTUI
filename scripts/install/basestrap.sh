@@ -42,7 +42,7 @@ install_base_system() {
 
     local pkgs=(
         base base-devel linux-firmware bash nano vim "${priv_esc}"
-        git curl wget pciutils "${init_pkg}" dbus efibootmgr dosfstools
+        git curl wget pciutils "${init_pkg}" dbus efibootmgr dosfstools mkinitcpio
     )
     [[ -n "${ucode}" ]] && pkgs+=("${ucode}")
 
