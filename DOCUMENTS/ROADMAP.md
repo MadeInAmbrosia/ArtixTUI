@@ -35,6 +35,7 @@ Target: June 2026?
 - Custom template files for quick-install with saved configuration on the target system
 - Community recipe promotion workflow (COMMUNITY to OFFICIAL)
 - Recipe popularity tracking
+- Recovery mode: `repair_kernel` function to rebuild custom kernel with updated config
 - Any bug fixes from v8.2 testing
 
 # The think-tank
