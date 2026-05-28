@@ -81,12 +81,9 @@ stage_poweruser() {
 
         if gum confirm --timeout=10s --affirmative="Watch" --negative="Skip" \
             "Press Enter to watch ${pkg} build live (auto-skips in 10s)"; then
-            gum pager < <(tail -f "${POWERUSER_DIR}/build/logs/${pkg}.log" 2>/dev/null) &
-            local pager_pid=$!
+            log_info "Build starting — tail -f ${POWERUSER_DIR}/build/logs/${pkg}.log to watch"
             build_package "${pkg}"
             local build_rc=$?
-            kill "${pager_pid}" 2>/dev/null || true
-            wait "${pager_pid}" 2>/dev/null || true
         else
             build_package "${pkg}"
             local build_rc=$?

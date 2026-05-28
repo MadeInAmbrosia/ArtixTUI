@@ -59,6 +59,18 @@ build_package() {
     export BUILD_DIR="${pkg_work}"
     export SOURCES_DIR PKG_DESTDIR
 
+    local has_skip=0
+    for src in "${sources[@]}"; do
+        local checksum="${src#*|}"; checksum="${checksum%%|*}"
+        [[ "${checksum}" == "SKIP" ]] && has_skip=1 && break
+    done
+    if [[ ${has_skip} -eq 1 ]]; then
+        log_warn "Some sources for ${pkgname} have no checksums — source integrity NOT verified"
+        if ! tui_yesno "Unverified Sources" "${pkgname} has sources without SHA256 checksums. Continue anyway?"; then
+            die "User aborted due to missing checksums"
+        fi
+    fi
+
     if ! fetch_sources "${recipe_name}" >> "${log_file}" 2>&1; then
         handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
         return $?
@@ -229,9 +241,6 @@ fetch_sources() {
             [[ "${actual}" == "${checksum}" ]] || { log_error "Checksum mismatch: ${filename}"; return 1; }
         elif [[ "${checksum}" == "SKIP" ]]; then
             log_warn "Checksum verification SKIPPED for ${filename} — source integrity NOT verified"
-            if ! tui_yesno "Unverified Source" "${filename} has no checksum. Continue anyway?"; then
-                die "User aborted due to missing checksum"
-            fi
         fi
     done
 }
