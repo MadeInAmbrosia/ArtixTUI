@@ -112,11 +112,22 @@ build_package() {
     fi
 
     local artifact="${ARTIFACTS_DIR}/${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
+    mkdir -p "${PKG_DESTDIR}/.PKGINFO"
+    cat > "${PKG_DESTDIR}/.PKGINFO" <<EOF
+pkgname = ${pkgname}
+pkgver = ${pkgver}-${pkgrel}
+pkgdesc = ${desc:-Source-built package}
+url = ${url:-}
+arch = x86_64
+license = custom
+EOF
     if ! ( cd "${PKG_DESTDIR}" && tar --zstd -cf "${artifact}" . 2>/dev/null ); then
         log_error "Failed to create package archive"
+        rm -rf "${PKG_DESTDIR}/.PKGINFO"
         handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
         return 1
     fi
+    rm -rf "${PKG_DESTDIR}/.PKGINFO"
 
     log_info "  Installing ${pkgname}..."
     if ! cp "${artifact}" /mnt/root/ 2>>"${log_file}"; then
