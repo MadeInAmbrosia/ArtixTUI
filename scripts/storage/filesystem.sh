@@ -56,8 +56,7 @@ create_filesystems() {
     esac
 
     log_info "Formatting EFI partition..."
-    mkfs.fat -F32 "${efi_part}" || die 'failed to create FAT32 EFI filesystem'
-
+    mkfs.fat -F32 "${efi_part}" || recoverable_error 'Failed to create FAT32 EFI filesystem – update might fix this'
     partprobe "${disk}" || true
     udevadm settle || true
 

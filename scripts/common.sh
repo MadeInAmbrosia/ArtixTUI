@@ -220,3 +220,37 @@ curl_resume() {
     curl -L -o "${out}" "${url}" || { log_error "Download failed: ${url}"; return 1; }
     return 0
 }
+
+recoverable_error() {
+    local msg="${1}"
+    log_error "${msg}"
+    while true; do
+        local action
+        action=$(tui_menu "Error" "${msg}" \
+            "Retry" \
+            "Update ArtixForge and retry" \
+            "Abort") || exit 1
+
+        case "${action}" in
+            "Retry")
+                return 0
+                ;;
+            "Update ArtixForge and retry")
+                log_info "Updating ArtixForge from GitHub..."
+                local update_dir="/tmp/artixforge-update"
+                rm -rf "${update_dir}"
+                git clone --depth 1 https://github.com/realvolk/ArtixForge.git "${update_dir}" || {
+                    log_warn "Update failed – check network"
+                    continue
+                }
+                cp -a "${update_dir}/." "${BASE_DIR}/"
+                rm -rf "${update_dir}"
+                log_info "ArtixForge updated. Restarting installer – use Resume to continue."
+                exec sudo "${BASE_DIR}/install"
+                ;;
+            "Abort")
+                die "Installation aborted by user"
+                ;;
+        esac
+    done
+}

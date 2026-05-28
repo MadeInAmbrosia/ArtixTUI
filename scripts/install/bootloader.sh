@@ -28,7 +28,11 @@ EOF
     fi
 
     log_info "Generating initramfs..."
-    artix-chroot /mnt mkinitcpio -P || die 'failed to generate initramfs'
+    artix-chroot /mnt mkinitcpio -P || true
+    if ! compgen -G "/mnt/boot/initramfs-*.img" >/dev/null 2>&1; then
+        recoverable_error 'No initramfs image was created – updating ArtixForge may fix this'
+    fi
+    log_info "Initramfs generation complete"
 
     local root_device
     root_device=$(artix-chroot /mnt findmnt -n -o SOURCE /) || true
@@ -65,13 +69,11 @@ EOF
                 fi
             fi
 
-            artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX || die 'grub-install failed'
-            if [[ -n "${root_param}" ]]; then
+            artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX || recoverable_error 'grub-install failed – updating ArtixForge may help'            if [[ -n "${root_param}" ]]; then
                 artix-chroot /mnt sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"${root_param}\"|" /etc/default/grub
             fi
             log_info "Generating GRUB configuration..."
-            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg || die 'grub-mkconfig failed'
-            ;;
+            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg || recoverable_error 'grub-mkconfig failed – updating ArtixForge may fix this'            ;;
         refind)
             log_info "Installing rEFInd..."
             findmnt -rn -o FSTYPE /mnt/boot/efi | grep -qx 'vfat' || die 'EFI partition not mounted as vfat'

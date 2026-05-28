@@ -10,8 +10,8 @@ tui_build_timing_summary() {
         local icon="✓"
         [[ "${status}" == "skipped" ]] && icon="→"
         [[ "${status}" == "failed" ]] && icon="✗"
-        summary+="${icon} ${pkg} — ${duration}s (${status})\n"
+        summary+="${icon} ${pkg} — ${duration}s (${status})"$'\n'
     done < "${timing_file}"
 
-    tui_msg "Build Timing Summary" "${summary}"
+    tui_msg_quick "Build Timing Summary" "${summary}"
 }

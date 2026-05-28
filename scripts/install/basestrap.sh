@@ -257,7 +257,7 @@ EOF
         | while IFS= read -r line; do
             log_info "${line}"
         done; then
-        die "basestrap failed"
+        recoverable_error "basestrap failed – the installer can update itself and retry"
     fi
     [[ -x /mnt/bin/bash ]] || die "/mnt/bin/bash missing after basestrap"
     [[ -f /mnt/etc/os-release ]] || die "target root invalid after basestrap"

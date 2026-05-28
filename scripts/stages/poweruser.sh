@@ -104,7 +104,7 @@ stage_poweruser() {
                     continue
                 fi
             fi
-            die "Build failed for ${pkg}"
+            recoverable_error "Build failed for ${pkg} – updating ArtixForge may resolve this"
         fi
     done
 
