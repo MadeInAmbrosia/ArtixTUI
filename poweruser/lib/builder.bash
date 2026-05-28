@@ -70,6 +70,7 @@ build_package() {
             die "User aborted due to missing checksums"
         fi
     fi
+    log_info "Build started for ${pkgname} — tail -f ${LOGS_DIR}/${recipe_name}.log to watch"
 
     if ! fetch_sources "${recipe_name}" >> "${log_file}" 2>&1; then
         handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
