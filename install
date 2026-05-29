@@ -69,10 +69,12 @@ check_installer_version() {
 }
 
 verify_installer_layout() {
-    local required_files=( common.sh state.sh recovery.sh kernels.sh )
-    local required_dirs=( tui storage install post stages )
+    local required_files=( common.sh state.sh kernels.sh )
+    local required_dirs=( tui storage install post stages recovery )
     for file in "${required_files[@]}"; do [[ -f "${SCRIPT_DIR}/${file}" ]] || return 1; done
     for dir in "${required_dirs[@]}"; do [[ -d "${SCRIPT_DIR}/${dir}" ]] || return 1; done
+    [[ -d "${SCRIPT_DIR}/tui/menus" ]] || return 1
+    [[ -d "${POWERUSER_DIR:-${BASE_DIR}/poweruser}/tui/menup" ]] || return 1
     return 0
 }
 
