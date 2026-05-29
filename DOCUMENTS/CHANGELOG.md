@@ -1,5 +1,18 @@
 # Changelog
 
+## v8.2.3.4 (2026-05-29) — ArtixForge
+
+### Changed
+- Kernel recipe default config method switched to `localmodconfig` — compiles only currently loaded modules, eliminating dependency guessing and `olddefconfig` symbol dropping
+- `localmodconfig` added as recommended kernel config depth option in Power User TUI
+- `USB_HID` and `VIRTIO_BLK` added as modules to kernel recipe and `kconfig.bash` for initramfs compatibility
+- Fallback manual config path uses `yes "" | make oldconfig` to prevent interactive prompts hanging automated builds
+
+### Fixed
+- `BLK_DEV` symbol added to kernel recipe dependency chain — `VIRTIO_BLK` was silently dropped without it
+- `VIRTIO_PCI` transport added to kernel recipe and `kconfig.bash` `ensure_boot_essentials()`
+- Audio package install split — `pipewire-jack` installed separately to avoid KDE `jack2` conflict loop
+
 ## v8.2.3.3 (2026-05-28) — ArtixForge
 
 ### Fixed

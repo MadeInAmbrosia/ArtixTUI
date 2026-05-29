@@ -9,8 +9,7 @@ This roadmap is updated regularly based on:
 
 *Version numbers are not strict release targets. Features may ship earlier or later depending on development pace, tester feedback, and available time. This roadmap reflects general direction, not fixed deadlines.*
 
-## v8.2 — Filesystem & Security Hardening
-Target: Late May / Early June 2026 — Completed 2026-05-28
+## v8.2 — Filesystem & Security Hardening (DONE!)
 
 - BTRFS snapshot integration with snapper + GRUB boot menu entries ([Suggested on the Artix forums](https://forum.artixlinux.org/index.php/topic,9865.msg59194.html#msg59194))
 - Replaced `ufw` with `firewalld`
@@ -23,11 +22,12 @@ Target: Late May / Early June 2026 — Completed 2026-05-28
 - vxwm window manager support (dwm fork, compiled from source)
 - Volk's Personal Quick Profile (dinit, KDE minimal, LightDM, source-built kernel)
 - LightDM support for KDE Plasma with automatic SDDM replacement
+- Kernel recipe switched to `localmodconfig` — reliable module detection, no more dependency guessing
 - Project renamed to ArtixForge
 - Community recipes repository renamed to ArtixForge-recipes
 
-## v8.2.x — Community & Polish
-Target: June 2026?
+## v8.2.x? — Community & Polish
+Target: June 2026
 
 - Screenshots added to README
 - Re-adding a new image / logo to the README

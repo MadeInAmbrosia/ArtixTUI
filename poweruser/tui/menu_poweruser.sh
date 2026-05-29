@@ -124,10 +124,12 @@ tui_poweruser_select_packages() {
 tui_poweruser_kernel_depth() {
     local depth
     depth=$(tui_menu "Kernel Configuration" "How much control do you want?" \
+        "localmodconfig – compile only currently loaded modules (recommended)" \
         "Auto-detection – hardware pre-filled, review & adjust" \
         "Manual – blank checklist, pick everything yourself" \
         "menuconfig – full ncurses kernel editor") || return 1
     case "${depth}" in
+        localmodconfig*) state_set KERNEL_CONFIG_DEPTH "localmodconfig" ;;
         Auto*)   state_set KERNEL_CONFIG_DEPTH "auto" ;;
         Manual*) state_set KERNEL_CONFIG_DEPTH "manual" ;;
         menuconfig*) state_set KERNEL_CONFIG_DEPTH "menuconfig" ;;
@@ -439,7 +441,7 @@ tui_poweruser_config() {
     else
         state_set COREUTILS "gnu"
         [[ -z "$(state_get KEEP_BINARY_KERNEL)" ]] && state_set KEEP_BINARY_KERNEL "yes"
-        state_set KERNEL_CONFIG_DEPTH "auto"
+        state_set KERNEL_CONFIG_DEPTH "localmodconfig"
         if [[ -z "$(state_get POWERUSER_PACKAGES)" ]]; then
             state_set POWERUSER_PACKAGES "linux"
         fi
