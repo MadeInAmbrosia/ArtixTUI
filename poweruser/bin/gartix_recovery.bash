@@ -20,7 +20,6 @@ gartix_recovery_status() {
                 issues=$((issues + 1))
             fi
         else
-            # generic check: look for a file from the package in /usr
             if ! compgen -G "/usr/share/${pkgname}*" >/dev/null 2>&1 && ! compgen -G "/usr/lib/${pkgname}*" >/dev/null 2>&1; then
                 log_warn "${pkgname}: installed files may be missing"
                 issues=$((issues + 1))
