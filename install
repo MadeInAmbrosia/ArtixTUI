@@ -101,9 +101,8 @@ fi
 
 source "${SCRIPT_DIR}/common.sh"
 source "${SCRIPT_DIR}/state.sh"
-source "${SCRIPT_DIR}/recovery.sh"
 source "${SCRIPT_DIR}/kernels.sh"
-source_tree tui storage install post stages
+source_tree tui storage install post stages recovery
 
 MODE=""
 DEBUG="false"

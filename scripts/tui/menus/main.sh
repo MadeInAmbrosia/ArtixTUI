@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+tui_select_disk() {
+    local disk disks=()
+    while IFS=' ' read -r name size model; do
+        disks+=("${name} - ${size} (${model:-Unknown})")
+    done < <(lsblk -dpno NAME,SIZE,MODEL -e 7)
+
+    disk=$(tui_menu "Disk Selection" "Choose target drive:" "${disks[@]}") || return 1
+    disk="${disk%% *}"
+    state_set DISK "${disk}"
+}
+
+tui_select_init() {
+    local init
+    init=$(tui_menu "Init System" "Select init system:" \
+        "OpenRC" "runit" "dinit" "s6") || return 1
+    state_set INIT "${init,,}"
+}
+
+tui_select_filesystem() {
+    local fs
+    local fs_options=("ext4" "btrfs" "xfs" "f2fs" "bcachefs" "exfat")
+
+    local live_kernel_pkg=""
+    case "$(uname -r)" in
+        *lts*)       live_kernel_pkg="linux-lts" ;;
+        *zen*)       live_kernel_pkg="linux-zen" ;;
+        *hardened*)  live_kernel_pkg="linux-hardened" ;;
+        *)           live_kernel_pkg="linux" ;;
+    esac
+
+    if grep -q '^\[archzfs\]' /etc/pacman.conf 2>/dev/null \
+        && pacman -Sl archzfs 2>/dev/null | grep -q "zfs-${live_kernel_pkg} "; then
+        fs_options+=("zfs")
+    fi
+
+    fs=$(tui_menu "Filesystem" "Select filesystem:" "${fs_options[@]}") || return 1
+
+    if [[ "${fs}" == "zfs" ]]; then
+        tui_msg_quick "ZFS Selected" "ZFS likes to break. You're on your own. Good luck!"
+    elif [[ "${fs}" == "bcachefs" ]]; then
+        tui_msg "Unavailable" "Bcachefs-tools is temporarily disabled for stability reasons (Rust rewrite W.I.P)."
+        tui_select_filesystem
+        return
+    fi
+
+    state_set FS_TYPE "${fs}"
+}
+
+tui_select_bootloader() {
+    local bl
+    bl=$(tui_menu "Bootloader" "Select bootloader:" \
+        "GRUB" "rEFInd" "EFIStub") || return 1
+    state_set BOOTLOADER "${bl,,}"
+}
+
+tui_select_uki() {
+    if tui_yesno "UKI" "Generate a Unified Kernel Image (UKI)?"; then
+        state_set GENERATE_UKI "yes"
+    else
+        state_set GENERATE_UKI "no"
+    fi
+}
+
+tui_select_kernel() {
+    local k
+    k=$(tui_menu "Kernel" "Select kernel:" \
+        "linux" "linux-zen" "linux-lts" "linux-hardened" "linux-libre" \
+        "linux-cachyos-bore" "linux-bazzite-bin" "xanmod" "tkg") || return 1
+    state_set KERNEL_CHOICE "${k}"
+}
+
+tui_select_theme() {
+    local theme
+    while true; do
+        theme=$(tui_menu "Theme" "Select colour scheme:" \
+            "Gentoo (default)" \
+            "Artix" \
+            "Jet Black" \
+            "Mono" \
+            "Retro") || break
+        case "${theme}" in
+            "Gentoo (default)")
+                GUM_TITLE_COLOR=212; GUM_ACCENT_COLOR=34 ;;
+            Artix*)
+                GUM_TITLE_COLOR=39; GUM_ACCENT_COLOR=117 ;;
+            "Jet Black")
+                GUM_TITLE_COLOR=245; GUM_ACCENT_COLOR=196 ;;
+            Mono*)
+                GUM_TITLE_COLOR=250; GUM_ACCENT_COLOR=255 ;;
+            Retro*)
+                GUM_TITLE_COLOR=3; GUM_ACCENT_COLOR=11 ;;
+        esac
+
+        state_set GUM_TITLE_COLOR "${GUM_TITLE_COLOR}"
+        state_set GUM_ACCENT_COLOR "${GUM_ACCENT_COLOR}"
+
+        tui_msg "Theme Preview" "This is how titles and messages will look."
+        if tui_yesno "Keep Theme?" "Keep this theme?"; then
+            break
+        fi
+    done
+}
+
+tui_collect_install_config() {
+    tui_select_theme
+    tui_select_disk
+    if tui_quick_install; then
+        if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
+            tui_select_poweruser
+        fi
+        return
+    fi
+    tui_select_init
+    tui_select_filesystem
+    tui_select_btrfs_layout
+    tui_select_bootloader
+    tui_select_uki
+    tui_select_kernel
+    tui_select_poweruser
+    tui_select_microcode
+    tui_select_desktop
+    tui_select_display_manager
+    tui_select_xstack
+    tui_select_network_stack
+    tui_select_audio_stack
+    tui_select_shell
+    tui_select_priv_escalation
+    tui_select_extras
+    tui_select_luks
+    tui_select_arch_repos
+    tui_select_offline_mode
+    tui_select_hostname
+    tui_select_timezone
+    tui_select_locale
+    tui_select_keyboard_layout
+    tui_select_username
+    tui_select_user_password
+    tui_select_root_password
+    tui_show_sanity_warnings
+}

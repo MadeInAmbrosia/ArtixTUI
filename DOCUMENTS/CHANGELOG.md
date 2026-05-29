@@ -1,5 +1,31 @@
 # Changelog
 
+## v8.3.0.0 (2026-05-29) — ArtixForge
+
+### Added
+- Three new Quick Install profiles: Gaming, Development, Media
+- Custom profile loader — source saved configurations from file
+- Quick Profile auto-save to `/etc/artixforge-profile.conf` after installation
+- `gartix recovery` command for checking and repairing source-built packages
+- `repair_kernel` function in recovery mode — rebuilds custom kernel with latest recipe
+- Kernel repair available from build failure menu and `gartix recovery`
+- `gartix_recovery.bash` module for post-install package repair
+
+### Changed
+- `scripts/tui/menus/` split into 9 focused sub-files
+- `poweruser/tui/menu_poweruser.sh` split into 6 sub-files under `menup/`
+- `scripts/recovery/` split into `core.sh`, `detect.sh`, `repair.sh`
+- `gartix` split into `gartix`, `gartix_common.bash`, `gartix_cli.bash`, `gartix_tui.bash`
+- `stage_poweruser` copies all `bin/` files instead of single `gartix` binary
+- Kernel config depth defaults to `localmodconfig` in Quick Profiles and "No" path
+- Project structure trees updated in README.md and poweruser/README.md
+
+### Fixed
+- `stage_validate` poweruser check uses kernel file existence, not `pacman -Q`
+- Build timing summary uses `tui_msg_quick` instead of broken `tui_msg`
+- Audio install split to avoid KDE `jack2`/`pipewire-jack` conflict
+- Kernel recipe VirtIO dependency chain complete (`BLOCK`, `BLK_DEV`, `VIRTIO`, `VIRTIO_PCI`, `VIRTIO_BLK`)
+
 ## v8.2.3.4 (2026-05-29) — ArtixForge
 
 ### Changed

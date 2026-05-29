@@ -1,73 +1,23 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail;
-
-readonly ROOT="/mnt";
-
-recovery_detect_install() {
-    mountpoint -q "${ROOT}" || return 1
-    [[ -d "${ROOT}/etc" ]] || return 1
-    return 0
-}
-
-recovery_import_state() {
-    reconstruct_state_from_system
-}
-
-validate_recovery_root() {
-    mountpoint -q "${ROOT}" \
-        || die "recovery root is not mounted: ${ROOT}"
-
-    [[ -d "${ROOT}/etc" ]] \
-        || die "missing ${ROOT}/etc"
-
-    [[ -d "${ROOT}/var/lib/pacman" ]] \
-        || die "missing pacman database"
-}
-
-pacman_root_has() {
-    [[ -d "${ROOT}/var/lib/pacman/local" ]] \
-        || return 1
-
-    pacman \
-        --root "${ROOT}" \
-        -Qq "${1}" \
-        &>/dev/null
-}
-
-service_exists() {
-    local path="${1}";
-
-    [[ -e "${ROOT}/${path}" ]]
-}
+set -Eeuo pipefail
 
 detect_init() {
     if [[ -d "${ROOT}/etc/runit" ]]; then
         state_set INIT runit
-
     elif [[ -d "${ROOT}/etc/dinit.d" ]]; then
         state_set INIT dinit
-
     elif [[ -d "${ROOT}/etc/s6" ]]; then
         state_set INIT s6
-
     else
         state_set INIT openrc
     fi
 }
 
 detect_filesystem() {
-    local fs;
-
-    fs="$(
-        findmnt -no FSTYPE "${ROOT}" \
-            2>/dev/null \
-            || true
-    )";
-
-    [[ -n "${fs}" ]] \
-        || fs='ext4';
-
-    state_set FS_TYPE "${fs}";
+    local fs
+    fs="$(findmnt -no FSTYPE "${ROOT}" 2>/dev/null || true)"
+    [[ -n "${fs}" ]] || fs='ext4'
+    state_set FS_TYPE "${fs}"
 }
 
 detect_zfs() {
@@ -85,16 +35,10 @@ detect_lvm() {
 }
 
 detect_bootloader() {
-    if [[ -d "${ROOT}/boot/grub" ]] \
-        || [[ -f "${ROOT}/boot/grub/grub.cfg" ]]; then
-
+    if [[ -d "${ROOT}/boot/grub" ]] || [[ -f "${ROOT}/boot/grub/grub.cfg" ]]; then
         state_set BOOTLOADER grub
-
-    elif [[ -d "${ROOT}/boot/EFI/refind" ]] \
-        || [[ -f "${ROOT}/boot/refind_linux.conf" ]]; then
-
+    elif [[ -d "${ROOT}/boot/EFI/refind" ]] || [[ -f "${ROOT}/boot/refind_linux.conf" ]]; then
         state_set BOOTLOADER refind
-
     else
         state_set BOOTLOADER efistub
     fi
@@ -108,133 +52,23 @@ detect_uki() {
     fi
 }
 
-repair_fstab() {
-    local issues
-    issues=$(state_get FSTAB_ISSUES none)
-    if [[ "${issues}" == "missing" ]]; then
-        log_warn "fstab is missing. Regenerating..."
-        if tui_yesno "Repair fstab" "Regenerate fstab from current mounts?"; then
-            fstabgen -U /mnt > /mnt/etc/fstab
-            log_info "fstab regenerated."
-        fi
-    elif [[ "${issues}" != "none" ]]; then
-        log_warn "fstab has stale UUIDs: ${issues}"
-        if tui_yesno "Repair fstab" "Regenerate fstab to fix UUIDs?"; then
-            fstabgen -U /mnt > /mnt/etc/fstab
-            log_info "fstab regenerated."
-        fi
-    fi
-}
-
-repair_pacman() {
-    local issues
-    issues=$(state_get PACMAN_ISSUES none)
-    if [[ "${issues}" =~ stale-lock ]]; then
-        log_warn "Pacman lock found."
-        if tui_yesno "Remove lock" "Remove stale pacman lock?"; then
-            rm -f /mnt/var/lib/pacman/db.lck
-            log_info "Lock removed."
-        fi
-    fi
-    if [[ "${issues}" =~ base-missing ]]; then
-        log_warn "Base system packages missing or corrupted."
-        if tui_yesno "Reinstall base" "Reinstall base packages?"; then
-            basestrap /mnt base base-devel
-            log_info "Base packages reinstalled."
-        fi
-    fi
-    if [[ "${issues}" =~ broken-pkgs ]]; then
-        log_warn "Some packages have missing files. Run 'pacman -Qk' to list them."
-    fi
-}
-
-repair_boot() {
-    local issues
-    issues=$(state_get BOOT_ISSUES none)
-    if [[ "${issues}" =~ no-kernel ]]; then
-        log_warn "Kernel image missing from /boot."
-        if tui_yesno "Reinstall kernel" "Reinstall kernel package?"; then
-            local kernel_choice kernel_pkg
-            kernel_choice=$(state_get KERNEL_CHOICE linux)
-            case "${kernel_choice}" in
-                linux)          kernel_pkg="linux" ;;
-                linux-zen)      kernel_pkg="linux-zen" ;;
-                linux-lts)      kernel_pkg="linux-lts" ;;
-                linux-hardened) kernel_pkg="linux-hardened" ;;
-                *)              kernel_pkg="linux" ;;
-            esac
-            artix-chroot /mnt pacman -S --noconfirm "${kernel_pkg}" "${kernel_pkg}-headers"
-        fi
-    fi
-    if [[ "${issues}" =~ no-initramfs ]]; then
-        log_warn "Initramfs missing."
-        if tui_yesno "Regenerate initramfs" "Run mkinitcpio?"; then
-            artix-chroot /mnt mkinitcpio -P
-        fi
-    fi
-    if [[ "${issues}" =~ no-efi-entry ]]; then
-        log_warn "No EFI boot entry for Artix."
-        if tui_yesno "Reinstall bootloader" "Reinstall GRUB?"; then
-            artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX
-            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
-        fi
-    fi
-}
-
-repair_system() {
-    repair_fstab
-    repair_pacman
-    repair_boot
-    if [[ -x /mnt/usr/bin/mkinitcpio ]]; then
-        artix-chroot /mnt mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
-    fi
-    log_info "Repair complete. You may now reboot."
-}
-
-detect_rootkits() {
-    if ! command -v rkhunter &>/dev/null; then
-        pacman -S --noconfirm rkhunter
-    fi
-    rkhunter --check --skip-keypress 2>&1 | tee /tmp/rkhunter.log
-    if grep -q 'Warning' /tmp/rkhunter.log; then
-        log_warn "Rootkit warnings found. Review /tmp/rkhunter.log"
-    else
-        log_info "No rootkit warnings detected."
-    fi
-}
-
 detect_kernel() {
     if pacman_root_has linux-zen; then
         state_set KERNEL_CHOICE linux-zen
-
     elif pacman_root_has linux-lts; then
         state_set KERNEL_CHOICE linux-lts
-
     elif pacman_root_has linux-hardened; then
         state_set KERNEL_CHOICE linux-hardened
-
     elif pacman_root_has linux-libre; then
         state_set KERNEL_CHOICE linux-libre
-
     elif pacman_root_has linux-cachyos-bore; then
         state_set KERNEL_CHOICE linux-cachyos-bore
-
     elif pacman_root_has linux-bazzite-bin; then
         state_set KERNEL_CHOICE linux-bazzite-bin
-
-    elif pacman_root_has linux-xanmod-x64v4 \
-        || pacman_root_has linux-xanmod-x64v3 \
-        || pacman_root_has linux-xanmod-x64v2 \
-        || pacman_root_has linux-xanmod; then
-
+    elif pacman_root_has linux-xanmod-x64v4 || pacman_root_has linux-xanmod-x64v3 || pacman_root_has linux-xanmod-x64v2 || pacman_root_has linux-xanmod; then
         state_set KERNEL_CHOICE xanmod
-
-    elif [[ -d "${ROOT}/opt/linux-tkg" ]] \
-        || pacman_root_has linux-tkg \
-        || pacman_root_has linux-tkg-bore; then
-
+    elif [[ -d "${ROOT}/opt/linux-tkg" ]] || pacman_root_has linux-tkg || pacman_root_has linux-tkg-bore; then
         state_set KERNEL_CHOICE tkg
-
     else
         state_set KERNEL_CHOICE linux
     fi
@@ -243,39 +77,26 @@ detect_kernel() {
 detect_desktop() {
     if pacman_root_has mangowm; then
         state_set WM_DE mango
-
     elif pacman_root_has hyprland; then
         state_set WM_DE hyprland
-
     elif pacman_root_has niri; then
         state_set WM_DE niri
-
     elif pacman_root_has sway; then
         state_set WM_DE sway
-
     elif pacman_root_has xfce4; then
         state_set WM_DE xfce4
-
     elif pacman_root_has lxqt; then
         state_set WM_DE lxqt
-
-    elif pacman_root_has lxde-common \
-        || pacman_root_has lxde; then
-
+    elif pacman_root_has lxde-common || pacman_root_has lxde; then
         state_set WM_DE lxde
-
     elif pacman_root_has i3-wm; then
         state_set WM_DE i3wm
-
     elif pacman_root_has dwm; then
         state_set WM_DE dwm
-
     elif pacman_root_has vxwm || [[ -f "${ROOT}/usr/local/bin/vxwm" ]]; then
         state_set WM_DE vxwm
-
     elif pacman_root_has icewm; then
         state_set WM_DE icewm
-
     elif pacman_root_has plasma-desktop; then
         state_set WM_DE kde
         if pacman_root_has kde-applications; then
@@ -285,7 +106,6 @@ detect_desktop() {
         else
             state_set KDE_PROFILE desktop
         fi
-
     else
         state_set WM_DE none
     fi
@@ -294,10 +114,8 @@ detect_desktop() {
 detect_display_manager() {
     if pacman_root_has sddm; then
         state_set DISPLAY_MANAGER sddm
-
     elif pacman_root_has lightdm; then
         state_set DISPLAY_MANAGER lightdm
-
     else
         state_set DISPLAY_MANAGER none
     fi
@@ -306,10 +124,8 @@ detect_display_manager() {
 detect_xstack() {
     if pacman_root_has xlibre-xserver; then
         state_set X_STACK xlibre
-
     elif pacman_root_has xorg-server; then
         state_set X_STACK xorg
-
     else
         state_set X_STACK none
     fi
@@ -326,15 +142,10 @@ detect_seat_manager() {
 detect_network_stack() {
     if pacman_root_has networkmanager; then
         state_set NETWORK_STACK networkmanager
-
     elif pacman_root_has connman; then
         state_set NETWORK_STACK connman
-
-    elif pacman_root_has dhcpcd \
-        || pacman_root_has iwd; then
-
+    elif pacman_root_has dhcpcd || pacman_root_has iwd; then
         state_set NETWORK_STACK dhcpcd+iwd
-
     else
         state_set NETWORK_STACK none
     fi
@@ -343,10 +154,8 @@ detect_network_stack() {
 detect_audio_stack() {
     if pacman_root_has pipewire; then
         state_set AUDIO_STACK pipewire
-
     elif pacman_root_has pulseaudio; then
         state_set AUDIO_STACK pulseaudio
-
     else
         state_set AUDIO_STACK none
     fi
@@ -355,52 +164,34 @@ detect_audio_stack() {
 detect_ucode() {
     if pacman_root_has intel-ucode; then
         state_set CPU_UCODE intel
-
     elif pacman_root_has amd-ucode; then
         state_set CPU_UCODE amd
-
     else
         state_set CPU_UCODE none
     fi
 }
 
 detect_user_shell() {
-    local shell;
-
-    shell="$(
-        awk -F: \
-            '$3 >= 1000 && $1 != "nobody" {print $7; exit}' \
-            "${ROOT}/etc/passwd" \
-            2>/dev/null \
-            || true
-    )";
-
-    shell="${shell##*/}";
-
+    local shell
+    shell="$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $7; exit}' "${ROOT}/etc/passwd" 2>/dev/null || true)"
+    shell="${shell##*/}"
     case "${shell}" in
-        bash|zsh|fish)
-            ;;
-        *)
-            shell='bash'
-            ;;
+        bash|zsh|fish) ;;
+        *) shell='bash' ;;
     esac
-
-    state_set USER_SHELL "${shell}";
+    state_set USER_SHELL "${shell}"
 }
 
 detect_extras() {
-    local extras=();
-
+    local extras=()
     pacman_root_has git && extras+=(git)
     pacman_root_has flatpak && extras+=(flatpak)
     pacman_root_has fastfetch && extras+=(fastfetch)
     pacman_root_has firewalld && extras+=(firewalld)
     pacman_root_has bluez && extras+=(bluez)
-
     if pacman_root_has zram-generator || pacman_root_has zramen; then
         extras+=(zram-tools)
     fi
-
     pacman_root_has fzf && extras+=(fzf)
     pacman_root_has zoxide && extras+=(zoxide)
     pacman_root_has starship && extras+=(starship)
@@ -411,7 +202,6 @@ detect_extras() {
     pacman_root_has tmux && extras+=(tmux)
     pacman_root_has usb_modeswitch && extras+=(usb_modeswitch)
     pacman_root_has rsvc && extras+=(rsvc)
-
     pacman_root_has nano && extras+=(nano)
     pacman_root_has vim && extras+=(vim)
     pacman_root_has neovim && extras+=(neovim)
@@ -429,26 +219,16 @@ detect_extras() {
     pacman_root_has foot && extras+=(foot)
     pacman_root_has mpv && extras+=(mpv)
     pacman_root_has feh && extras+=(feh)
-
-    state_set EXTRAS "${extras[*]}";
+    state_set EXTRAS "${extras[*]}"
 }
 
 detect_repositories() {
-    if grep -Eq \
-        '^\[(core|extra|multilib)\]' \
-        "${ROOT}/etc/pacman.conf" \
-        2>/dev/null; then
-
+    if grep -Eq '^\[(core|extra|multilib)\]' "${ROOT}/etc/pacman.conf" 2>/dev/null; then
         state_set ENABLE_ARCH_REPOS yes
-
     else
         state_set ENABLE_ARCH_REPOS no
     fi
-
-    if grep -q '^\[chaotic-aur\]' \
-        "${ROOT}/etc/pacman.conf" \
-        2>/dev/null; then
-
+    if grep -q '^\[chaotic-aur\]' "${ROOT}/etc/pacman.conf" 2>/dev/null; then
         state_set HAS_CHAOTIC yes
     else
         state_set HAS_CHAOTIC no
@@ -456,103 +236,51 @@ detect_repositories() {
 }
 
 detect_username() {
-    local user;
-
-    user="$(
-        awk -F: \
-            '$3 >= 1000 && $1 != "nobody" {print $1; exit}' \
-            "${ROOT}/etc/passwd" \
-            2>/dev/null \
-            || true
-    )";
-
-    [[ -n "${user}" ]] \
-        || user='artix';
-
-    state_set USER_NAME "${user}";
+    local user
+    user="$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1; exit}' "${ROOT}/etc/passwd" 2>/dev/null || true)"
+    [[ -n "${user}" ]] || user='artix'
+    state_set USER_NAME "${user}"
 }
 
 detect_luks() {
-    local source;
-    local parent;
-
-    source="$(
-        findmnt -no SOURCE "${ROOT}" \
-            2>/dev/null \
-            || true
-    )";
-
-    [[ -n "${source}" ]] \
-        || return 0;
-
-    parent="$(
-        lsblk -no PKNAME "${source}" \
-            2>/dev/null \
-            || true
-    )";
-
-    if [[ -n "${parent}" ]] \
-        && cryptsetup isLuks "/dev/${parent}" \
-            &>/dev/null; then
-
+    local source parent
+    source="$(findmnt -no SOURCE "${ROOT}" 2>/dev/null || true)"
+    [[ -n "${source}" ]] || return 0
+    parent="$(lsblk -no PKNAME "${source}" 2>/dev/null || true)"
+    if [[ -n "${parent}" ]] && cryptsetup isLuks "/dev/${parent}" &>/dev/null; then
         state_set USE_LUKS yes
-
     else
         state_set USE_LUKS no
     fi
 }
 
 detect_disk() {
-    local source;
-    local pkname;
-    local disk_pkname;
-
-    source="$(
-        findmnt -no SOURCE "${ROOT}" \
-            2>/dev/null \
-            || true
-    )";
-
-    [[ -n "${source}" ]] \
-        || return 0;
-
-    pkname="$(
-        lsblk -no PKNAME "${source}" \
-            2>/dev/null \
-            || true
-    )";
-
+    local source pkname disk_pkname
+    source="$(findmnt -no SOURCE "${ROOT}" 2>/dev/null || true)"
+    [[ -n "${source}" ]] || return 0
+    pkname="$(lsblk -no PKNAME "${source}" 2>/dev/null || true)"
     if [[ -n "${pkname}" ]]; then
-        disk_pkname="$(
-            lsblk -no PKNAME "/dev/${pkname}" \
-                2>/dev/null \
-                || true
-        )";
-
+        disk_pkname="$(lsblk -no PKNAME "/dev/${pkname}" 2>/dev/null || true)"
         if [[ -n "${disk_pkname}" ]]; then
-            state_set DISK "/dev/${disk_pkname}";
+            state_set DISK "/dev/${disk_pkname}"
         else
-            state_set DISK "/dev/${pkname}";
+            state_set DISK "/dev/${pkname}"
         fi
     else
-        state_set DISK "${source}";
+        state_set DISK "${source}"
     fi
 }
 
 detect_display_protocol() {
     if [[ -d "${ROOT}/usr/share/wayland-sessions" ]]; then
         state_set DISPLAY_PROTOCOL wayland
-
     elif [[ -d "${ROOT}/usr/share/xsessions" ]]; then
         state_set DISPLAY_PROTOCOL x11
     fi
 }
 
 detect_nvidia() {
-    if pacman_root_has nvidia \
-        || pacman_root_has nvidia-dkms \
-        || pacman_root_has nvidia-open; then
-
+    if pacman_root_has nvidia || pacman_root_has nvidia-dkms || pacman_root_has nvidia-open; then
         state_set GPU_DRIVER nvidia
     fi
 }
@@ -560,27 +288,19 @@ detect_nvidia() {
 detect_virtualization() {
     if pacman_root_has qemu-guest-agent; then
         state_set VM_GUEST qemu
-
     elif pacman_root_has virtualbox-guest-utils; then
         state_set VM_GUEST virtualbox
-
     elif pacman_root_has open-vm-tools; then
         state_set VM_GUEST vmware
-
     else
         state_set VM_GUEST none
     fi
 }
 
 detect_hostname() {
-    local hostname='artix';
-
-    [[ -f "${ROOT}/etc/hostname" ]] \
-        && hostname="$(
-            tr -d '[:space:]' < "${ROOT}/etc/hostname"
-        )";
-
-    state_set HOSTNAME "${hostname}";
+    local hostname='artix'
+    [[ -f "${ROOT}/etc/hostname" ]] && hostname="$(tr -d '[:space:]' < "${ROOT}/etc/hostname")"
+    state_set HOSTNAME "${hostname}"
 }
 
 detect_coreutils() {
@@ -692,63 +412,4 @@ detect_pacman_health() {
         issues+="broken-pkgs:${broken} "
     fi
     state_set PACMAN_ISSUES "${issues:-none}"
-}
-
-recovery_get_status() {
-    local status=""
-    status+="Install stage: $(state_get RECOVERY_STATUS unknown)"$'\n'
-    status+="Filesystem: $(state_get FS_TYPE ext4)"$'\n'
-    status+="LVM: $(state_get USE_LVM no)"$'\n'
-    status+="LUKS: $(state_get USE_LUKS no)"$'\n'
-    status+="UKI: $(state_get GENERATE_UKI no)"$'\n'
-    status+="Bootloader: $(state_get BOOTLOADER unknown)"$'\n'
-    status+="Kernel: $(state_get KERNEL_CHOICE unknown)"$'\n'
-    status+="Power User: $(state_get POWER_USER no)"$'\n'
-    status+="Coreutils: $(state_get COREUTILS unknown)"$'\n'
-    local fstab_issues boot_issues pacman_issues
-    fstab_issues=$(state_get FSTAB_ISSUES none)
-    boot_issues=$(state_get BOOT_ISSUES none)
-    pacman_issues=$(state_get PACMAN_ISSUES none)
-    [[ "${fstab_issues}" != "none" ]] && status+=$'\n'"FSTAB issues: ${fstab_issues}"
-    [[ "${boot_issues}" != "none" ]] && status+=$'\n'"Boot issues: ${boot_issues}"
-    [[ "${pacman_issues}" != "none" ]] && status+=$'\n'"Pacman issues: ${pacman_issues}"
-    printf '%s\n' "${status}"
-}
-
-reconstruct_state_from_system() {
-    validate_recovery_root
-
-    detect_disk
-    detect_init
-    detect_filesystem
-    detect_zfs
-    detect_lvm
-    detect_bootloader
-    detect_uki
-    detect_kernel
-    detect_desktop
-    detect_display_manager
-    detect_xstack
-    detect_seat_manager
-    detect_network_stack
-    detect_audio_stack
-    detect_ucode
-    detect_user_shell
-    detect_extras
-    detect_repositories
-    detect_username
-    detect_luks
-    detect_display_protocol
-    detect_nvidia
-    detect_virtualization
-    detect_hostname
-    detect_coreutils
-    detect_poweruser
-    detect_priv_escalation
-    detect_install_stage
-    detect_fstab_health
-    detect_boot_health
-    detect_pacman_health
-
-    state_save
 }

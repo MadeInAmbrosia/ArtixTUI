@@ -1,7 +1,7 @@
 # Power User Mode
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Power_User-v1.5.3.2-blue?style=flat-square" alt="Power User Version">
+  <img src="https://img.shields.io/badge/Power_User-v1.5.4.0-blue?style=flat-square" alt="Power User Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/Build_Engine-makepkg-FFB6C1?style=flat-square" alt="makepkg">
 </p>
@@ -75,6 +75,7 @@ gartix fetch-all            # Download all recipe sources for offline builds
 gartix upgrade              # Backup recipes and update from remote
 gartix cache-clean          # Remove obsolete cached packages
 gartix sync                 # Update recipes from remote
+gartix recovery             # Check and repair source-built packages
 gartix checksum <recipe>    # Download sources and print SHA256 checksums
 gartix fetch-recipe <name>  # Download a single recipe from the community repo
 gartix sections             # Manage which recipe sections are enabled
@@ -82,6 +83,27 @@ gartix --tui                # Launch interactive TUI
 ```
 
 `gartix` automatically inherits the colour theme you chose during installation. Your theme choice is saved to `/etc/gartix-theme.conf` and loaded on every run.
+
+---
+
+## Recovery
+
+`gartix recovery` checks all source-built packages for missing files or recipes,
+and can rebuild them with the current profile and flags.
+
+```bash
+gartix recovery             # Check all packages and prompt for repair
+gartix recovery linux       # Rebuild a specific package
+```
+
+
+The kernel config depth list should mention `localmodconfig`:
+
+Kernel configuration:
+   - `localmodconfig` — compile only currently loaded modules (recommended)
+   - Hardware auto-detection
+   - Manual checklist configuration
+   - `make menuconfig`
 
 ---
 

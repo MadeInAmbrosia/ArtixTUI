@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.2.3.4-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.3.0.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
@@ -54,7 +54,7 @@ You'll be greeted by a main menu where you choose your installation mode.
 | 🟡 Resume | Continue from the last saved installation stage. |
 | 🟠 Recovery | Reconstruct installer state from `/mnt` and repair installations. |
 | 🔴 Power User | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control. |
-| ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Volk's Personal presets for rapid deployment. |
+| ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal, and custom profile loading. |
 
 A debug toggle is available for every mode from the same menu.
 
@@ -177,6 +177,7 @@ Terminals, Shell & Prompt, Monitoring, and Media. Includes:
 - Partial download resume for source tarballs
 - `gartix` package manager with full TUI, recipe editor, and offline source bootstrap
 - Recipe linting and validation before build
+- Hardware auto-detection with `localmodconfig` support
 
 ---
 
@@ -208,12 +209,25 @@ ArtixForge/
 ├── scripts/
 │   ├── common.sh
 │   ├── state.sh
-│   ├── recovery.sh
 │   ├── kernels.sh
 │   ├── tui/
 │   │   ├── core.sh
 │   │   ├── menus.sh
-│   │   └── summary.sh
+│   │   ├── summary.sh
+│   │   └── menus/
+│   │       ├── main.sh
+│   │       ├── desktop.sh
+│   │       ├── user.sh
+│   │       ├── network_audio.sh
+│   │       ├── extras.sh
+│   │       ├── advanced.sh
+│   │       ├── quick_profiles.sh
+│   │       ├── sanity.sh
+│   │       └── poweruser.sh
+│   ├── recovery/
+│   │   ├── core.sh
+│   │   ├── detect.sh
+│   │   └── repair.sh
 │   ├── storage/
 │   │   ├── partition.sh
 │   │   ├── filesystem.sh
@@ -245,7 +259,11 @@ ArtixForge/
     ├── VERSION
     ├── README.md
     ├── bin/
-    │   └── gartix
+    │   ├── gartix
+    │   ├── gartix_common.bash
+    │   ├── gartix_cli.bash
+    │   ├── gartix_tui.bash
+    │   └── gartix_recovery.bash
     ├── lib/
     │   ├── builder.bash
     │   ├── common.sh
@@ -267,7 +285,14 @@ ArtixForge/
     │   └── template.sh
     ├── tui/
     │   ├── menu_poweruser.sh
-    │   └── progress.sh
+    │   ├── progress.sh
+    │   └── menup/
+    │       ├── profile.sh
+    │       ├── packages.sh
+    │       ├── kernel_config.sh
+    │       ├── recipes.sh
+    │       ├── summary.sh
+    │       └── config.sh
     ├── world/
     │   └── world.txt
     ├── db/

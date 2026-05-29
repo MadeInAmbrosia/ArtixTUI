@@ -11,10 +11,11 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v8.2.0.x | Yes |
+| v8.3.0.x | Yes |
+| v8.2.3.x | Yes |
+| v8.2.0.x | Critical fixes only |
 | v8.1.1.x | Critical fixes only |
-| v8.0.1.x | Critical fixes only |
-| < v8.0.0.0 | No |
+| < v8.1.0.0 | No |
 
 ## Scope
 

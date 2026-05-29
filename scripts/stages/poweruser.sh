@@ -115,7 +115,7 @@ stage_poweruser() {
     log_info "World file written to /etc/artix-poweruser/world.txt"
 
     mkdir -p /mnt/usr/local/bin /mnt/usr/share/artix-poweruser/{lib,tui,recipes,db,profile,build/{sources,artifacts,work,queue,logs}}
-    cp "${POWERUSER_DIR}/bin/gartix" /mnt/usr/local/bin/gartix
+    cp "${POWERUSER_DIR}/bin/"* /mnt/usr/local/bin/
     chmod +x /mnt/usr/local/bin/gartix
 
     cp "${POWERUSER_DIR}/lib"/{common.sh,flags,recipe,validate,builder,cache,rebuild,kconfig,hwdetect}.bash /mnt/usr/share/artix-poweruser/lib/ 2>/dev/null || true

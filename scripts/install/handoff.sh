@@ -109,6 +109,38 @@ GUM_TITLE_COLOR="$(state_get GUM_TITLE_COLOR 212)"
 GUM_ACCENT_COLOR="$(state_get GUM_ACCENT_COLOR 34)"
 EOF
 
+    if [[ "$(state_get QUICK_INSTALL no)" == "yes" ]]; then
+        log_info "Saving reusable quick profile..."
+        cat > /mnt/etc/artixforge-profile.conf <<PROFILE
+FS_TYPE="$(state_get FS_TYPE)"
+BOOTLOADER="$(state_get BOOTLOADER)"
+KERNEL_CHOICE="$(state_get KERNEL_CHOICE)"
+INIT="$(state_get INIT)"
+PRIV_ESCALATION="$(state_get PRIV_ESCALATION)"
+USE_LUKS="$(state_get USE_LUKS)"
+USE_LVM="$(state_get USE_LVM)"
+GENERATE_UKI="$(state_get GENERATE_UKI)"
+ALLOW_OFFLINE="$(state_get ALLOW_OFFLINE)"
+ENABLE_ARCH_REPOS="$(state_get ENABLE_ARCH_REPOS)"
+MICROCODE_OVERRIDE="$(state_get MICROCODE_OVERRIDE)"
+KEEP_BINARY_KERNEL="$(state_get KEEP_BINARY_KERNEL)"
+COREUTILS="$(state_get COREUTILS)"
+KERNEL_CONFIG_DEPTH="$(state_get KERNEL_CONFIG_DEPTH)"
+WM_DE="$(state_get WM_DE)"
+KDE_PROFILE="$(state_get KDE_PROFILE)"
+DISPLAY_MANAGER="$(state_get DISPLAY_MANAGER)"
+NETWORK_STACK="$(state_get NETWORK_STACK)"
+AUDIO_STACK="$(state_get AUDIO_STACK)"
+X_STACK="$(state_get X_STACK)"
+USER_SHELL="$(state_get USER_SHELL)"
+EXTRAS="$(state_get EXTRAS)"
+POWER_USER="$(state_get POWER_USER)"
+POWERUSER_PACKAGES="$(state_get POWERUSER_PACKAGES)"
+POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
+PROFILE
+        chmod 644 /mnt/etc/artixforge-profile.conf
+    fi
+
     log_info "Copying post-install modules..."
     install -d /mnt/usr/local/lib/artix-installer
     cp -r "${script_dir}/../post/." /mnt/usr/local/lib/artix-installer/post

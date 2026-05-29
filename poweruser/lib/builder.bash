@@ -162,6 +162,7 @@ handle_build_failure() {
                 "Retry" \
                 "Skip" \
                 "Debug shell" \
+                "Repair kernel (recovery mode)" \
                 "Update ArtixForge and retry" \
                 "Install binary kernel instead" \
                 "Abort") || action="Abort"
@@ -190,6 +191,16 @@ handle_build_failure() {
             "Debug shell")
                 log_info "Dropping to shell in ${work_dir}. Type 'exit' to return."
                 ( cd "${work_dir}" && bash )
+                ;;
+            "Repair kernel (recovery mode)")
+                log_info "Running kernel repair..."
+                source "${SCRIPT_DIR}/recovery/repair.sh"
+                repair_kernel
+                if [[ -f /mnt/boot/vmlinuz-linux-custom ]]; then
+                    queue_mark "${recipe_name}" "done"
+                    return 0
+                fi
+                log_warn "Repair attempted. You may need to try again or install the binary kernel."
                 ;;
             "Update ArtixForge and retry")
                 log_info "Updating ArtixForge from GitHub..."

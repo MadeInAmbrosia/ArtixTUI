@@ -206,7 +206,7 @@ If you selected Power User mode, you can compile packages from source instead of
 
 - Custom optimisation flags for your CPU
 - The ability to enable/disable specific features
-- A kernel built exactly for your hardware
+- A kernel built exactly for your hardware (using `localmodconfig` for reliable module detection)
 
 **Warning:** Compiling from source is time‑consuming and can fail if dependencies are missing. The installer offers a “fallback kernel” option so you can install a binary kernel if the compilation fails. Be especially careful if you choose to build `glibc` (the C library) – a broken glibc will make your system unbootable.
 
@@ -233,8 +233,16 @@ Instead of answering every question, you can pick a pre‑made profile:
 - **Server** – No desktop, dhcpcd+iwd, doas, basic tools.
 - **Minimal** – No extras, just the base system.
 - **Embedded** – BusyBox init, BusyBox coreutils, no desktop, no network, minimal kernel.
+- **Gaming** – KDE minimal, linux-zen kernel, PipeWire, flatpak, gaming-oriented extras.
+- **Development** – XFCE, base-devel, git, neovim, development tools.
+- **Media** – KDE minimal, mpv, feh, media-oriented extras.
+- **Volk's Personal** – dinit, KDE minimal, LightDM, source-built kernel.
 
 Profiles are a starting point; you can still tweak anything afterwards in the main menu.
+
+You can also **load a custom profile** from a saved configuration file
+(e.g., `/etc/artixforge-profile.conf` from a previous installation).
+Select "Load custom profile" from the Quick Profiles menu and provide the file path.
 
 ---
 
@@ -251,6 +259,25 @@ Before the installation begins, the installer will warn you about potentially un
 - Offline mode
 
 Read these warnings carefully – they exist because the combination you chose may require manual intervention after installation.
+
+---
+
+## 18. Recovery Mode
+
+If your system fails to boot or behaves unexpectedly, ArtixForge can help.
+Boot the live ISO, mount your root partition to `/mnt`, and select
+**Recovery** from the main menu.
+
+Recovery can:
+
+- Detect your full system configuration
+- Identify broken fstab entries, missing kernels, stale pacman locks
+- Automatically repair fstab, bootloader, and initramfs
+- Scan for rootkits with rkhunter
+- Rebuild a custom kernel with the latest recipe (`repair_kernel`)
+
+After installation, you can also run `gartix recovery` from the installed
+system to check and repair source‑built packages.
 
 ---
 

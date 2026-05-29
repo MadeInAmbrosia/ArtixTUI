@@ -19,6 +19,7 @@ The installer runs entirely on your local machine. It does not:
 | User password hashes | Memory only, never written to disk | Gone when installer exits |
 | LUKS passphrase | Memory only, never written to disk | Gone when installer exits |
 | Target system config | `/mnt/etc/artix-installer.conf` | Shredded or removed during finalize stage |
+| Quick Profile save | `/mnt/etc/artixforge-profile.conf` | Remains on installed system for reuse |
 | Installer log | `/mnt/var/log/artix-installer.log` | Remains on the installed system for debugging |
 
 The installed system itself contains no ArtixForge-specific data collection. The installer
