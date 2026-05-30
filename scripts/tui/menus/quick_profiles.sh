@@ -214,6 +214,9 @@ tui_quick_install() {
             profile_file=$(tui_input "Load Profile" "Enter path to profile file:" "/mnt/etc/artixforge-profile.conf") || return 1
             if [[ -f "${profile_file}" ]]; then
                 source "${profile_file}"
+                for var in FS_TYPE BOOTLOADER KERNEL_CHOICE INIT PRIV_ESCALATION USE_LUKS USE_LVM GENERATE_UKI ALLOW_OFFLINE ENABLE_ARCH_REPOS MICROCODE_OVERRIDE KEEP_BINARY_KERNEL COREUTILS KERNEL_CONFIG_DEPTH WM_DE KDE_PROFILE DISPLAY_MANAGER NETWORK_STACK AUDIO_STACK X_STACK USER_SHELL EXTRAS POWER_USER POWERUSER_PACKAGES POWERUSER_PROFILE; do
+                    [[ -n "${!var:-}" ]] && state_set "${var}" "${!var}"
+                done
                 tui_msg_quick "Profile Loaded" "Configuration loaded from ${profile_file}"
             else
                 tui_msg_quick "Error" "Profile file not found: ${profile_file}"

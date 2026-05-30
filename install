@@ -252,7 +252,7 @@ main() {
         manual)   start_manual_install ;;
         resume)   resume_install ;;
         recovery) start_recovery_install ;;
-        power)    MODE='power' ; start_auto_install ;;
+        power)    MODE='power' ; state_set POWER_USER "yes" ; start_auto_install ;;
         *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
 

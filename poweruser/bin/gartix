@@ -72,10 +72,6 @@ main() {
         cache-clean)   cache_clean ;;
         recovery)
             require_root
-            source "${POWERUSER_DIR}/lib/gartix_recovery.bash" 2>/dev/null || {
-                echo "Recovery module unavailable."
-                exit 1
-            }
             if [[ -z "${2:-}" ]]; then
                 gartix_recovery_status
                 if ! tui_yesno "Repair?" "Repair detected issues?"; then

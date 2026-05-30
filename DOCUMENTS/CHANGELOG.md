@@ -1,5 +1,14 @@
 # Changelog
 
+## v8.3.0.2 (2026-05-30) — ArtixForge
+
+### Fixed
+- Power User mode from main menu now correctly sets `POWER_USER=yes` so selecting "Power User" no longer produces a standard install (Whoops...?)
+- `verify_installer_layout` updated for new modular directory structure (`scripts/recovery/`, `tui/menus/`, `poweruser/tui/menup/`)
+- Custom profile loader now persists all loaded variables to state so now loaded profiles work identically to built-in ones
+- Duplicate `KERNEL_CONFIG_DEPTH`, `KEEP_BINARY_KERNEL`, `COREUTILS`, and `KERNEL_IMAGE` lines removed from `handoff.sh` config export
+- `gartix` dispatcher and TUI no longer attempt to source nonexistent recovery file, functions are already available
+
 ## v8.3.0.0 (2026-05-29) — ArtixForge
 
 ### Added

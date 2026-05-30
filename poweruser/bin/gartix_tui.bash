@@ -177,10 +177,6 @@ tui_main() {
                 tui_msg "Sync" "Recipes synchronized."
                 ;;
             "Recovery – check & repair source packages")
-                source "${POWERUSER_DIR}/lib/gartix_recovery.bash" 2>/dev/null || {
-                    tui_msg "Error" "Recovery module not available."
-                    continue
-                }
                 gartix_recovery_status
                 if tui_yesno "Repair source packages?" "Attempt to repair all source‑built packages?"; then
                     local repaired=()
