@@ -97,8 +97,15 @@ EOF
                 local cachyos_keyring cachyos_mirrorlist
                 cachyos_keyring=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-keyring-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
                 cachyos_mirrorlist=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
-                [[ -z "${cachyos_keyring}" || -z "${cachyos_mirrorlist}" ]] && die 'Failed to locate CachyOS bootstrap packages'
-                pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_keyring}" "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_mirrorlist}"
+                if [[ -z "${cachyos_keyring}" || -z "${cachyos_mirrorlist}" ]]; then
+                    log_warn "Could not scrape CachyOS mirror — trying static fallback URLs"
+                    cachyos_keyring="cachyos-keyring-20250101-1-any.pkg.tar.zst"
+                    cachyos_mirrorlist="cachyos-mirrorlist-20250101-1-any.pkg.tar.zst"
+                fi
+                pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_keyring}" "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_mirrorlist}" || {
+                    log_error "Failed to install CachyOS bootstrap packages — mirror may be down"
+                    die 'CachyOS repository setup failed'
+                }
                 if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
                     cat <<'EOF' >> /etc/pacman.conf
 [cachyos]

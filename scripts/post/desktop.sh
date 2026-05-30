@@ -43,7 +43,7 @@ install_desktop() {
             fi
 
             if [[ "${x_stack:-xorg}" == 'xlibre' ]]; then
-                pacman -S --noconfirm --needed xlibre-input-wacom 2>/dev/null || true
+                pkgs+=(xlibre-input-wacom)
             fi
             ;;
 

@@ -1,6 +1,3 @@
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
 configure_bootloader() {
     local bootloader kernel fs_type root_param=''
     bootloader="$(state_get BOOTLOADER grub)"
@@ -10,21 +7,25 @@ configure_bootloader() {
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
         log_info "Writing UKI preset..."
-        local uki_kernel_image
+        local uki_kernel_image uki_kernel_name uki_kver
         uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
         [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI preset"
-        local uki_kernel_name
         uki_kernel_name=$(basename "${uki_kernel_image}")
-        local uki_initramfs_name="initramfs-${uki_kernel_name#vmlinuz-}.img"
+        uki_kver="${uki_kernel_name#vmlinuz-}"
+        local uki_initramfs_name="initramfs-${uki_kver}.img"
 
         cat > /mnt/etc/mkinitcpio.d/linux-uki.preset <<EOF
 ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="${uki_kernel_image}"
+ALL_kver="${uki_kver}"
 PRESETS=('default')
 default_config="/etc/mkinitcpio.conf"
 default_image="/boot/${uki_initramfs_name}"
-default_uki="/boot/efi/EFI/Artix/linux-custom.efi"
+default_uki="/boot/efi/EFI/Artix/artix-linux.efi"
 EOF
+
+        if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
+            artix-chroot /mnt sed -i 's/^HOOKS=(\(.*\))/HOOKS=(\1 uki)/' /etc/mkinitcpio.conf
+        fi
     fi
 
     log_info "Generating initramfs..."
@@ -95,11 +96,12 @@ EOF
             log_info "Configuring EFIStub boot entry..."
             command -v efibootmgr >/dev/null 2>&1 || die 'efibootmgr unavailable'
 
-            local kernel_image="/mnt/boot/$(state_get KERNEL_IMAGE)"
-            local initramfs_image="/mnt/boot/$(state_get INITRAMFS_IMAGE)"
-            local microcode_file="$(state_get MICROCODE_IMAGE)"
-            [[ -f "${kernel_image}" ]] || die 'failed to locate kernel image'
-            [[ -f "${initramfs_image}" ]] || die 'failed to locate initramfs image'
+            local kernel_image initramfs_image microcode_file
+            kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
+            [[ -n "${kernel_image}" ]] || die 'failed to locate kernel image'
+            initramfs_image=$(ls /mnt/boot/initramfs-*.img 2>/dev/null | grep -v fallback | head -n1)
+            [[ -n "${initramfs_image}" ]] || die 'failed to locate initramfs image'
+            microcode_file="$(state_get MICROCODE_IMAGE)"
 
             local kernel_basename initramfs_basename microcode_image_str
             kernel_basename="$(basename "${kernel_image}")"
@@ -137,11 +139,11 @@ EOF
     esac
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        local uki_file="${esp_mount}/EFI/Artix/linux-custom.efi"
+        local uki_file="${esp_mount}/EFI/Artix/artix-linux.efi"
         if [[ -f "${uki_file}" ]]; then
             log_info "Creating EFI boot entry for UKI..."
             local uki_label="Artix Linux (UKI)"
-            local uki_loader="\\EFI\\Artix\\linux-custom.efi"
+            local uki_loader="\\EFI\\Artix\\artix-linux.efi"
             local uki_cmdline="root=UUID=${root_uuid} rw"
             artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                 --label "${uki_label}" --loader "${uki_loader}" --unicode "${uki_cmdline}" --verbose \
@@ -153,11 +155,11 @@ EOF
                 sb_cert=$(tui_input "Secure Boot" "Path to DB.crt (on target):" "/etc/secureboot/DB.crt")
                 if [[ -f "/mnt${sb_key}" && -f "/mnt${sb_cert}" ]]; then
                     artix-chroot /mnt sbsign --key "${sb_key}" --cert "${sb_cert}" \
-                        --output /boot/efi/EFI/Artix/linux-custom-signed.efi \
-                        /boot/efi/EFI/Artix/linux-custom.efi || log_warn "sbsign failed"
+                        --output /boot/efi/EFI/Artix/artix-linux-signed.efi \
+                        /boot/efi/EFI/Artix/artix-linux.efi || log_warn "sbsign failed"
                     artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                         --label "Artix Linux (UKI Signed)" \
-                        --loader '\EFI\Artix\linux-custom-signed.efi' \
+                        --loader '\EFI\Artix\artix-linux-signed.efi' \
                         --unicode "${uki_cmdline}" --verbose || log_warn "Failed to create signed boot entry"
                     log_info "UKI signed for Secure Boot."
                 else

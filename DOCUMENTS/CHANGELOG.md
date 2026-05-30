@@ -1,5 +1,16 @@
 # Changelog
 
+## v8.3.1.0 (2026-05-30) — ArtixForge
+
+### Fixed
+- UKI preset: `ALL_kver` now uses kernel version string instead of file path — mkinitcpio can find modules correctly
+- UKI preset: `default_uki` uses generic `artix-linux.efi` instead of hardcoded `linux-custom`
+- UKI preset: `uki` hook automatically appended to `mkinitcpio.conf` HOOKS if missing
+- UKI EFI boot entry: paths updated from `linux-custom.efi` to `artix-linux.efi`
+- EFIStub: kernel and initramfs images detected directly from `/mnt/boot/` instead of reading unset state variables
+- CachyOS kernel: mirror scrape failure now falls back to static URLs instead of hard `die`
+- Desktop install: `xlibre-input-wacom` added to KDE package array instead of separate install to resolve conflict with `xf86-input-wacom` in same transaction
+
 ## v8.3.0.2 (2026-05-30) — ArtixForge
 
 ### Fixed
