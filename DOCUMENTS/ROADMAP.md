@@ -24,5 +24,6 @@ This roadmap is updated regularly based on:
 ## Under Construction / Not implemented yet
 
 - A new framework for both TUI and GUI (*v9 things*)
+- Proper comments and comment blocks (*v9 things*)
 - Graphical (GUI) installer variant
 - Translations (German, French, Russian, Chinese, Japanese, Portuguese, Spanish)
