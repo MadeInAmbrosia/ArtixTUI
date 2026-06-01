@@ -7,6 +7,7 @@ WORK_DIR="${POWERUSER_BUILD_DIR}/work"
 ARTIFACTS_DIR="${POWERUSER_BUILD_DIR}/artifacts"
 LOGS_DIR="${POWERUSER_DIR}/build/logs"
 mkdir -p "${SOURCES_DIR}" "${WORK_DIR}" "${ARTIFACTS_DIR}" "${LOGS_DIR}"
+BASE_DIR="${BASE_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 source "${POWERUSER_DIR}/lib/validate.bash"
 source "${POWERUSER_DIR}/lib/common.sh"

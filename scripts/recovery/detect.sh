@@ -255,19 +255,43 @@ detect_luks() {
 }
 
 detect_disk() {
-    local source pkname disk_pkname
+    local source pkname disk candidate
     source="$(findmnt -no SOURCE "${ROOT}" 2>/dev/null || true)"
     [[ -n "${source}" ]] || return 0
-    pkname="$(lsblk -no PKNAME "${source}" 2>/dev/null || true)"
-    if [[ -n "${pkname}" ]]; then
-        disk_pkname="$(lsblk -no PKNAME "/dev/${pkname}" 2>/dev/null || true)"
-        if [[ -n "${disk_pkname}" ]]; then
-            state_set DISK "/dev/${disk_pkname}"
-        else
-            state_set DISK "/dev/${pkname}"
+
+    if [[ "${source}" == /dev/mapper/* ]]; then
+        pkname="$(lsblk -no PKNAME "${source}" 2>/dev/null || true)"
+        [[ -n "${pkname}" ]] && source="/dev/${pkname}"
+    fi
+
+    candidate="${source}"
+    while [[ -n "${candidate}" ]]; do
+        disk="$(lsblk -no PKNAME "${candidate}" 2>/dev/null || true)"
+        if [[ -z "${disk}" ]]; then
+            # This is already a disk
+            break
         fi
+        candidate="/dev/${disk}"
+    done
+
+    if [[ -b "${candidate}" ]]; then
+        state_set DISK "${candidate}"
+        log_info "Detected installation disk: ${candidate}"
+        return 0
+    fi
+
+    local fstab_root
+    fstab_root="$(awk '$2 == "/" {print $1}' "${ROOT}/etc/fstab" 2>/dev/null | head -n1)"
+    if [[ "${fstab_root}" == UUID=* ]]; then
+        candidate="$(blkid -U "${fstab_root#UUID=}" 2>/dev/null || true)"
+        [[ -b "${candidate}" ]] && { state_set DISK "${candidate}"; log_info "Detected disk from fstab UUID: ${candidate}"; return 0; }
+    fi
+
+    log_warn "Could not auto-detect installation disk."
+    if tui_yesno "Disk Detection" "Automatic disk detection failed. Would you like to select the installation disk manually?"; then
+        tui_select_disk
     else
-        state_set DISK "${source}"
+        die "Cannot continue without a valid installation disk."
     fi
 }
 

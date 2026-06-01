@@ -21,6 +21,9 @@ The installer runs entirely on your local machine. It does not:
 | Target system config | `/mnt/etc/artix-installer.conf` | Shredded or removed during finalize stage |
 | Quick Profile save | `/mnt/etc/artixforge-profile.conf` | Remains on installed system for reuse |
 | Installer log | `/mnt/var/log/artix-installer.log` | Remains on the installed system for debugging |
+| Build logs (Power User) | `/mnt/artix-poweruser/build/logs/` | Remains on the installed system for debugging |
+| Recipe database | `/mnt/usr/share/artix-poweruser/db/local.db` | Remains on the installed system |
+| Recovery detection data | `/tmp/artix-installer/state.conf` (reconstructed) | Deleted on reboot (tmpfs) |
 
 The installed system itself contains no ArtixForge-specific data collection. The installer
 removes its own configuration from the target before finishing.
@@ -31,6 +34,10 @@ ArtixForge downloads packages from Artix Linux mirrors and source tarballs from
 upstream URLs specified in recipes. These are standard package manager operations
 — the same as running `pacman -Syu` or `git clone`. No additional network requests
 are made.
+
+The recipe self-healing feature (`heal.bash`) may check upstream URLs (kernel.org,
+GitHub API, or source directory listings) to detect newer versions when a download
+fails. This only happens during an active build failure — never during normal operation.
 
 The recovery mode rootkit scanner (`rkhunter`) downloads its database updates
 from the rkhunter project servers when first run. This is the only optional

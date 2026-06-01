@@ -196,7 +196,10 @@ Attempt recovery and continue installation?"; then
     recovery_choice=$(tui_menu "Recovery Options" "What would you like to do?" \
         "View system status" \
         "Repair detected issues" \
+        "Fix everything (kernel, initramfs, GRUB, fstab)" \
+        "Repair filesystem corruption (safe or destructive)" \
         "Scan for rootkits" \
+        "Untrusted Recovery (rootkit hunt + malware scan)" \
         "Full reinstall (run installer)" \
         "Abort") || exit 1
 
@@ -205,10 +208,19 @@ Attempt recovery and continue installation?"; then
             tui_msg "System Status" "$(recovery_get_status)"
             ;;
         "Repair detected issues")
+            repair_detected_issues
+            ;;
+        "Fix everything"*)
             repair_system
+            ;;
+        "Repair filesystem"*)
+            repair_filesystem
             ;;
         "Scan for rootkits")
             detect_rootkits
+            ;;
+        "Untrusted Recovery"*)
+            untrusted_recovery
             ;;
         "Full reinstall"*)
             run_install_pipeline

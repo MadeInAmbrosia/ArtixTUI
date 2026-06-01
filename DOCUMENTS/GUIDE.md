@@ -12,7 +12,7 @@ Don’t worry if you don’t know what something means – that’s what this is
 | Automatic | Full guided install, step by step | First time, clean disk |
 | Manual | You partition the disk yourself, installer does the rest | You already know your disk layout |
 | Resume | Continue an interrupted install | The installer crashed or you rebooted |
-| Recovery | Scan /mnt for an existing broken system | Fixing a damaged installation |
+| Recovery | Scan /mnt for an existing broken system, auto-detect issues, repair | Fixing a damaged installation with smart detection |
 | Power User | Build packages from source, Gentoo‑style | You want full control over compilation |
 
 If you’re new to Linux or Artix, **Automatic** is the simplest way to get a working system.
@@ -223,6 +223,10 @@ COMMUNITY recipes through the "Manage recipe sections" option in `gartix --tui`.
 
 To contribute your own recipes, see the [ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes) repository.
 
+If a source download fails during a build (404, checksum mismatch),
+ArtixForge can now automatically detect newer upstream versions and
+heal the recipe. Select "Heal recipe" from the build failure menu.
+
 ---
 
 ## 16. Quick Install Profiles
@@ -268,16 +272,35 @@ If your system fails to boot or behaves unexpectedly, ArtixForge can help.
 Boot the live ISO, mount your root partition to `/mnt`, and select
 **Recovery** from the main menu.
 
-Recovery can:
+Recovery will automatically detect your system's configuration:
 
-- Detect your full system configuration
-- Identify broken fstab entries, missing kernels, stale pacman locks
-- Automatically repair fstab, bootloader, and initramfs
-- Scan for rootkits with rkhunter
-- Rebuild a custom kernel with the latest recipe (`repair_kernel`)
+- Init system, filesystem, bootloader, kernel, desktop environment
+- Display manager, network stack, audio stack, coreutils
+- Whether LUKS, LVM, UKI, or Power User mode were used
+- Broken fstab entries, missing kernels, stale pacman locks
+- Packages with missing or corrupted files
+
+You can then choose:
+
+| Option | What it does |
+|--------|-------------|
+| View system status | Display the full detection report |
+| Repair detected issues | Surgically fix only what's broken (fstab, pacman, boot, kernel) |
+| Fix everything (nuclear) | Rebuild fstab, reinstall base packages, reinstall kernel, regenerate initramfs and GRUB — everything at once |
+| Scan for rootkits | Run rkhunter against the installation |
+| Full reinstall | Continue with a fresh installation |
+| Repair filesystem corruption | Check and optionally repair the root filesystem (safe or destructive) | When you suspect filesystem damage or unclean shutdown |
+| Untrusted Recovery | Rootkit scan, malware indicator check, optional ClamAV | Only for systems you believe are compromised |
 
 After installation, you can also run `gartix recovery` from the installed
 system to check and repair source‑built packages.
+
+**Filesystem repair** will unmount your root partition and run filesystem-specific
+tools. Choose "Safe" for a non-destructive check; "Destructive" to attempt aggressive
+repairs that may discard corrupted data. Always back up first.
+
+**Untrusted Recovery** is a read-only threat scan. It does not modify anything,
+but the scans themselves may trigger anti-malware alerts on a running system.
 
 ---
 

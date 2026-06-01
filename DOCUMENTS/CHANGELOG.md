@@ -1,5 +1,18 @@
 # Changelog
 
+## v8.4.1.0 (2026-06-01) — ArtixForge
+
+### Added
+- Recovery mode: "Repair filesystem corruption" — safe (`fsck -p`, `xfs_repair -n`, `btrfs check`) and destructive (`fsck -f -y`, `xfs_repair`, `btrfs check --repair`) options for ext4/xfs/btrfs
+- Recovery mode: "Untrusted Recovery" — rootkit scan, malware indicator detection (suspicious cron, SUID binaries, SSH keys), optional ClamAV scan; read-only, no modifications
+
+### Fixed
+- Recovery mode: `detect_disk` now unwraps LUKS/LVM mappers, walks the device chain to find the physical disk, and falls back to fstab UUID or manual selection — fixes "Invalid disk device" after recovery reset
+- Recovery mode: `repair_pacman` now actually reinstalls packages with missing files instead of just warning about them
+- Recovery mode: `repair_detected_issues` only runs mkinitcpio and grub-mkconfig when boot or fstab issues were actually fixed — no more mindless initramfs rebuild on every recovery
+- Recovery mode: added "Fix everything (nuclear)" option alongside the surgical "Repair detected issues"
+- Builder: `BASE_DIR` fallback added so "Update ArtixForge and retry" correctly calls `${BASE_DIR}/install` instead of failing with `./install: command not found`
+
 ## v8.4.0.1 (2026-06-01) — ArtixForge
 
 ### Fixed
