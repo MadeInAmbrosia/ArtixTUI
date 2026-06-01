@@ -51,13 +51,50 @@ repair_pacman() {
             local broken_list
             broken_list="$(state_get BROKEN_PACKAGES "")"
             if [[ -n "${broken_list}" ]]; then
-                log_info "Reinstalling: ${broken_list}"
-                pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm ${broken_list} 2>/dev/null || {
-                    log_warn "Bulk reinstall failed — attempting one-by-one"
-                    for pkg in ${broken_list}; do
-                        pacman --root /mnt -S --noconfirm "${pkg}" 2>/dev/null || log_warn "Failed to reinstall ${pkg}"
-                    done
-                }
+                log_info "Reinstalling ${count} broken packages..."
+                local -a pkgs
+                read -ra pkgs <<< "${broken_list}"
+                local batch=() i=0 success=0 fail=0
+                for pkg in "${pkgs[@]}"; do
+                    batch+=("${pkg}")
+                    ((i++))
+                    if [[ ${i} -ge 20 ]]; then
+                        log_info "  Batch: ${batch[*]}"
+                        if pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm --overwrite '*' "${batch[@]}" 2>/dev/null; then
+                            ((success += i))
+                        else
+                            log_warn "  Batch failed — trying individually..."
+                            for b in "${batch[@]}"; do
+                                if pacman --root /mnt -S --noconfirm --overwrite '*' "${b}" 2>/dev/null; then
+                                    ((success++))
+                                else
+                                    log_warn "  Failed: ${b}"
+                                    ((fail++))
+                                fi
+                            done
+                        fi
+                        batch=() i=0
+                    fi
+                done
+
+                if [[ ${#batch[@]} -gt 0 ]]; then
+                    log_info "  Final batch: ${batch[*]}"
+                    if pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm --overwrite '*' "${batch[@]}" 2>/dev/null; then
+                        ((success += ${#batch[@]}))
+                    else
+                        for b in "${batch[@]}"; do
+                            if pacman --root /mnt -S --noconfirm --overwrite '*' "${b}" 2>/dev/null; then
+                                ((success++))
+                            else
+                                log_warn "  Failed: ${b}"
+                                ((fail++))
+                            fi
+                        done
+                    fi
+                fi
+                log_info "Reinstall complete: ${success} succeeded, ${fail} failed"
+            else
+                log_info "No broken package list saved — skipping"
             fi
             log_info "Broken package repair completed."
         fi

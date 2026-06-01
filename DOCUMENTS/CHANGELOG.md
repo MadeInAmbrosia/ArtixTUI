@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.4.1.1 (2026-06-01) — ArtixForge
+
+### Fixed
+- Recovery mode: `detect_pacman_health` now saves the actual broken package list during detection — `repair_pacman` no longer re-detects and comes up empty
+- Recovery mode: broken package reinstall uses `pacman --root /mnt` with `--overwrite '*'` in batches of 20 — avoids basestrap dependency failures on large reinstalls
+- Recovery mode: broken package reinstall falls back to individual package installs for any batch that fails
+
 ## v8.4.1.0 (2026-06-01) — ArtixForge
 
 ### Added
