@@ -34,7 +34,12 @@ repair_pacman() {
     if [[ "${issues}" =~ base-missing ]]; then
         log_warn "Base system packages missing or corrupted."
         if tui_yesno "Reinstall base" "Reinstall base packages?"; then
-            basestrap /mnt base base-devel
+            if ! basestrap /mnt base base-devel 2>/dev/null; then
+                log_warn "basestrap failed — trying direct pacman install..."
+                pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm base base-devel 2>/dev/null || {
+                    log_error "Base reinstall failed. Try 'Fix everything' from the recovery menu."
+                }
+            fi
             log_info "Base packages reinstalled."
         fi
     fi
@@ -45,15 +50,17 @@ repair_pacman() {
         if tui_yesno "Repair broken packages" "Reinstall all packages with missing files? This may take a while."; then
             log_info "Identifying broken packages..."
             local broken_list
-            broken_list=$(pacman --root /mnt -Qk 2>/dev/null | grep ': missing' | cut -d: -f1 | sort -u)
+            broken_list=$(pacman --root /mnt -Qk 2>/dev/null | grep ': missing' | cut -d: -f1 | sort -u) || true
             if [[ -n "${broken_list}" ]]; then
                 log_info "Reinstalling: ${broken_list}"
-                basestrap /mnt ${broken_list} || {
-                    log_warn "Bulk reinstall failed — attempting one-by-one"
+                pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm ${broken_list} 2>/dev/null || {
+                    log_warn "Bulk reinstall failed — attempting one-by-one with pacman"
                     for pkg in ${broken_list}; do
-                        basestrap /mnt "${pkg}" 2>/dev/null || log_warn "Failed to reinstall ${pkg}"
+                        pacman --root /mnt -S --noconfirm "${pkg}" 2>/dev/null || log_warn "Failed to reinstall ${pkg}"
                     done
                 }
+            else
+                log_info "No broken packages found (pacman database may have recovered)."
             fi
             log_info "Broken package repair completed."
         fi
@@ -307,4 +314,84 @@ Proceed?"
 
 If threats were found, consider reinstalling from a
 trusted ISO rather than repairing."
+}
+
+repair_filesystem() {
+    local root_part fs_type
+    root_part="$(findmnt -no SOURCE /mnt 2>/dev/null || true)"
+    fs_type="$(state_get FS_TYPE ext4)"
+
+    if [[ -z "${root_part}" || ! -b "${root_part}" ]]; then
+        log_error "Could not determine root partition — is /mnt mounted?"
+        return 1
+    fi
+
+    tui_msg "Filesystem Repair" \
+"Filesystem: ${fs_type} on ${root_part}
+
+This will attempt to repair filesystem corruption.
+You can choose:
+  • Safe – non-destructive check and repair
+  • Destructive – aggressive repair, may discard data
+
+Always back up your data first."
+
+    local method
+    method=$(tui_menu "Repair Method" "Select repair approach:" \
+        "Safe (fsck -p / equivalent)" \
+        "Destructive (fsck -f -y / equivalent)" \
+        "Cancel") || return 1
+
+    if [[ "${method}" == "Cancel" ]]; then
+        return 0
+    fi
+
+    log_info "Unmounting /mnt for filesystem check..."
+    umount /mnt 2>/dev/null || { log_error "Failed to unmount /mnt — something is using it"; return 1; }
+
+    case "${fs_type}" in
+        ext4)
+            if [[ "${method}" == Safe* ]]; then
+                log_info "Running safe fsck.ext4 -p on ${root_part}..."
+                fsck.ext4 -p "${root_part}" || log_warn "fsck reported errors (safe mode)"
+            else
+                log_info "Running destructive fsck.ext4 -f -y on ${root_part}..."
+                fsck.ext4 -f -y "${root_part}" || log_warn "fsck reported errors (destructive mode)"
+            fi
+            ;;
+        btrfs)
+            if [[ "${method}" == Safe* ]]; then
+                log_info "Running btrfs check (read-only) on ${root_part}..."
+                btrfs check "${root_part}" || log_warn "btrfs check found issues"
+            else
+                log_warn "btrfs check --repair can make corruption worse."
+                if tui_yesno "DANGER" "Really run btrfs check --repair? This may destroy data."; then
+                    btrfs check --repair "${root_part}" || log_warn "btrfs repair attempted"
+                fi
+            fi
+            ;;
+        xfs)
+            if [[ "${method}" == Safe* ]]; then
+                log_info "Running xfs_repair -n (dry-run) on ${root_part}..."
+                xfs_repair -n "${root_part}" || log_warn "xfs_repair -n found issues"
+            else
+                log_info "Running xfs_repair on ${root_part}..."
+                xfs_repair "${root_part}" || log_warn "xfs_repair reported errors"
+            fi
+            ;;
+        *)
+            log_warn "Filesystem repair not supported for ${fs_type}"
+            mount "${root_part}" /mnt || die "Failed to remount after repair attempt"
+            return 1
+            ;;
+    esac
+
+    log_info "Remounting ${root_part} to /mnt..."
+    mount "${root_part}" /mnt || die "Failed to remount after repair"
+
+    if tui_yesno "Post-Repair" "Would you like to run standard system repair (fstab, boot, etc.)?"; then
+        repair_detected_issues
+    fi
+
+    log_info "Filesystem repair complete."
 }
