@@ -222,9 +222,9 @@ handle_build_failure() {
                 }
                 cp -a "${update_dir}/." "${BASE_DIR}/"
                 rm -rf "${update_dir}"
-                log_info "ArtixForge updated. Restarting pipeline..."
+                log_info "ArtixForge updated. Restarting installer..."
                 cd "${BASE_DIR}"
-                exec sudo ./install
+                exec sudo "${BASE_DIR}/install"
                 ;;
             "Install binary kernel instead")
                 log_info "Installing binary kernel as fallback..."
