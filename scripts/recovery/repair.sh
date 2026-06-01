@@ -48,19 +48,16 @@ repair_pacman() {
         local count="${BASH_REMATCH[1]}"
         log_warn "${count} packages have missing files."
         if tui_yesno "Repair broken packages" "Reinstall all packages with missing files? This may take a while."; then
-            log_info "Identifying broken packages..."
             local broken_list
-            broken_list=$(pacman --root /mnt -Qk 2>/dev/null | grep ': missing' | cut -d: -f1 | sort -u) || true
+            broken_list="$(state_get BROKEN_PACKAGES "")"
             if [[ -n "${broken_list}" ]]; then
                 log_info "Reinstalling: ${broken_list}"
                 pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm ${broken_list} 2>/dev/null || {
-                    log_warn "Bulk reinstall failed — attempting one-by-one with pacman"
+                    log_warn "Bulk reinstall failed — attempting one-by-one"
                     for pkg in ${broken_list}; do
                         pacman --root /mnt -S --noconfirm "${pkg}" 2>/dev/null || log_warn "Failed to reinstall ${pkg}"
                     done
                 }
-            else
-                log_info "No broken packages found (pacman database may have recovered)."
             fi
             log_info "Broken package repair completed."
         fi

@@ -431,9 +431,14 @@ detect_pacman_health() {
         issues+="base-missing "
     fi
     local broken
-    broken=$(pacman --root "${ROOT}" -Qk 2>/dev/null | grep -c 'missing' || true)
-    if [[ "${broken}" -gt 0 ]]; then
-        issues+="broken-pkgs:${broken} "
+    broken=$(pacman --root "${ROOT}" -Qk 2>/dev/null | grep ': missing' | cut -d: -f1 | sort -u | tr '\n' ' ')
+    if [[ -n "${broken}" ]]; then
+        local count
+        count=$(echo "${broken}" | wc -w)
+        issues+="broken-pkgs:${count} "
+        state_set BROKEN_PACKAGES "${broken}"
+    else
+        state_set BROKEN_PACKAGES ""
     fi
     state_set PACMAN_ISSUES "${issues:-none}"
 }
