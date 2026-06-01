@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.4.0.1 (2026-06-01) — ArtixForge
+
+### Fixed
+- Generic package install: replaced `cp -a` with `rsync --keep-dirlinks` — prevents symlink collisions on merged-usr systems (`/lib64`, `/sbin`) when installing source-built packages like glibc
+
 ## v8.4.0.0 (2026-06-01) — ArtixForge
 
 ### Fixed

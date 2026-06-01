@@ -132,10 +132,19 @@ default_config="/etc/mkinitcpio.conf"
 default_image="/boot/initramfs-linux-custom.img"
 PRESET
     else
-        if ! ( cd "${PKG_DESTDIR}" && cp -a . /mnt/ ) 2>>"${log_file}"; then
-            log_error "Failed to install ${pkgname} to /mnt"
-            handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
-            return 1
+        if command -v rsync >/dev/null 2>&1; then
+            if ! rsync -a --keep-dirlinks "${PKG_DESTDIR}/" /mnt/ 2>>"${log_file}"; then
+                log_error "Failed to install ${pkgname} to /mnt"
+                handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
+                return 1
+            fi
+        else
+            pacman -S --noconfirm --needed rsync 2>/dev/null || true
+            if ! rsync -a --keep-dirlinks "${PKG_DESTDIR}/" /mnt/ 2>>"${log_file}"; then
+                log_error "Failed to install ${pkgname} to /mnt"
+                handle_build_failure "${recipe_name}" "${log_file}" "${pkg_work}"
+                return 1
+            fi
         fi
     fi
 
