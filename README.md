@@ -307,8 +307,6 @@ ArtixForge/
 
 # Supported Configurations
 
-# Supported Configurations
-
 | Category | Options |
 |---|---|
 | Init system | OpenRC, runit, dinit, s6, BusyBox init |
