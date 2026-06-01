@@ -207,7 +207,8 @@ tui_quick_install() {
             state_set AUDIO_STACK "pipewire"
             state_set X_STACK "xlibre"
             state_set USER_SHELL "bash"
-            state_set EXTRAS "git fastfetch tmux htop kitty firewalld flatpak"
+            state_set EXTRAS "git fastfetch tmux htop kitty firewalld flatpak"\
+            tui_msg_quick "Volk Profile" "This profile builds a minimal source kernel with auto-detected hardware.\n\nNo VirtIO/VM drivers are included — this system will NOT boot in virtual machines."
             ;;
         *Load*)
             local profile_file

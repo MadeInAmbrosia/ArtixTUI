@@ -9,15 +9,9 @@ This roadmap is updated regularly based on:
 
 *Version numbers are not strict release targets. Features may ship earlier or later depending on development pace, tester feedback, and available time. This roadmap reflects general direction, not fixed deadlines.*
 
-## v8.4 — Community & Ecosystem
-Target: Early June 2026
-
-- Fixing the linux.sh kernel recipe (**Urgent**)
-- Fixing LUKS/LVM issues (pvcreate failing?)
-- Hunting ghosts in the post-install section?
-- Community recipe promotion workflow (COMMUNITY to OFFICIAL)
-- Recipe popularity tracking
-- Recipe self-healing — auto-detect outdated source URLs and bump versions, notify maintainer
+## v8.5 ???
+- Bug fixing?
+- ????
 
 # The think-tank
 

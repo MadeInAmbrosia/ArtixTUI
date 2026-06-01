@@ -71,71 +71,120 @@ create_filesystems() {
         swapon "${swap_part}"
     fi
 
+    local fs_target="${root_part}"
+
+    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+        local root_lv="/dev/vg0/root"
+        local home_lv="/dev/vg0/home"
+        local data_lv="/dev/vg0/data"
+
+        [[ -b "${root_lv}" ]] || die "Root LV not found: ${root_lv} — LVM may not have been set up correctly"
+
+        log_info "LVM detected — creating filesystem on logical volume ${root_lv}..."
+
+        case "${fs_type}" in
+            btrfs)     mkfs.btrfs -f "${root_lv}" ;;
+            ext4)      mkfs.ext4 -F "${root_lv}" ;;
+            xfs)
+                local xfs_config="/usr/share/xfsprogs/mkfs/lts_6.6.conf"
+                if [[ -f "${xfs_config}" ]]; then
+                    mkfs.xfs -f -c "options=${xfs_config}" -m bigtime=0 "${root_lv}"
+                else
+                    mkfs.xfs -f -m bigtime=0 "${root_lv}"
+                    log_warn "XFS LTS config not found — using upstream defaults."
+                fi
+                ;;
+            f2fs)
+                local dev_rota
+                dev_rota=$(lsblk -dno ROTA "${root_part}" 2>/dev/null)
+                if [[ "${dev_rota}" == "0" ]]; then
+                    log_warn "F2FS on non-rotational SSD — ext4 or XFS often perform better."
+                    if ! tui_yesno "F2FS on SSD" "F2FS is designed for raw flash (eMMC/SD/USB). Continue?"; then
+                        die "User aborted F2FS creation"
+                    fi
+                fi
+                mkfs.f2fs -f -O extra_attr,compression "${root_lv}"
+                ;;
+            bcachefs) mkfs.bcachefs --force --replicas=1 "${root_lv}" ;;
+            exfat)    mkfs.exfat -L "root" "${root_lv}" ;;
+            zfs)      die "ZFS on LVM is not supported — use ZFS directly on the partition" ;;
+            *)        die "Unsupported filesystem for LVM: ${fs_type}" ;;
+        esac
+
+        if [[ -b "${home_lv}" ]]; then
+            log_info "Creating filesystem on home LV..."
+            mkfs.ext4 -F "${home_lv}"
+        fi
+        if [[ -b "${data_lv}" ]]; then
+            log_info "Creating filesystem on data LV..."
+            mkfs.ext4 -F "${data_lv}"
+        fi
+
+        log_info "LVM filesystem creation complete."
+        return 0
+    fi
+
+    if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+        log_info "Setting up LUKS on ${fs_target}..."
+        local luks_pass
+        luks_pass="$(state_get LUKS_PASS)"
+        printf '%s' "${luks_pass}" | cryptsetup luksFormat --type luks2 "${fs_target}" -
+        printf '%s' "${luks_pass}" | cryptsetup luksOpen "${fs_target}" cryptroot -
+        fs_target="/dev/mapper/cryptroot"
+    fi
+
     case "${fs_type}" in
         btrfs)
             log_info "Creating BTRFS filesystem..."
-            mkfs.btrfs -f "${root_part}"
+            mkfs.btrfs -f "${fs_target}"
             ;;
-
         ext4)
             log_info "Creating EXT4 filesystem..."
-            mkfs.ext4 -F "${root_part}"
+            mkfs.ext4 -F "${fs_target}"
             ;;
-
         xfs)
             log_info "Creating XFS filesystem (GRUB-compatible)..."
             local xfs_config="/usr/share/xfsprogs/mkfs/lts_6.6.conf"
-
             if [[ -f "${xfs_config}" ]]; then
-                mkfs.xfs -f -c "options=${xfs_config}" -m bigtime=0 "${root_part}"
+                mkfs.xfs -f -c "options=${xfs_config}" -m bigtime=0 "${fs_target}"
             else
-                mkfs.xfs -f -m bigtime=0 "${root_part}"
+                mkfs.xfs -f -m bigtime=0 "${fs_target}"
                 log_warn "XFS LTS config not found – using upstream defaults. GRUB may fail if features are incompatible."
             fi
             ;;
         f2fs)
             log_info "Creating F2FS filesystem..."
-
             local dev_rota
-            dev_rota=$(lsblk -dno ROTA "${root_part}" 2>/dev/null)
-
+            dev_rota=$(lsblk -dno ROTA "${fs_target}" 2>/dev/null)
             if [[ "${dev_rota}" == "0" ]]; then
                 log_warn "F2FS on non-rotational SSD – ext4 or XFS often perform better."
-
                 if ! tui_yesno "F2FS on SSD" "F2FS is designed for raw flash (eMMC/SD/USB). Continue?"; then
                     die "User aborted F2FS creation"
                 fi
             fi
-
-            mkfs.f2fs -f -O extra_attr,compression "${root_part}"
+            mkfs.f2fs -f -O extra_attr,compression "${fs_target}"
             ;;
-
         bcachefs)
             log_info "Creating Bcachefs filesystem..."
-            mkfs.bcachefs --force --replicas=1 "${root_part}"
+            mkfs.bcachefs --force --replicas=1 "${fs_target}"
             ;;
-
         exfat)
             log_info "Creating exFAT filesystem..."
-            mkfs.exfat -L "root" "${root_part}"
+            mkfs.exfat -L "root" "${fs_target}"
             ;;
-
         zfs)
             log_info "Clearing old ZFS labels..."
-            zpool labelclear -f "${root_part}" 2>/dev/null || true
-            wipefs -af "${root_part}" 2>/dev/null || true
-
+            zpool labelclear -f "${fs_target}" 2>/dev/null || true
+            wipefs -af "${fs_target}" 2>/dev/null || true
             log_info "Creating ZFS pool..."
             zpool create -f \
                 -o ashift=12 \
                 -O compression=zstd \
                 -O atime=off \
                 -O mountpoint=none \
-                zroot "${root_part}"
-
+                zroot "${fs_target}"
             zfs create -o mountpoint=/ zroot/root
             zfs mount zroot/root
-
             mkdir -p /mnt/boot
             ;;
     esac

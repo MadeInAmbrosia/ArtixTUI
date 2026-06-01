@@ -1,5 +1,24 @@
 # Changelog
 
+## v8.4.0.0 (2026-06-01) — ArtixForge
+
+### Fixed
+- Kernel recipe: `VIRTIO_BLK` changed from module to built-in across all config branches — eliminates boot panic when initramfs doesn't load the module before root mount (Volk profile, Power User mode)
+- `kconfig.bash`: `VIRTIO_BLK` changed from `--module` to `--enable` in `ensure_boot_essentials()`
+- `kconfig.bash`: `DEVTMPFS_MOUNT` added to `ensure_boot_essentials()` — kernel now auto-mounts devtmpfs at boot
+- Kernel recipe `localmodconfig` branch now calls `ensure_boot_essentials()` after `make localmodconfig` — live ISO built-in drivers (VIRTIO_BLK, DEVTMPFS, etc.) are no longer silently omitted from the generated config
+- Kernel recipe `localmodconfig` branch now applies feature flags (`nvidia-support`, `amd-support`) and resolves dependencies with `yes "" | make oldconfig`
+- Kernel recipe: duplicate `scripts/config` calls removed from default config branch
+- `bcachefs` added to root filesystem driver case in `localmodconfig` branch
+- LUKS+LVM: `luksFormat` now runs before `pvcreate` in `partition.sh` — fixes `pvcreate` failure on missing LUKS mapper
+- LUKS (no LVM): `luksFormat` and `luksOpen` added to `filesystem.sh` — plain LUKS installs no longer format the raw partition unencrypted
+- LUKS (no LVM): `luksOpen` added to `mount_filesystems()` — root partition correctly mounted from LUKS mapper
+- LVM: `filesystem.sh` now creates filesystems on logical volumes instead of overwriting the physical volume
+- Volk quick profile: added VM disclaimer — warns users the source-built kernel omits VirtIO drivers and won't boot in virtual machines
+
+### Added
+- Recipe self-healing: `heal.bash` auto-detects newer source versions for kernel.org, GitHub releases, and generic directory listings — failed fetches can now self-repair and retry
+
 ## v8.3.1.0 (2026-05-30) — ArtixForge
 
 ### Fixed

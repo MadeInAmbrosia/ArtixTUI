@@ -64,10 +64,13 @@ partition_disk() {
         sgdisk -t "$(lsblk -no PARTN "${root_part}" | head -n1)":8e00 "${disk}"
 
         local lvm_target="${root_part}"
+
         if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-            log_info "Opening LUKS container for LVM..."
+            log_info "Formatting LUKS container on ${root_part}..."
             local luks_pass
             luks_pass="$(state_get LUKS_PASS)"
+            printf '%s' "${luks_pass}" | cryptsetup luksFormat --type luks2 "${root_part}" -
+            log_info "Opening LUKS container..."
             printf '%s' "${luks_pass}" | cryptsetup luksOpen "${root_part}" cryptlvm -
             lvm_target="/dev/mapper/cryptlvm"
         fi

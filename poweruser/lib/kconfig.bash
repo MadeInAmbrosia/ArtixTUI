@@ -20,7 +20,7 @@ ensure_boot_essentials() {
     scripts/config --enable VIRTIO
     scripts/config --enable VIRTIO_MENU
     scripts/config --enable VIRTIO_PCI
-    scripts/config --module VIRTIO_BLK
+    scripts/config --enable VIRTIO_BLK
     scripts/config --module USB_HID
     scripts/config --enable BLK_DEV_SD
     scripts/config --enable BLK_DEV_NVME
@@ -35,6 +35,7 @@ ensure_boot_essentials() {
     scripts/config --enable PROC_FS
     scripts/config --enable SYSFS
     scripts/config --enable DEVTMPFS
+    scripts/config --enable DEVTMPFS_MOUNT
     scripts/config --enable TMPFS
     scripts/config --enable BINFMT_ELF
 }

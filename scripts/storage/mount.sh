@@ -54,6 +54,14 @@ mount_filesystems() {
         root_part="/dev/mapper/vg0-root"
     fi
 
+    if [[ "$(state_get USE_LVM no)" != "yes" && "$(state_get USE_LUKS no)" == "yes" ]]; then
+        local luks_pass
+        luks_pass="$(state_get LUKS_PASS)"
+        log_info "Opening LUKS container..."
+        printf '%s' "${luks_pass}" | cryptsetup luksOpen "${root_part}" cryptroot -
+        root_part="/dev/mapper/cryptroot"
+    fi
+
     log_info "Mounting root filesystem..."
     case "${fs_type}" in
         btrfs)

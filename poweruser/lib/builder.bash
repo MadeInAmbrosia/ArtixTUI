@@ -165,6 +165,7 @@ handle_build_failure() {
                 "Repair kernel (recovery mode)" \
                 "Update ArtixForge and retry" \
                 "Install binary kernel instead" \
+                "Heal recipe (auto-detect new version)" \
                 "Abort") || action="Abort"
         else
             action=$(tui_menu "Build Failed" "${recipe_name} failed." \
@@ -235,6 +236,23 @@ handle_build_failure() {
                 state_set KEEP_BINARY_KERNEL "yes"
                 printf '%s|%s|%d\n' "${recipe_name}" "binary-fallback" 0 >> "${LOGS_DIR}/timing.log"
                 return 0
+                ;;
+            "Heal recipe (auto-detect new version)")
+                log_info "Attempting to heal recipe ${recipe_name}..."
+                if [[ -f "${POWERUSER_DIR}/lib/heal.bash" ]]; then
+                    source "${POWERUSER_DIR}/lib/heal.bash"
+                    if heal_recipe "${recipe_name}"; then
+                        log_info "Recipe healed — retrying build..."
+                        rm -rf "${work_dir}"
+                        if build_package "${recipe_name}"; then
+                            return 0
+                        fi
+                    else
+                        log_warn "Heal failed — recipe may need manual intervention"
+                    fi
+                else
+                    log_warn "heal.bash not found — cannot auto-heal"
+                fi
                 ;;
             Abort)
                 die "Build aborted by user"
