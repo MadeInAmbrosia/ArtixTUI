@@ -48,7 +48,9 @@ self_update_installer() {
     cp -a "${tmp_dir}/." "${BASE_DIR}/"
     chmod +x "${BASE_DIR}/install"
     rm -rf "${tmp_dir}"
+    printf '[*] Updated %s -> %s\n' "${local_version}" "${remote_version}"
     printf '[*] Restarting updated installer...\n'
+    sleep 1
     exec "${BASE_DIR}/install" "${restart_args[@]}"
 }
 
