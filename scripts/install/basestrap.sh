@@ -181,7 +181,12 @@ EOF
     esac
 
     case "${fs_type}" in
-        btrfs)     pkgs+=(btrfs-progs snapper snap-pac grub-btrfs) ;;
+        btrfs)
+            pkgs+=(btrfs-progs snapper snap-pac grub-btrfs)
+            if [[ "$(state_get BOOTLOADER grub)" == "limine" ]]; then
+                pkgs+=(limine-snapper-sync)
+            fi
+            ;;
         ext4)      pkgs+=(e2fsprogs) ;;
         xfs)       pkgs+=(xfsprogs) ;;
         f2fs)      pkgs+=(f2fs-tools) ;;
@@ -207,6 +212,7 @@ EOF
         grub)    pkgs+=(grub os-prober) ;;
         refind)  pkgs+=(refind) ;;
         efistub) ;;
+        limine)  pkgs+=(limine) ;;
     esac
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then

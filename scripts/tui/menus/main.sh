@@ -52,7 +52,7 @@ tui_select_filesystem() {
 tui_select_bootloader() {
     local bl
     bl=$(tui_menu "Bootloader" "Select bootloader:" \
-        "GRUB" "rEFInd" "EFIStub") || return 1
+        "GRUB" "rEFInd" "EFIStub" "Limine") || return 1
     state_set BOOTLOADER "${bl,,}"
 }
 

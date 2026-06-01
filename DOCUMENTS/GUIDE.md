@@ -70,12 +70,14 @@ The software that loads your operating system when you switch on the computer.
 
 | Bootloader | Description |
 |------------|-------------|
-| GRUB | The most widely‑used bootloader; supports dual‑boot, theming, and encrypted partitions. **If you’re unsure, use GRUB.** |
+| GRUB | The most widely‑used bootloader; supports dual‑boot, theming, and encrypted partitions. **If you're unsure, use GRUB.** |
 | rEFInd | A graphical boot manager that auto‑detects installed operating systems. |
 | EFIStub | Boots the Linux kernel directly from your UEFI firmware – no separate bootloader needed. Very fast, but requires compatible firmware and manual setup. |
+| Limine | Modern, portable, multiprotocol bootloader. Clean config syntax, BTRFS snapshot booting, Windows chainloading. UEFI-only on ArtixForge. |
 | UKI (Unified Kernel Image) | Bundles the kernel, initramfs and command line into a single .efi file. Perfect for Secure Boot and very clean, but UEFI‑only. |
 
 All choices work; GRUB is the most forgiving for beginners and the easiest to troubleshoot.
+Limine is a great choice if you want a clean, modern config and BTRFS rollback support.
 
 ---
 
@@ -289,8 +291,8 @@ You can then choose:
 | Fix everything (nuclear) | Rebuild fstab, reinstall base packages, reinstall kernel, regenerate initramfs and GRUB — everything at once |
 | Scan for rootkits | Run rkhunter against the installation |
 | Full reinstall | Continue with a fresh installation |
-| Repair filesystem corruption | Check and optionally repair the root filesystem (safe or destructive) | When you suspect filesystem damage or unclean shutdown |
-| Untrusted Recovery | Rootkit scan, malware indicator check, optional ClamAV | Only for systems you believe are compromised |
+| Repair filesystem corruption | Check and optionally repair the root filesystem (safe or destructive) |
+| Untrusted Recovery | Rootkit scan, malware indicator check, optional ClamAV |
 
 After installation, you can also run `gartix recovery` from the installed
 system to check and repair source‑built packages.

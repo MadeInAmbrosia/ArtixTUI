@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.4.1.1-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.4.2.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
@@ -307,12 +307,14 @@ ArtixForge/
 
 # Supported Configurations
 
+# Supported Configurations
+
 | Category | Options |
 |---|---|
 | Init system | OpenRC, runit, dinit, s6, BusyBox init |
 | Filesystem | ext4, btrfs, xfs, f2fs, bcachefs, exfat, zfs |
 | Storage | Standard partitions, LVM, LUKS, LVM-on-LUKS |
-| Boot method | UKI, GRUB, rEFInd, EFIStub |
+| Boot method | UKI, GRUB, rEFInd, EFIStub, Limine |
 | Kernel | linux, zen, lts, hardened, libre, cachyos-bore, bazzite, xanmod, tkg |
 | Desktop | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, vxwm, IceWM, none |
 | Network | NetworkManager, dhcpcd+iwd, ConnMan, none |
@@ -321,7 +323,10 @@ ArtixForge/
 | Display stack | X.Org, xLibre |
 | Coreutils | GNU, BusyBox, uutils, ArtixForge minimal, Custom |
 | Privilege escalation | sudo, doas |
-| Encryption | LUKS full-disk encryption |
+| Encryption | LUKS full-disk encryption, LUKS-on-LVM |
+| Recovery | Smart issue detection, surgical repair, filesystem repair (safe/destructive), untrusted recovery (rootkit/malware scan) |
+| Power User | Source compilation, custom kernel config, community recipes, recipe self-healing |
+| Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal |
 | Theme | Gentoo, Artix, Jet Black, Mono, Retro |
 ---
 

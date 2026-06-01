@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.4.2.0 (2026-06-01) — ArtixForge
+
+### Added
+- Limine bootloader support — BTRFS snapshot boot entries, Windows chainloading, LUKS/LVM-aware kernel cmdline
+- `limine-snapper-sync` automatically installed when BTRFS snapshot layout is selected with Limine
+
 ## v8.4.1.1 (2026-06-01) — ArtixForge
 
 ### Fixed
