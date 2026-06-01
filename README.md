@@ -52,7 +52,7 @@ You'll be greeted by a main menu where you choose your installation mode.
 | 🟢 Automatic | Guided installation with full configuration flow. |
 | 🔵 Manual | Detect existing setup progress and continue manually. |
 | 🟡 Resume | Continue from the last saved installation stage. |
-| 🟠 Recovery | Reconstruct installer state from `/mnt` and repair installations. |
+| 🟠 Recovery | Auto-detect full system config, smart issue detection, surgical repair, filesystem repair (safe/destructive), rootkit/malware scanning. |
 | 🔴 Power User | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control. |
 | ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal, and custom profile loading. |
 
