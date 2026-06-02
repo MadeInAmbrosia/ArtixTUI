@@ -4,6 +4,8 @@
 
 ### Fixed
 - ZFS preflight: plain `linux` live ISO now allowed to install ZFS for `linux-zen` target — kernel ABI is compatible
+- ZFS preflight: `mirrorlist_backup` variable now declared at function scope — fixes "unbound variable" crash when mirror ranking is skipped
+- ZFS preflight: package install retry no longer uses nested `local` declarations that could trip `set -u`
 - LVM: root partition disk-belonging check now skipped when LVM is active — logical volumes don't have a direct disk parent
 
 ## v8.4.2.2 (2026-06-02) — ArtixForge

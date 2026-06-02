@@ -46,6 +46,7 @@ stage_preflight() {
     _preflight_rank_mirrors;
 
     local pacman_conf_backup='/tmp/pacman.conf.artixtui.bak'
+    local mirrorlist_backup='/etc/pacman.d/mirrorlist.backup'
 
     if [[ ! -f "${pacman_conf_backup}" ]]; then
         cp /etc/pacman.conf "${pacman_conf_backup}"
@@ -161,9 +162,11 @@ EOF
             if [[ -f "${mirrorlist_backup}" ]]; then
                 cp "${mirrorlist_backup}" /etc/pacman.d/mirrorlist
                 pacman -Sy --noconfirm || true
+            else
+                pacman -Sy --noconfirm || true
             fi
             gum spin --spinner dot --title "Preflight – retrying with backup mirrors" -- \
-                pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies even with backup mirrors"
+                pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies"
         fi
         log_info "Preflight dependencies installed.";
         for pkg in "${pkgs[@]}"; do
