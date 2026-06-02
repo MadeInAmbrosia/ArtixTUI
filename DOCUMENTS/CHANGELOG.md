@@ -1,7 +1,14 @@
 # Changelog
 
+## v8.4.2.3 (2026-06-02) — ArtixForge
+
+### Fixed
+- ZFS preflight: plain `linux` live ISO now allowed to install ZFS for `linux-zen` target — kernel ABI is compatible
+- LVM: root partition disk-belonging check now skipped when LVM is active — logical volumes don't have a direct disk parent
+
 ## v8.4.2.2 (2026-06-02) — ArtixForge
 
+### Changed
 - Updated the README.md (Less of a clusterf...)
 
 ## v8.4.2.1 (2026-06-02) — ArtixForge

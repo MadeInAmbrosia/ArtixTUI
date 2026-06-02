@@ -119,7 +119,7 @@ stage_preflight() {
                 die "ZFS is only supported with linux, linux-lts, linux-zen, or linux-hardened kernels."
             fi
 
-            if [[ "${target_kernel}" != "${live_kernel_pkg}" ]]; then
+            if [[ "${target_kernel}" != "${live_kernel_pkg}" && "${live_kernel_pkg}" != "linux" ]]; then
                 die "Live ISO kernel (${live_kernel_pkg}) does not match target kernel (${target_kernel}) for ZFS installation."
             fi
 

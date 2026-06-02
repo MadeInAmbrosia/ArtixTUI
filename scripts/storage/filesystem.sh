@@ -20,7 +20,9 @@ create_filesystems() {
     [[ -b "${efi_part}" ]] || die "invalid EFI partition: ${efi_part}"
     [[ -b "${root_part}" ]] || die "invalid root partition: ${root_part}"
     [[ "/dev/$(lsblk -no PKNAME "${efi_part}")" == "${disk}" ]] || die "EFI partition does not belong to selected disk"
-    [[ "/dev/$(lsblk -no PKNAME "${root_part}")" == "${disk}" ]] || die "Root partition does not belong to selected disk"
+    if [[ "$(state_get USE_LVM no)" != "yes" ]]; then
+        [[ "/dev/$(lsblk -no PKNAME "${root_part}")" == "${disk}" ]] || die "Root partition does not belong to selected disk"
+    fi
 
     log_info "Wiping old filesystem signatures..."
     wipefs -af "${efi_part}" || true
