@@ -16,7 +16,7 @@
 
 # What is ArtixForge?
 
-ArtixForge is a **TUI-first, modular deployment framework** for Artix Linux (OpenRC, runit, dinit, s6, and BusyBox init).
+ArtixForge is a **modular operating system deployment framework** for Artix Linux (OpenRC, runit, dinit, s6, and BusyBox init).
 
 It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools — all from a single terminal interface.
 
