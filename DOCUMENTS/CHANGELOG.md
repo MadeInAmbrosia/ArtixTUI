@@ -1,5 +1,9 @@
 # Changelog
 
+## v8.4.2.2 (2026-06-02) — ArtixForge
+
+- Updated the README.md (Less of a clusterf...)
+
 ## v8.4.2.1 (2026-06-02) — ArtixForge
 
 ### Fixed
