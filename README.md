@@ -136,7 +136,7 @@ ArtixForge requires `gum` for its TUI. If not present, it will be built from sou
 # Contributing
 
 Contributions are welcome and appreciated.
-
+**🫱 Looking for: Testers • Contributors • Distro Packagers**
 Please read [CONTRIBUTING](DOCUMENTS/CONTRIBUTING) for guidelines on testing,
 submissions, and code of conduct.
 
