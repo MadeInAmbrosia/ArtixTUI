@@ -1,5 +1,17 @@
 # Changelog
 
+## v8.4.2.1 (2026-06-02) — ArtixForge
+
+### Fixed
+- Bootloader: `findmnt` Btrfs subvolume suffix (`/dev/sda3[/@]`) now stripped before block device checks — fixes "invalid root block device" crash on Btrfs installs
+- Bootloader: `set -Eeuo pipefail` restored — was accidentally removed, errors now fail early instead of cascading silently
+- Bootloader: rEFInd root device detection now also strips Btrfs subvolume suffix
+- Bootloader: removed duplicate UKI existence check that ran before `esp_mount` was set — fixes undefined variable and false negative on UKI file detection
+- UKI: `sed` hook injection no longer depends on line-start anchor — works with any `mkinitcpio.conf` formatting
+- UKI: missing UKI file after `mkinitcpio -P` now triggers `die` instead of silent warning
+- UKI: failed hook injection now triggers `die` — no point continuing if the `uki` hook can't be added to `mkinitcpio.conf`
+- Basestrap: `BASH_XTRACEFD` now unset before `basestrap` call — prevents "invalid value for trace file descriptor" errors in post-transaction hooks
+
 ## v8.4.2.0 (2026-06-01) — ArtixForge
 
 ### Added

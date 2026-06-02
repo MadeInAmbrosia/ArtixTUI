@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
 configure_bootloader() {
     local bootloader kernel fs_type root_param=''
     bootloader="$(state_get BOOTLOADER grub)"
@@ -24,7 +27,10 @@ default_uki="/boot/efi/EFI/Artix/artix-linux.efi"
 EOF
 
         if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
-            artix-chroot /mnt sed -i 's/^HOOKS=(\(.*\))/HOOKS=(\1 uki)/' /etc/mkinitcpio.conf
+            artix-chroot /mnt sed -i 's/HOOKS=(\(.*\))/HOOKS=(\1 uki)/' /etc/mkinitcpio.conf
+            if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf; then
+                die "Failed to add 'uki' hook to /etc/mkinitcpio.conf — cannot generate UKI"
+            fi
         fi
     fi
 
@@ -37,10 +43,12 @@ EOF
 
     local root_device
     root_device=$(artix-chroot /mnt findmnt -n -o SOURCE /) || true
+    root_device="${root_device%%[*}"
     [[ -n "${root_device}" ]] || die 'failed to detect root device'
 
     local root_source root_uuid esp_source esp_mount esp_disk esp_part
     root_source="$(findmnt -rn -o SOURCE --target /mnt)"
+    root_source="${root_source%%[*}"
     [[ -n "${root_source}" ]] || die 'failed to detect root partition'
     [[ -b "${root_source}" ]] || die 'invalid root block device'
     root_uuid="$(blkid -s UUID -o value "${root_source}")"
@@ -86,6 +94,7 @@ EOF
             else
                 local refind_root_device refind_root_uuid
                 refind_root_device=$(findmnt -n -o SOURCE --target /mnt)
+                refind_root_device="${refind_root_device%%[*]}"
                 refind_root_uuid=$(blkid -s UUID -o value "${refind_root_device}")
                 refind_root_param="root=UUID=${refind_root_uuid}"
             fi
@@ -275,6 +284,8 @@ LIMINE_EOF
                     log_warn "Signing keys not found. UKI not signed."
                 fi
             fi
+        else
+            die "UKI generation failed — ${uki_file} was not created. Check mkinitcpio.conf and kernel EFI stub support."
         fi
     fi
 

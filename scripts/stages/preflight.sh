@@ -155,8 +155,16 @@ EOF
 
     if [[ ${#pkgs[@]} -gt 0 ]]; then
         log_info "Installing required tools: ${pkgs[*]}";
-        gum spin --spinner dot --title "Preflight – installing dependencies" -- \
-            pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies";
+        if ! gum spin --spinner dot --title "Preflight – installing dependencies" -- \
+            pacman -S --noconfirm --needed "${pkgs[@]}"; then
+            log_warn "Primary mirror failed — restoring backup mirrorlist and retrying..."
+            if [[ -f "${mirrorlist_backup}" ]]; then
+                cp "${mirrorlist_backup}" /etc/pacman.d/mirrorlist
+                pacman -Sy --noconfirm || true
+            fi
+            gum spin --spinner dot --title "Preflight – retrying with backup mirrors" -- \
+                pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies even with backup mirrors"
+        fi
         log_info "Preflight dependencies installed.";
         for pkg in "${pkgs[@]}"; do
             pacman -Q "${pkg}" &>/dev/null || die "Failed to install ${pkg}"
