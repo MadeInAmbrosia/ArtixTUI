@@ -1,5 +1,19 @@
 # Changelog
 
+## v8.4.3.0 (2026-06-03) — ArtixForge
+
+### Changed
+- Recovery: kernel detection now covers all nine supported kernels (linux, zen, lts, hardened, libre, cachyos-bore, bazzite, xanmod, tkg) plus custom Power User kernels
+- Recovery: bootloader detection expanded to include Limine and rEFInd alongside GRUB and EFIStub
+- Recovery: `repair_boot` now reinstalls the correct kernel package for any detected kernel variant
+- Recovery: `repair_boot` can now reinstall Limine and rEFInd bootloaders, not just GRUB
+- Recovery: install stage detection now reports Limine, rEFInd, and UKI presence
+- Recovery: boot health check now detects missing UKI files and reports `no-uki`
+- Recovery: `repair_uki` regenerates missing UKIs via `ukify build` when `eukify` is installed
+
+### Fixed
+- UKI: `ukify` binary now checked directly via `[[ -x /mnt/usr/bin/ukify ]]` instead of `command -v` in chroot — fixes false negative when `ukify` is installed but not found via `command -v`
+
 ## v8.4.2.5 (2026-06-03) — ArtixForge
 
 ### Fixed

@@ -39,13 +39,17 @@ detect_bootloader() {
         state_set BOOTLOADER grub
     elif [[ -d "${ROOT}/boot/EFI/refind" ]] || [[ -f "${ROOT}/boot/refind_linux.conf" ]]; then
         state_set BOOTLOADER refind
+    elif [[ -f "${ROOT}/boot/efi/EFI/BOOT/BOOTX64.EFI" ]] || [[ -f "${ROOT}/boot/limine.conf" ]] || [[ -f "${ROOT}/boot/efi/limine.conf" ]]; then
+        state_set BOOTLOADER limine
     else
         state_set BOOTLOADER efistub
     fi
 }
 
 detect_uki() {
-    if [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]] || grep -q 'uki' "${ROOT}/etc/mkinitcpio.d/"*.preset 2>/dev/null; then
+    if [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]] || \
+       compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 || \
+       grep -q 'uki' "${ROOT}/etc/mkinitcpio.d/"*.preset 2>/dev/null; then
         state_set GENERATE_UKI yes
     else
         state_set GENERATE_UKI no
@@ -53,6 +57,11 @@ detect_uki() {
 }
 
 detect_kernel() {
+    if [[ -f "${ROOT}/boot/vmlinuz-linux-custom" ]]; then
+        state_set KERNEL_CHOICE linux-custom
+        return 0
+    fi
+
     if pacman_root_has linux-zen; then
         state_set KERNEL_CHOICE linux-zen
     elif pacman_root_has linux-lts; then
@@ -65,12 +74,25 @@ detect_kernel() {
         state_set KERNEL_CHOICE linux-cachyos-bore
     elif pacman_root_has linux-bazzite-bin; then
         state_set KERNEL_CHOICE linux-bazzite-bin
-    elif pacman_root_has linux-xanmod-x64v4 || pacman_root_has linux-xanmod-x64v3 || pacman_root_has linux-xanmod-x64v2 || pacman_root_has linux-xanmod; then
+    elif pacman_root_has linux-xanmod-x64v4 || pacman_root_has linux-xanmod-x64v3 || \
+         pacman_root_has linux-xanmod-x64v2 || pacman_root_has linux-xanmod; then
         state_set KERNEL_CHOICE xanmod
     elif [[ -d "${ROOT}/opt/linux-tkg" ]] || pacman_root_has linux-tkg || pacman_root_has linux-tkg-bore; then
         state_set KERNEL_CHOICE tkg
-    else
+    elif pacman_root_has linux; then
         state_set KERNEL_CHOICE linux
+    else
+        local kver
+        kver=$(ls "${ROOT}/boot/vmlinuz-"* 2>/dev/null | head -n1 | sed 's/.*vmlinuz-//')
+        if [[ "${kver}" == *"zen"* ]]; then
+            state_set KERNEL_CHOICE linux-zen
+        elif [[ "${kver}" == *"lts"* ]]; then
+            state_set KERNEL_CHOICE linux-lts
+        elif [[ "${kver}" == *"hardened"* ]]; then
+            state_set KERNEL_CHOICE linux-hardened
+        else
+            state_set KERNEL_CHOICE linux
+        fi
     fi
 }
 
@@ -268,7 +290,6 @@ detect_disk() {
     while [[ -n "${candidate}" ]]; do
         disk="$(lsblk -no PKNAME "${candidate}" 2>/dev/null || true)"
         if [[ -z "${disk}" ]]; then
-            # This is already a disk
             break
         fi
         candidate="/dev/${disk}"
@@ -370,6 +391,8 @@ detect_install_stage() {
     [[ -f "${ROOT}/etc/fstab" ]] && status+="fstab "
     [[ -x "${ROOT}/usr/bin/bash" ]] && status+="basestrap "
     [[ -f "${ROOT}/boot/grub/grub.cfg" ]] && status+="grub "
+    [[ -f "${ROOT}/boot/efi/EFI/BOOT/BOOTX64.EFI" ]] && status+="limine "
+    [[ -f "${ROOT}/boot/refind_linux.conf" ]] && status+="refind "
     [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]] && status+="uki "
     [[ -d "${ROOT}/home" ]] && status+="home "
     [[ -f "${ROOT}/etc/hostname" ]] && status+="hostname "
@@ -414,6 +437,14 @@ detect_boot_health() {
     else
         issues+="no-boot-dir "
     fi
+
+    if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
+        if ! compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 && \
+           ! [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]]; then
+            issues+="no-uki "
+        fi
+    fi
+
     if command -v efibootmgr &>/dev/null; then
         if ! efibootmgr 2>/dev/null | grep -qi 'Artix'; then
             issues+="no-efi-entry "

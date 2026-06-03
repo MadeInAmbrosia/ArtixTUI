@@ -101,36 +101,113 @@ repair_pacman() {
     fi
 }
 
+repair_uki() {
+    if [[ "$(state_get GENERATE_UKI no)" != "yes" ]]; then
+        return 0
+    fi
+
+    local uki_file
+    uki_file=$(compgen -G "/mnt/boot/efi/EFI/Linux/artix-*.efi" 2>/dev/null | head -n1)
+
+    if [[ -z "${uki_file}" ]]; then
+        log_warn "UKI is enabled but no UKI file found."
+        if tui_yesno "Repair UKI" "Regenerate UKI with ukify?"; then
+            if ! artix-chroot /mnt command -v ukify &>/dev/null; then
+                log_warn "ukify not found — install eukify package first"
+                return 1
+            fi
+            local kernel_version initramfs_name root_uuid
+            kernel_version=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1 | sed 's/.*vmlinuz-//')
+            initramfs_name="initramfs-${kernel_version}.img"
+            root_uuid=$(findmnt -n -o UUID /mnt 2>/dev/null || blkid -s UUID -o value "$(findmnt -n -o SOURCE /mnt)")
+            mkdir -p /mnt/boot/efi/EFI/Linux
+            artix-chroot /mnt ukify build \
+                --linux="/boot/vmlinuz-${kernel_version}" \
+                --initrd="/boot/${initramfs_name}" \
+                --cmdline="root=UUID=${root_uuid} rw" \
+                --output="/boot/efi/EFI/Linux/artix-${kernel_version}.efi" || {
+                    log_error "ukify failed — UKI not regenerated"
+                    return 1
+                }
+            log_info "UKI regenerated successfully."
+        fi
+    else
+        log_info "UKI found: ${uki_file}"
+    fi
+}
+
+_kernel_pkg() {
+    local choice="${1:-linux}"
+    case "${choice}" in
+        linux)                echo "linux linux-headers" ;;
+        linux-zen)            echo "linux-zen linux-zen-headers" ;;
+        linux-lts)            echo "linux-lts linux-lts-headers" ;;
+        linux-hardened)       echo "linux-hardened linux-hardened-headers" ;;
+        linux-libre)          echo "linux-libre linux-libre-headers" ;;
+        linux-cachyos-bore)   echo "linux-cachyos-bore linux-cachyos-bore-headers" ;;
+        linux-bazzite-bin)    echo "linux-bazzite-bin linux-bazzite-bin-headers" ;;
+        xanmod)               echo "linux-xanmod linux-xanmod-headers" ;;
+        tkg)                  echo "" ;;  # TKG is built from source, not a binary package
+        linux-custom)         echo "" ;;  # Custom Power User kernel, handled separately
+        *)                    echo "linux linux-headers" ;;
+    esac
+}
+
 repair_boot() {
     local issues
     issues=$(state_get BOOT_ISSUES none)
+
     if [[ "${issues}" =~ no-kernel ]]; then
         log_warn "Kernel image missing from /boot."
-        if tui_yesno "Reinstall kernel" "Reinstall kernel package?"; then
-            local kernel_choice kernel_pkg
-            kernel_choice=$(state_get KERNEL_CHOICE linux)
-            case "${kernel_choice}" in
-                linux)          kernel_pkg="linux" ;;
-                linux-zen)      kernel_pkg="linux-zen" ;;
-                linux-lts)      kernel_pkg="linux-lts" ;;
-                linux-hardened) kernel_pkg="linux-hardened" ;;
-                *)              kernel_pkg="linux" ;;
-            esac
-            artix-chroot /mnt pacman -S --noconfirm "${kernel_pkg}" "${kernel_pkg}-headers"
+        local kernel_choice kernel_pkgs
+        kernel_choice=$(state_get KERNEL_CHOICE linux)
+        kernel_pkgs=$(_kernel_pkg "${kernel_choice}")
+        if [[ -n "${kernel_pkgs}" ]]; then
+            if tui_yesno "Reinstall kernel" "Reinstall ${kernel_choice} kernel?"; then
+                artix-chroot /mnt pacman -S --noconfirm ${kernel_pkgs}
+            fi
+        else
+            log_warn "No binary package for kernel ${kernel_choice} — skipping."
         fi
     fi
+
     if [[ "${issues}" =~ no-initramfs ]]; then
         log_warn "Initramfs missing."
         if tui_yesno "Regenerate initramfs" "Run mkinitcpio?"; then
             artix-chroot /mnt mkinitcpio -P
         fi
     fi
+
     if [[ "${issues}" =~ no-efi-entry ]]; then
         log_warn "No EFI boot entry for Artix."
-        if tui_yesno "Reinstall bootloader" "Reinstall GRUB?"; then
-            artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX
-            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+        local bootloader
+        bootloader=$(state_get BOOTLOADER grub)
+        if tui_yesno "Reinstall bootloader" "Reinstall ${bootloader}?"; then
+            case "${bootloader}" in
+                grub)
+                    artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX
+                    artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+                    ;;
+                limine)
+                    artix-chroot /mnt pacman -S --noconfirm limine
+                    mkdir -p /mnt/boot/efi/EFI/BOOT
+                    cp /mnt/usr/share/limine/BOOTX64.EFI /mnt/boot/efi/EFI/BOOT/
+                    artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
+                        --label 'Limine' --loader '\EFI\BOOT\BOOTX64.EFI' --verbose || true
+                    ;;
+                refind)
+                    artix-chroot /mnt refind-install
+                    ;;
+                efistub)
+                    log_warn "EFIStub repair not implemented — please re-run the installer or manually configure."
+                    ;;
+            esac
         fi
+    fi
+
+    if [[ "${issues}" =~ no-uki ]]; then
+        log_warn "UKI file missing."
+        repair_uki
     fi
 }
 
@@ -182,7 +259,9 @@ repair_kernel() {
     if [[ -f /mnt/boot/vmlinuz-linux-custom ]]; then
         log_info "Custom kernel rebuilt successfully."
         artix-chroot /mnt mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
-        artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || log_warn "grub-mkconfig failed"
+        if [[ -d /mnt/boot/grub ]]; then
+            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || log_warn "grub-mkconfig failed"
+        fi
     else
         log_error "Kernel rebuild may have failed – check logs."
     fi
@@ -223,7 +302,6 @@ repair_detected_issues() {
             fi
         fi
 
-        # Regenerate GRUB config if boot was touched
         if [[ "${boot_issues}" != "none" ]] && [[ -d /mnt/boot/grub ]]; then
             log_info "Regenerating GRUB config..."
             artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || log_warn "grub-mkconfig failed"

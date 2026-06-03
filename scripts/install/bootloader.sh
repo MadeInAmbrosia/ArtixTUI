@@ -20,9 +20,9 @@ configure_bootloader() {
 
         mkdir -p /mnt/boot/efi/EFI/Linux
 
-        if artix-chroot /mnt command -v ukify &>/dev/null; then
+        if [[ -x /mnt/usr/bin/ukify ]]; then
             log_info "Generating UKI with ukify..."
-            artix-chroot /mnt ukify build \
+            artix-chroot /mnt /usr/bin/ukify build \
                 --linux="/boot/${uki_kernel_name}" \
                 --initrd="/boot/${uki_initramfs_name}" \
                 --cmdline="root=UUID=${root_uuid} rw" \
