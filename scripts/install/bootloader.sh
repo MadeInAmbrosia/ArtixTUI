@@ -28,6 +28,15 @@ configure_bootloader() {
     root_uuid="$(blkid -s UUID -o value "${root_source}")"
     [[ -n "${root_uuid}" ]] || die 'failed to detect root UUID'
 
+    local crypt_uuid="${root_uuid}"
+    if [[ "$(state_get USE_LVM no)" == "yes" && "$(state_get USE_LUKS no)" == "yes" ]]; then
+        local raw_part
+        raw_part="$(lsblk -no PKNAME "${root_source}" 2>/dev/null || true)"
+        if [[ -n "${raw_part}" ]]; then
+            crypt_uuid="$(blkid -s UUID -o value "/dev/${raw_part}" 2>/dev/null || echo "${root_uuid}")"
+        fi
+    fi
+
     for esp_mount in /mnt/boot/efi /mnt/efi /mnt/boot; do
         if findmnt -rn -o FSTYPE "${esp_mount}" | grep -qx 'vfat'; then
             esp_source="$(findmnt -rn -o SOURCE "${esp_mount}")"
@@ -56,7 +65,7 @@ configure_bootloader() {
             artix-chroot /mnt /usr/bin/ukify build \
                 --linux="/boot/${uki_kernel_name}" \
                 --initrd="/boot/${uki_initramfs_name}" \
-                --cmdline="root=UUID=${root_uuid} rw" \
+                --cmdline="root=UUID=${root_uuid} rw cryptdevice=UUID=${crypt_uuid}:cryptroot" \
                 --output="${uki_output}" || die "ukify failed — UKI not generated"
         else
             die "ukify not found — install eukify package for UKI support"
@@ -132,6 +141,13 @@ configure_bootloader() {
             [[ -n "${microcode_image_str:-}" ]] && cmdline+=" ${microcode_image_str}"
             cmdline+=" initrd=\\EFI\\Artix\\${initramfs_basename}"
 
+            if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                cmdline+=" cryptdevice=UUID=${crypt_uuid}:cryptroot"
+            fi
+            if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+                cmdline+=" root=/dev/vg0/root"
+            fi
+
             log_info "Creating EFI boot entry..."
             artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                 --label 'Artix Linux' --loader "${loader}" --unicode "${cmdline}" --verbose \
@@ -177,7 +193,7 @@ configure_bootloader() {
             esac
 
             if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-                limine_root_cmdline+=" cryptdevice=UUID=${root_uuid}:cryptroot"
+                limine_root_cmdline+=" cryptdevice=UUID=${crypt_uuid}:cryptroot"
             fi
             if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
                 limine_root_cmdline+=" root=/dev/vg0/root"
@@ -260,7 +276,7 @@ LIMINE_EOF
             artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                 --label 'Artix Linux (UKI)' \
                 --loader "\\EFI\\Linux\\artix-${uki_kver}.efi" \
-                --unicode "root=UUID=${root_uuid} rw" --verbose \
+                --unicode "root=UUID=${root_uuid} rw cryptdevice=UUID=${crypt_uuid}:cryptroot" --verbose \
                 || die "Failed to create UKI EFI boot entry"
 
             if tui_yesno "Secure Boot" "Sign the UKI for Secure Boot?"; then
@@ -274,7 +290,7 @@ LIMINE_EOF
                     artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                         --label 'Artix Linux (UKI Signed)' \
                         --loader "\\EFI\\Linux\\artix-${uki_kver}-signed.efi" \
-                        --unicode "root=UUID=${root_uuid} rw" --verbose \
+                        --unicode "root=UUID=${root_uuid} rw cryptdevice=UUID=${crypt_uuid}:cryptroot" --verbose \
                         || log_warn "Failed to create signed UKI boot entry"
                     log_info "UKI signed for Secure Boot."
                 else

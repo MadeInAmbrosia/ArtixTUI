@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.4.3.4 (2026-06-03) — ArtixForge
+
+### Fixed
+- LUKS+LVM: `encrypt` hook now added to `mkinitcpio.conf` when LUKS is enabled — `cryptsetup` now available in initramfs to unlock LUKS containers at boot
+- LUKS+LVM: `crypt_uuid` now resolved from the underlying physical partition instead of the LV — `cryptdevice=` cmdline gets the correct UUID
+- LUKS+LVM: EFIStub boot entry now includes `cryptdevice=` and `root=/dev/vg0/root` when LUKS/LVM are active
+- Secure Boot: missing signing keys now log a warning instead of `die` — UKI generation completes without signing
+
 ## v8.4.3.2 (2026-06-03) — ArtixForge
 
 ### Fixed
