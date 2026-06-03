@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.4.2.5 (2026-06-03) — ArtixForge
+
+### Fixed
+- Debug mode: `xtrace_safe()` wrapper added to `common.sh` — prevents `BASH_XTRACEFD` from leaking into LVM tools and `basestrap`, eliminating "leaked file descriptor" warnings
+- Debug mode: LVM `*create` commands and `basestrap` now wrapped with `xtrace_safe` — debug output no longer bleeds into child process output
+- Debug mode: `mkfs`, `cryptsetup`, and other informative commands left unwrapped — users can still see filesystem creation progress
+- LVM: `pvcreate -ff` now used instead of `pvcreate` — suppresses "existing filesystem signature" prompt that blocked unattended installs
+
 ## v8.4.2.4 (2026-06-03) — ArtixForge
 
 ### Fixed

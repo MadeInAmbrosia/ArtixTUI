@@ -262,11 +262,10 @@ EOF
         pacman -S --noconfirm --needed archlinux-keyring
     fi
 
-    unset BASH_XTRACEFD 2>/dev/null || true
     log_info "Starting basestrap..."
     printf '%s\n' "${pkgs[@]}" >> "${debug_log}"
     clean_pacman_lock /mnt/var/lib/pacman/db.lck
-    if ! basestrap /mnt "${pkgs[@]}" \
+    if ! xtrace_safe basestrap /mnt "${pkgs[@]}" \
         2>&1 | tee -a "${debug_log}" \
         | while IFS= read -r line; do
             log_info "${line}"

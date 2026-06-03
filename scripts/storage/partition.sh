@@ -75,11 +75,11 @@ partition_disk() {
             lvm_target="/dev/mapper/cryptlvm"
         fi
 
-        pvcreate "${lvm_target}" || die "pvcreate failed"
-        vgcreate vg0 "${lvm_target}" || die "vgcreate failed"
-        lvcreate -L 20G -n root vg0 || die "lvcreate root failed"
-        lvcreate -L 8G -n home vg0 || true
-        lvcreate -l 100%FREE -n data vg0 || true
+        xtrace_safe pvcreate -ff "${lvm_target}" || die "pvcreate failed"
+        xtrace_safe vgcreate vg0 "${lvm_target}" || die "vgcreate failed"
+        xtrace_safe lvcreate -L 20G -n root vg0 || die "lvcreate root failed"
+        xtrace_safe lvcreate -L 8G -n home vg0 || true
+        xtrace_safe lvcreate -l 100%FREE -n data vg0 || true
     fi
 
     log_info "Partitioning complete."

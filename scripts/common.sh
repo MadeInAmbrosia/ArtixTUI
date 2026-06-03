@@ -178,6 +178,10 @@ check_disk_space() {
     fi
 }
 
+xtrace_safe() {
+    ( unset BASH_XTRACEFD; "$@" )
+}
+
 retry_command() {
     local desc="${1}"; shift
     local retries=3 delay=5
