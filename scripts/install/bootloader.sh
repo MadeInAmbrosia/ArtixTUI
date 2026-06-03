@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+get_luks_raw_uuid() {
+    local dev="$1"
+    while [[ "$(lsblk -no TYPE "$dev" 2>/dev/null)" == "crypt" ]]; do
+        dev="/dev/$(lsblk -no PKNAME "$dev" 2>/dev/null)"
+    done
+    blkid -s UUID -o value "$dev" 2>/dev/null || echo ""
+}
+
 configure_bootloader() {
     local bootloader kernel fs_type root_param=''
     bootloader="$(state_get BOOTLOADER grub)"
@@ -28,12 +36,17 @@ configure_bootloader() {
     root_uuid="$(blkid -s UUID -o value "${root_source}")"
     [[ -n "${root_uuid}" ]] || die 'failed to detect root UUID'
 
+    local mapper_name="cryptroot"
     local crypt_uuid="${root_uuid}"
-    if [[ "$(state_get USE_LVM no)" == "yes" && "$(state_get USE_LUKS no)" == "yes" ]]; then
-        local raw_part
-        raw_part="$(lsblk -no PKNAME "${root_source}" 2>/dev/null || true)"
-        if [[ -n "${raw_part}" ]]; then
-            crypt_uuid="$(blkid -s UUID -o value "/dev/${raw_part}" 2>/dev/null || echo "${root_uuid}")"
+
+    if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+        local raw_uuid
+        raw_uuid="$(get_luks_raw_uuid "${root_source}")"
+        if [[ -n "${raw_uuid}" ]]; then
+            crypt_uuid="${raw_uuid}"
+        fi
+        if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+            mapper_name="cryptlvm"
         fi
     fi
 
@@ -60,12 +73,29 @@ configure_bootloader() {
         local uki_output="${esp_mount#/mnt}/EFI/Linux/artix-${uki_kver}.efi"
         artix-chroot /mnt mkdir -p /boot/efi/EFI/Linux
 
+        local uki_cmdline=""
+        if [[ "${fs_type}" == 'zfs' ]]; then
+            uki_cmdline="root=ZFS=zroot/root rw modules=zfs rootfstype=zfs"
+        else
+            if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                uki_cmdline+="cryptdevice=UUID=${crypt_uuid}:${mapper_name} "
+            fi
+            if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+                uki_cmdline+="root=/dev/vg0/root "
+            elif [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                uki_cmdline+="root=/dev/mapper/${mapper_name} "
+            else
+                uki_cmdline+="root=UUID=${root_uuid} "
+            fi
+            uki_cmdline+="rw"
+        fi
+
         if [[ -x /mnt/usr/bin/ukify ]]; then
             log_info "Generating UKI with ukify..."
             artix-chroot /mnt /usr/bin/ukify build \
                 --linux="/boot/${uki_kernel_name}" \
                 --initrd="/boot/${uki_initramfs_name}" \
-                --cmdline="root=UUID=${root_uuid} rw cryptdevice=UUID=${crypt_uuid}:cryptroot" \
+                --cmdline="${uki_cmdline}" \
                 --output="${uki_output}" || die "ukify failed — UKI not generated"
         else
             die "ukify not found — install eukify package for UKI support"
@@ -79,6 +109,13 @@ configure_bootloader() {
 
             if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
                 echo 'GRUB_ENABLE_CRYPTODISK=y' >> /mnt/etc/default/grub
+                local grub_cmdline="cryptdevice=UUID=${crypt_uuid}:${mapper_name}"
+                if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+                    grub_cmdline+=" root=/dev/vg0/root"
+                else
+                    grub_cmdline+=" root=/dev/mapper/${mapper_name}"
+                fi
+                artix-chroot /mnt sed -i "s|^GRUB_CMDLINE_LINUX=\"\(.*\)\"|GRUB_CMDLINE_LINUX=\"\1 ${grub_cmdline}\"|" /etc/default/grub
             fi
 
             if [[ "${fs_type}" == "xfs" ]]; then
@@ -88,12 +125,12 @@ configure_bootloader() {
                 fi
             fi
 
-            artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX || recoverable_error 'grub-install failed – updating ArtixForge may help'
+            xtrace_safe artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX || recoverable_error 'grub-install failed – updating ArtixForge may help'
             if [[ -n "${root_param}" ]]; then
                 artix-chroot /mnt sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"${root_param}\"|" /etc/default/grub
             fi
             log_info "Generating GRUB configuration..."
-            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg || recoverable_error 'grub-mkconfig failed – updating ArtixForge may fix this'
+            xtrace_safe artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg || recoverable_error 'grub-mkconfig failed – updating ArtixForge may fix this'
             ;;
         refind)
             log_info "Installing rEFInd..."
@@ -102,11 +139,21 @@ configure_bootloader() {
             if [[ -n "${root_param}" ]]; then
                 refind_root_param="${root_param}"
             else
-                local refind_root_device refind_root_uuid
-                refind_root_device=$(findmnt -n -o SOURCE --target /mnt)
-                refind_root_device="${refind_root_device%%[*]}"
-                refind_root_uuid=$(blkid -s UUID -o value "${refind_root_device}")
-                refind_root_param="root=UUID=${refind_root_uuid}"
+                refind_root_param=""
+                if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                    refind_root_param+="cryptdevice=UUID=${crypt_uuid}:${mapper_name} "
+                fi
+                if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+                    refind_root_param+="root=/dev/vg0/root"
+                elif [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                    refind_root_param+="root=/dev/mapper/${mapper_name}"
+                else
+                    local refind_root_device refind_root_uuid
+                    refind_root_device=$(findmnt -n -o SOURCE --target /mnt)
+                    refind_root_device="${refind_root_device%%[*]}"
+                    refind_root_uuid=$(blkid -s UUID -o value "${refind_root_device}")
+                    refind_root_param+="root=UUID=${refind_root_uuid}"
+                fi
             fi
             artix-chroot /mnt bash -c "echo \"${refind_root_param} rw\" > /boot/refind_linux.conf"
             artix-chroot /mnt refind-install || die 'refind-install failed'
@@ -136,21 +183,24 @@ configure_bootloader() {
             fi
 
             local loader="\\EFI\\Artix\\${kernel_basename}"
-            local cmdline
+            local cmdline=""
             if [[ "${fs_type}" == 'zfs' ]]; then
                 cmdline="root=ZFS=zroot/root rw"
             else
-                cmdline="root=UUID=${root_uuid} rw"
+                if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                    cmdline+="cryptdevice=UUID=${crypt_uuid}:${mapper_name} "
+                fi
+                if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+                    cmdline+="root=/dev/vg0/root "
+                elif [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                    cmdline+="root=/dev/mapper/${mapper_name} "
+                else
+                    cmdline+="root=UUID=${root_uuid} "
+                fi
+                cmdline+="rw"
             fi
             [[ -n "${microcode_image_str:-}" ]] && cmdline+=" ${microcode_image_str}"
             cmdline+=" initrd=\\EFI\\Artix\\${initramfs_basename}"
-
-            if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-                cmdline+=" cryptdevice=UUID=${crypt_uuid}:cryptroot"
-            fi
-            if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
-                cmdline+=" root=/dev/vg0/root"
-            fi
 
             log_info "Creating EFI boot entry..."
             artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
@@ -183,11 +233,21 @@ configure_bootloader() {
             limine_kernel_name="$(basename "${limine_kernel}")"
             limine_initramfs_name="$(basename "${limine_initramfs}")"
 
-            local limine_root_cmdline
+            local limine_root_cmdline=""
             if [[ "${fs_type}" == 'zfs' ]]; then
                 limine_root_cmdline="root=ZFS=zroot/root rw modules=zfs rootfstype=zfs"
             else
-                limine_root_cmdline="root=UUID=${root_uuid} rw"
+                if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                    limine_root_cmdline+="cryptdevice=UUID=${crypt_uuid}:${mapper_name} "
+                fi
+                if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+                    limine_root_cmdline+="root=/dev/vg0/root "
+                elif [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                    limine_root_cmdline+="root=/dev/mapper/${mapper_name} "
+                else
+                    limine_root_cmdline+="root=UUID=${root_uuid} "
+                fi
+                limine_root_cmdline+="rw"
             fi
 
             case "${fs_type}" in
@@ -195,13 +255,6 @@ configure_bootloader() {
                 xfs)   limine_root_cmdline+=" rootfstype=xfs" ;;
                 f2fs)  limine_root_cmdline+=" rootfstype=f2fs" ;;
             esac
-
-            if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-                limine_root_cmdline+=" cryptdevice=UUID=${crypt_uuid}:cryptroot"
-            fi
-            if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
-                limine_root_cmdline+=" root=/dev/vg0/root"
-            fi
 
             log_info "Writing ${esp_mount}/limine.conf..."
             cat > "${esp_mount}/limine.conf" <<LIMINE_EOF
@@ -280,7 +333,7 @@ LIMINE_EOF
             artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                 --label 'Artix Linux (UKI)' \
                 --loader "\\EFI\\Linux\\artix-${uki_kver}.efi" \
-                --unicode "root=UUID=${root_uuid} rw cryptdevice=UUID=${crypt_uuid}:cryptroot" --verbose \
+                --unicode "${uki_cmdline}" --verbose \
                 || die "Failed to create UKI EFI boot entry"
 
             if tui_yesno "Secure Boot" "Sign the UKI for Secure Boot?"; then
@@ -294,7 +347,7 @@ LIMINE_EOF
                     artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                         --label 'Artix Linux (UKI Signed)' \
                         --loader "\\EFI\\Linux\\artix-${uki_kver}-signed.efi" \
-                        --unicode "root=UUID=${root_uuid} rw cryptdevice=UUID=${crypt_uuid}:cryptroot" --verbose \
+                        --unicode "${uki_cmdline}" --verbose \
                         || log_warn "Failed to create signed UKI boot entry"
                     log_info "UKI signed for Secure Boot."
                 else

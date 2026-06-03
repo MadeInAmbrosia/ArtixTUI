@@ -1,5 +1,17 @@
 # Changelog
 
+## v8.4.3.5 (2026-06-03) — ArtixForge
+
+### Fixed
+- LUKS: mapper name now dynamic (`cryptlvm` with LVM, `cryptroot` without) – fixes boot when LUKS is used without LVM
+- LUKS: `crypt_uuid` correctly derived for LUKS‑only setups (previously only worked with LVM)
+- GRUB: `cryptdevice=` and correct `root=` now injected into `GRUB_CMDLINE_LINUX` when LUKS is active
+- rEFInd: full kernel cmdline with `cryptdevice` and appropriate root written to `refind_linux.conf`
+- EFIStub: cmdline rebuilt dynamically for LUKS/LVM combinations
+- Limine: cmdline rebuilt dynamically for LUKS/LVM combinations
+- UKI: cmdline now built dynamically instead of hardcoded; `cryptdevice=` only appended when LUKS enabled
+- Bootloader: `grub-install` and `grub-mkconfig` wrapped with `xtrace_safe` to suppress debug fd leak noise
+
 ## v8.4.3.4 (2026-06-03) — ArtixForge
 
 ### Fixed
