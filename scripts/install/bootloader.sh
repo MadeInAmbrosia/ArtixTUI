@@ -9,33 +9,26 @@ configure_bootloader() {
     [[ "${fs_type}" == 'zfs' ]] && root_param='root=ZFS=zroot/root'
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        if [[ -f /mnt/usr/lib/initcpio/hooks/uki ]]; then
-            log_info "Writing UKI preset..."
-            local uki_kernel_image uki_kernel_name uki_kver
-            uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
-            [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI preset"
-            uki_kernel_name=$(basename "${uki_kernel_image}")
-            uki_kver="${uki_kernel_name#vmlinuz-}"
-            local uki_initramfs_name="initramfs-${uki_kver}.img"
+        log_info "Configuring UKI generation..."
+        local uki_kernel_image uki_kernel_name uki_kver
+        uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
+        [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI"
+        uki_kernel_name=$(basename "${uki_kernel_image}")
+        uki_kver="${uki_kernel_name#vmlinuz-}"
+        local uki_initramfs_name="initramfs-${uki_kver}.img"
+        local uki_output="/boot/efi/EFI/Linux/artix-${uki_kver}.efi"
 
-            cat > /mnt/etc/mkinitcpio.d/linux-uki.preset <<EOF
-ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="${uki_kver}"
-PRESETS=('default')
-default_config="/etc/mkinitcpio.conf"
-default_image="/boot/${uki_initramfs_name}"
-default_uki="/boot/efi/EFI/Artix/artix-linux.efi"
-EOF
+        mkdir -p /mnt/boot/efi/EFI/Linux
 
-            if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
-                artix-chroot /mnt sed -i 's/HOOKS=(\(.*\))/HOOKS=(\1 uki)/' /etc/mkinitcpio.conf
-                if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf; then
-                    die "Failed to add 'uki' hook to /etc/mkinitcpio.conf — cannot generate UKI"
-                fi
-            fi
+        if artix-chroot /mnt command -v ukify &>/dev/null; then
+            log_info "Generating UKI with ukify..."
+            artix-chroot /mnt ukify build \
+                --linux="/boot/${uki_kernel_name}" \
+                --initrd="/boot/${uki_initramfs_name}" \
+                --cmdline="root=UUID=${root_uuid} rw" \
+                --output="${uki_output}" || die "ukify failed — UKI not generated"
         else
-            log_warn "UKI hook not available on Artix — UKI generation skipped. System will boot normally."
-            state_set GENERATE_UKI "no"
+            die "ukify not found — install eukify package for UKI support"
         fi
     fi
 
@@ -191,8 +184,8 @@ EOF
                 limine_root_cmdline+=" root=/dev/vg0/root"
             fi
 
-            log_info "Writing /boot/limine.conf..."
-            cat > /mnt/boot/limine.conf <<LIMINE_EOF
+            log_info "Writing ${esp_mount}/limine.conf..."
+            cat > "${esp_mount}/limine.conf" <<LIMINE_EOF
 timeout: 5
 
 /Linux
@@ -201,12 +194,12 @@ timeout: 5
 LIMINE_EOF
 
             if [[ -n "${limine_microcode}" && -f "/mnt/boot/${limine_microcode}" ]]; then
-                cat >> /mnt/boot/limine.conf <<LIMINE_EOF
+                cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
     module_path: boot():/${limine_microcode}
 LIMINE_EOF
             fi
 
-            cat >> /mnt/boot/limine.conf <<LIMINE_EOF
+            cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
     module_path: boot():/${limine_initramfs_name}
     cmdline: ${limine_root_cmdline}
     comment: Boot Artix Linux
@@ -219,18 +212,18 @@ LIMINE_EOF
                     for snapshot in $(ls -1t /mnt/.snapshots/ 2>/dev/null | head -n5); do
                         local snap_path="/mnt/.snapshots/${snapshot}/snapshot"
                         [[ -d "${snap_path}" ]] || continue
-                        cat >> /mnt/boot/limine.conf <<LIMINE_EOF
+                        cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
 
 /Snapshot: ${snapshot}
     protocol: linux
     kernel_path: boot():/${limine_kernel_name}
 LIMINE_EOF
                         if [[ -n "${limine_microcode}" && -f "/mnt/boot/${limine_microcode}" ]]; then
-                            cat >> /mnt/boot/limine.conf <<LIMINE_EOF
+                            cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
     module_path: boot():/${limine_microcode}
 LIMINE_EOF
                         fi
-                        cat >> /mnt/boot/limine.conf <<LIMINE_EOF
+                        cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
     module_path: boot():/${limine_initramfs_name}
     cmdline: ${limine_root_cmdline} rootflags=subvol=.snapshots/${snapshot}/snapshot
     comment: Boot into snapshot ${snapshot}
@@ -240,7 +233,7 @@ LIMINE_EOF
             fi
 
             if [[ -f /mnt/boot/efi/EFI/Microsoft/Boot/bootmgfw.efi ]]; then
-                cat >> /mnt/boot/limine.conf <<'LIMINE_EOF'
+                cat >> "${esp_mount}/limine.conf" <<'LIMINE_EOF'
 
 /Windows
     protocol: efi
@@ -262,15 +255,14 @@ LIMINE_EOF
     esac
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        local uki_file="${esp_mount}/EFI/Artix/artix-linux.efi"
+        local uki_file="${esp_mount}/EFI/Linux/artix-${uki_kver}.efi"
         if [[ -f "${uki_file}" ]]; then
             log_info "Creating EFI boot entry for UKI..."
-            local uki_label="Artix Linux (UKI)"
-            local uki_loader="\\EFI\\Artix\\artix-linux.efi"
-            local uki_cmdline="root=UUID=${root_uuid} rw"
             artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
-                --label "${uki_label}" --loader "${uki_loader}" --unicode "${uki_cmdline}" --verbose \
-                || log_warn "Failed to create UKI EFI boot entry"
+                --label 'Artix Linux (UKI)' \
+                --loader "\\EFI\\Linux\\artix-${uki_kver}.efi" \
+                --unicode "root=UUID=${root_uuid} rw" --verbose \
+                || die "Failed to create UKI EFI boot entry"
 
             if tui_yesno "Secure Boot" "Sign the UKI for Secure Boot?"; then
                 local sb_key sb_cert
@@ -278,19 +270,20 @@ LIMINE_EOF
                 sb_cert=$(tui_input "Secure Boot" "Path to DB.crt (on target):" "/etc/secureboot/DB.crt")
                 if [[ -f "/mnt${sb_key}" && -f "/mnt${sb_cert}" ]]; then
                     artix-chroot /mnt sbsign --key "${sb_key}" --cert "${sb_cert}" \
-                        --output /boot/efi/EFI/Artix/artix-linux-signed.efi \
-                        /boot/efi/EFI/Artix/artix-linux.efi || log_warn "sbsign failed"
+                        --output "/boot/efi/EFI/Linux/artix-${uki_kver}-signed.efi" \
+                        "/boot/efi/EFI/Linux/artix-${uki_kver}.efi" || die "sbsign failed"
                     artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
-                        --label "Artix Linux (UKI Signed)" \
-                        --loader '\EFI\Artix\artix-linux-signed.efi' \
-                        --unicode "${uki_cmdline}" --verbose || log_warn "Failed to create signed boot entry"
+                        --label 'Artix Linux (UKI Signed)' \
+                        --loader "\\EFI\\Linux\\artix-${uki_kver}-signed.efi" \
+                        --unicode "root=UUID=${root_uuid} rw" --verbose \
+                        || log_warn "Failed to create signed UKI boot entry"
                     log_info "UKI signed for Secure Boot."
                 else
-                    log_warn "Signing keys not found. UKI not signed."
+                    die "Signing keys not found at /mnt${sb_key} and /mnt${sb_cert}"
                 fi
             fi
         else
-            die "UKI generation failed — ${uki_file} was not created. Check mkinitcpio.conf and kernel EFI stub support."
+            die "UKI generation failed — ${uki_file} was not created."
         fi
     fi
 

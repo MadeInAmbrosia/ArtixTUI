@@ -26,7 +26,9 @@ create_filesystems() {
 
     log_info "Wiping old filesystem signatures..."
     wipefs -af "${efi_part}" || true
-    wipefs -af "${root_part}" || true
+    if [[ "$(state_get USE_LUKS no)" != "yes" ]]; then
+        wipefs -af "${root_part}" || true
+    fi
 
     if [[ "${swap_enabled}" == 'yes' ]]; then
         wipefs -af "${swap_part}" || true

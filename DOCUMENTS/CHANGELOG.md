@@ -3,14 +3,17 @@
 ## v8.4.2.5 (2026-06-03) — ArtixForge
 
 ### Fixed
-- Debug mode: `xtrace_safe()` wrapper added to `common.sh` — prevents `BASH_XTRACEFD` from leaking into LVM tools and `basestrap`, eliminating "leaked file descriptor" warnings
-- Debug mode: LVM `*create` commands and `basestrap` now wrapped with `xtrace_safe` — debug output no longer bleeds into child process output
-- Debug mode: `mkfs`, `cryptsetup`, and other informative commands left unwrapped — users can still see filesystem creation progress
-- LVM: `pvcreate -ff` now used instead of `pvcreate` — suppresses "existing filesystem signature" prompt that blocked unattended installs
-- LVM/LUKS: stale device mapper entries and LVM volumes now deactivated before disk wipe — fixes "device in use" and "already mapped" errors on resume/retry
-- LVM/LUKS: mapper device existence check added after `luksOpen` — `pvcreate` failure now shows clear error instead of cryptic "device not found"
-- Partitioning: `blockdev --rereadpt` added after `partprobe` — forces kernel to reload partition table, preventing "kernel still using old table" warnings from breaking `pvcreate`
-- UKI: `uki` hook existence now checked before writing preset and injecting hook — prevents `mkinitcpio` failures on Artix systems where the hook is unavailable
+- Debug mode: `xtrace_safe()` wrapper added to `common.sh` — prevents `BASH_XTRACEFD` from leaking into LVM tools and `basestrap`
+- Debug mode: LVM `*create` commands and `basestrap` now wrapped with `xtrace_safe`; `mkfs` and `cryptsetup` left unwrapped for user visibility
+- LVM: `pvcreate -ff` now used — suppresses "existing filesystem signature" prompt
+- LVM/LUKS: stale device mapper entries and LVM volumes deactivated before disk wipe; mapper existence check added after `luksOpen`
+- LVM/LUKS: `wipefs` on root partition skipped when LUKS is active — prevents destroying the LUKS header
+- Partitioning: `blockdev --rereadpt` added after `partprobe` — forces kernel to reload partition table
+- Limine: `limine.conf` now written to ESP (`${esp_mount}/limine.conf`) — Limine finds its config on the EFI partition
+- UKI: replaced broken `uki` mkinitcpio hook with `eukify` (provides `ukify` binary) from Artix system repo — no systemd required
+- UKI: removed mkinitcpio preset and hook injection; UKI generated directly via `ukify build` after initramfs creation
+- UKI: Secure Boot signing restored with `sbsign` — signed UKI gets separate EFI boot entry
+- UKI: all failures now hard `die` — UKI is all-or-nothing when requested
 
 ## v8.4.2.4 (2026-06-03) — ArtixForge
 

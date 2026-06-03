@@ -219,6 +219,10 @@ EOF
         pkgs+=(lvm2)
     fi
 
+    if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
+        pkgs+=(eukify)
+    fi
+
     printf '%s\n' "${pkgs[@]}" > "${PWD}/artix-pkgs.log"
 
     local debug_log="${PWD}/basestrap-debug.log"
