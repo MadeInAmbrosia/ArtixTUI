@@ -1,10 +1,12 @@
 # Changelog
 
-## v8.4.3.1 (2026-06-03) — ArtixForge
+## v8.4.3.2 (2026-06-03) — ArtixForge
 
 ### Fixed
 - UKI: generation block moved after ESP detection — `esp_mount` and `root_uuid` now available when `ukify build` runs
-- UKI: output and signing paths now use `${esp_mount}` instead of hardcoded `/boot/efi` — UKI written to correct ESP regardless of mount point
+- UKI: output path now uses `${esp_mount#/mnt}` to derive correct chroot path — fixes "No such file or directory" when `ukify` writes inside the chroot
+- UKI: signing paths also use `${esp_mount}` — consistent with generated UKI location
+- UKI: `mkdir` for output directory now runs inside the chroot via `artix-chroot /mnt mkdir -p`
 
 ## v8.4.3.0 (2026-06-03) — ArtixForge
 

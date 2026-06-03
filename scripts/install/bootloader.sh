@@ -48,9 +48,8 @@ configure_bootloader() {
         uki_kernel_name=$(basename "${uki_kernel_image}")
         uki_kver="${uki_kernel_name#vmlinuz-}"
         local uki_initramfs_name="initramfs-${uki_kver}.img"
-        local uki_output="${esp_mount}/EFI/Linux/artix-${uki_kver}.efi"
-
-        mkdir -p "${esp_mount}/EFI/Linux"
+        local uki_output="${esp_mount#/mnt}/EFI/Linux/artix-${uki_kver}.efi"
+        artix-chroot /mnt mkdir -p /boot/efi/EFI/Linux
 
         if [[ -x /mnt/usr/bin/ukify ]]; then
             log_info "Generating UKI with ukify..."
