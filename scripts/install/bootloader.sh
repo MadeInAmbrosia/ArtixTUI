@@ -334,7 +334,7 @@ LIMINE_EOF
                 --label 'Artix Linux (UKI)' \
                 --loader "\\EFI\\Linux\\artix-${uki_kver}.efi" \
                 --unicode "${uki_cmdline}" --verbose \
-                || die "Failed to create UKI EFI boot entry"
+                || log_warn "Failed to create UKI EFI boot entry"
 
             if tui_yesno "Secure Boot" "Sign the UKI for Secure Boot?"; then
                 local sb_key sb_cert

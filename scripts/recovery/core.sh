@@ -81,6 +81,11 @@ recovery_mount_all() {
         cp /etc/resolv.conf /mnt/etc/resolv.conf || true
     fi
 
+    if [[ -d /sys/firmware/efi/efivars ]]; then
+        mkdir -p /mnt/sys/firmware/efi
+        mount --bind /sys/firmware/efi/efivars /mnt/sys/firmware/efi/efivars 2>/dev/null || true
+    fi
+
     log_info "Recovery environment prepared."
 }
 
