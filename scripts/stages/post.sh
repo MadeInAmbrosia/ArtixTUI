@@ -48,6 +48,7 @@ cd /root/ArtixForge || exit 1
 
 source ./scripts/state.sh
 source ./scripts/common.sh
+source ./scripts/tui/core.sh
 source ./scripts/install/services.sh
 source ./scripts/post/drivers.sh
 source ./scripts/post/networking.sh
