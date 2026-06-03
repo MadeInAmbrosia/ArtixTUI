@@ -2,37 +2,31 @@
 set -Eeuo pipefail;
 
 _preflight_rank_mirrors() {
+    local mirrorlist="/etc/pacman.d/mirrorlist"
+    local backup="${mirrorlist}.orig"
+
     if ! tui_yesno "Mirror Ranking" "Rank mirrors for faster downloads?"; then
+        log_info "Skipping mirror ranking."
         return 0
     fi
 
     log_info "Ranking mirrors..."
     pacman -S --noconfirm --needed pacman-contrib || die "Failed to install pacman-contrib"
 
-    local mirrorlist="/etc/pacman.d/mirrorlist"
-    local mirrorlist_backup="${mirrorlist}.backup"
-
-    if [[ -f "${mirrorlist}" ]]; then
-        cp "${mirrorlist}" "${mirrorlist_backup}"
-        log_info "Ranking mirrors (this may take a minute)..."
-        rankmirrors -n 6 "${mirrorlist_backup}" > "${mirrorlist}" || {
-            log_warn "rankmirrors failed, restoring backup"
-            cp "${mirrorlist_backup}" "${mirrorlist}"
-        }
-    fi
-
-    if [[ "$(state_get ENABLE_ARCH_REPOS no)" == "yes" ]]; then
-        local arch_mirrorlist="/etc/pacman.d/mirrorlist-arch"
-        if [[ -f "${arch_mirrorlist}" ]]; then
-            cp "${arch_mirrorlist}" "${arch_mirrorlist}.backup"
-            rankmirrors -n 6 "${arch_mirrorlist}.backup" > "${arch_mirrorlist}" || {
-                cp "${arch_mirrorlist}.backup" "${arch_mirrorlist}"
-            }
+    local ranked="/tmp/mirrorlist.ranked"
+    if rankmirrors -n 6 "${backup}" > "${ranked}" 2>/dev/null; then
+        if [[ -s "${ranked}" ]]; then
+            cp "${ranked}" "${mirrorlist}"
+            log_info "Mirror ranking completed."
+        else
+            log_warn "rankmirrors produced empty output – keeping original mirrorlist."
         fi
+    else
+        log_warn "rankmirrors failed – keeping original mirrorlist."
     fi
+    rm -f "${ranked}"
 
-    log_info "Mirror ranking complete."
-    pacman -Sy --noconfirm || true
+    pacman -Sy --noconfirm || log_warn "Failed to refresh package database after ranking."
 }
 
 stage_preflight() {
@@ -43,11 +37,15 @@ stage_preflight() {
     require_root;
     require_efi;
     require_internet;
-    _preflight_rank_mirrors;
+
+    local original_mirrorlist="/etc/pacman.d/mirrorlist.orig"
+    if [[ ! -f "${original_mirrorlist}" ]]; then
+        cp /etc/pacman.d/mirrorlist "${original_mirrorlist}" 2>/dev/null || true
+    fi
+
+    _preflight_rank_mirrors
 
     local pacman_conf_backup='/tmp/pacman.conf.artixtui.bak'
-    local mirrorlist_backup='/etc/pacman.d/mirrorlist.backup'
-
     if [[ ! -f "${pacman_conf_backup}" ]]; then
         cp /etc/pacman.conf "${pacman_conf_backup}"
     fi
@@ -96,16 +94,12 @@ stage_preflight() {
                 git clone --depth 1 https://evilpiepirate.org/git/bcachefs-tools.git "${bcachefs_src}" || {
                     die "Failed to clone bcachefs-tools source repository"
                 }
-
                 make -C "${bcachefs_src}" -j$(nproc) || die "Failed to build bcachefs-tools"
                 make -C "${bcachefs_src}" install || die "Failed to install bcachefs-tools"
-
                 rm -rf "${bcachefs_src}"
-
                 if ! command -v mkfs.bcachefs >/dev/null 2>&1; then
                     die "mkfs.bcachefs still unavailable after building"
                 fi
-
                 log_info "bcachefs-tools built and installed successfully"
             fi
             modprobe bcachefs 2>/dev/null || {
@@ -127,19 +121,16 @@ stage_preflight() {
             if ! grep -q '^\[archzfs\]' /etc/pacman.conf; then
                 pacman-key --recv-keys F75D9D76 --keyserver hkp://keyserver.ubuntu.com
                 pacman-key --lsign-key F75D9D76
-
                 cat <<'EOF' >> /etc/pacman.conf
 
 [archzfs]
 Server = https://archzfs.com/$repo/x86_64
 EOF
-
                 pacman -Sy --noconfirm
                 pacman -Sl archzfs >/dev/null 2>&1 || die "archzfs repository unusable"
             fi
 
             local zfs_pkg=""
-
             case "${target_kernel}" in
                 linux)           zfs_pkg="zfs-linux" ;;
                 linux-lts)       zfs_pkg="zfs-linux-lts" ;;
@@ -150,7 +141,6 @@ EOF
             if [[ -n "${zfs_pkg}" ]]; then
                 pkgs+=("${zfs_pkg}")
             fi
-
             ;;
     esac
 
@@ -158,14 +148,12 @@ EOF
         log_info "Installing required tools: ${pkgs[*]}";
         if ! gum spin --spinner dot --title "Preflight – installing dependencies" -- \
             pacman -S --noconfirm --needed "${pkgs[@]}"; then
-            log_warn "Primary mirror failed — restoring backup mirrorlist and retrying..."
-            if [[ -f "${mirrorlist_backup}" ]]; then
-                cp "${mirrorlist_backup}" /etc/pacman.d/mirrorlist
-                pacman -Sy --noconfirm || true
-            else
-                pacman -Sy --noconfirm || true
+            log_warn "Primary mirror failed – restoring original mirrorlist and retrying."
+            if [[ -f "${original_mirrorlist}" ]]; then
+                cp "${original_mirrorlist}" /etc/pacman.d/mirrorlist
             fi
-            gum spin --spinner dot --title "Preflight – retrying with backup mirrors" -- \
+            pacman -Sy --noconfirm || true
+            gum spin --spinner dot --title "Preflight – retrying with original mirrors" -- \
                 pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies"
         fi
         log_info "Preflight dependencies installed.";
@@ -185,15 +173,12 @@ EOF
         if ! modprobe zfs 2>/dev/null; then
             local expected_kver
             expected_kver=$(pacman -Qi "${zfs_pkg}" 2>/dev/null | grep -oP 'for kernel \K[\d.]+' || true)
-
             if [[ -n "${expected_kver}" ]]; then
                 log_error "Prebuilt ZFS module (${zfs_pkg}) is for kernel ${expected_kver}, but running kernel is $(uname -r)."
                 die "Kernel version mismatch. The archzfs repo has not yet built ZFS for this kernel. Wait for an update or use a different live ISO."
             fi
-
             die "Failed to load ZFS kernel module."
         fi
-
         log_info "ZFS kernel module loaded successfully."
     fi
 
@@ -210,7 +195,7 @@ EOF
             fi
         fi
     fi
-    
+
     check_disk_space 3 /mnt
     stage_mark_done preflight;
 }

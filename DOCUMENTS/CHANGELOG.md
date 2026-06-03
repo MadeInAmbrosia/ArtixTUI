@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.4.2.4 (2026-06-03) — ArtixForge
+
+### Fixed
+- Preflight: mirrorlist backup (`.orig`) now created unconditionally before ranking — retry always has a known-good fallback regardless of user choices
+- Preflight: empty `rankmirrors` output now detected and discarded — prevents overwriting mirrorlist with nothing
+- Preflight: `pacman -Sy` failure after ranking no longer silently swallowed — logged as warning, retry will attempt with original mirrors
+
 ## v8.4.2.3 (2026-06-02) — ArtixForge
 
 ### Fixed
