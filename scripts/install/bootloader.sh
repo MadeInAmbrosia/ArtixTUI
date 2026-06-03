@@ -8,30 +8,6 @@ configure_bootloader() {
     fs_type="$(state_get FS_TYPE)"
     [[ "${fs_type}" == 'zfs' ]] && root_param='root=ZFS=zroot/root'
 
-    if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        log_info "Configuring UKI generation..."
-        local uki_kernel_image uki_kernel_name uki_kver
-        uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
-        [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI"
-        uki_kernel_name=$(basename "${uki_kernel_image}")
-        uki_kver="${uki_kernel_name#vmlinuz-}"
-        local uki_initramfs_name="initramfs-${uki_kver}.img"
-        local uki_output="/boot/efi/EFI/Linux/artix-${uki_kver}.efi"
-
-        mkdir -p /mnt/boot/efi/EFI/Linux
-
-        if [[ -x /mnt/usr/bin/ukify ]]; then
-            log_info "Generating UKI with ukify..."
-            artix-chroot /mnt /usr/bin/ukify build \
-                --linux="/boot/${uki_kernel_name}" \
-                --initrd="/boot/${uki_initramfs_name}" \
-                --cmdline="root=UUID=${root_uuid} rw" \
-                --output="${uki_output}" || die "ukify failed — UKI not generated"
-        else
-            die "ukify not found — install eukify package for UKI support"
-        fi
-    fi
-
     log_info "Generating initramfs..."
     artix-chroot /mnt mkinitcpio -P || true
     if ! compgen -G "/mnt/boot/initramfs-*.img" >/dev/null 2>&1; then
@@ -63,6 +39,30 @@ configure_bootloader() {
     esp_disk="/dev/$(lsblk -no PKNAME "${esp_source}" | head -n1)"
     esp_part="$(lsblk -no PARTN "${esp_source}" | head -n1)"
     [[ -n "${esp_part}" ]] || die 'failed to detect EFI partition number'
+
+    if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
+        log_info "Configuring UKI generation..."
+        local uki_kernel_image uki_kernel_name uki_kver
+        uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
+        [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI"
+        uki_kernel_name=$(basename "${uki_kernel_image}")
+        uki_kver="${uki_kernel_name#vmlinuz-}"
+        local uki_initramfs_name="initramfs-${uki_kver}.img"
+        local uki_output="${esp_mount}/EFI/Linux/artix-${uki_kver}.efi"
+
+        mkdir -p "${esp_mount}/EFI/Linux"
+
+        if [[ -x /mnt/usr/bin/ukify ]]; then
+            log_info "Generating UKI with ukify..."
+            artix-chroot /mnt /usr/bin/ukify build \
+                --linux="/boot/${uki_kernel_name}" \
+                --initrd="/boot/${uki_initramfs_name}" \
+                --cmdline="root=UUID=${root_uuid} rw" \
+                --output="${uki_output}" || die "ukify failed — UKI not generated"
+        else
+            die "ukify not found — install eukify package for UKI support"
+        fi
+    fi
 
     case "${bootloader}" in
         grub)
@@ -270,8 +270,8 @@ LIMINE_EOF
                 sb_cert=$(tui_input "Secure Boot" "Path to DB.crt (on target):" "/etc/secureboot/DB.crt")
                 if [[ -f "/mnt${sb_key}" && -f "/mnt${sb_cert}" ]]; then
                     artix-chroot /mnt sbsign --key "${sb_key}" --cert "${sb_cert}" \
-                        --output "/boot/efi/EFI/Linux/artix-${uki_kver}-signed.efi" \
-                        "/boot/efi/EFI/Linux/artix-${uki_kver}.efi" || die "sbsign failed"
+                        --output "${esp_mount}/EFI/Linux/artix-${uki_kver}-signed.efi" \
+                        "${esp_mount}/EFI/Linux/artix-${uki_kver}.efi" || die "sbsign failed"
                     artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                         --label 'Artix Linux (UKI Signed)' \
                         --loader "\\EFI\\Linux\\artix-${uki_kver}-signed.efi" \

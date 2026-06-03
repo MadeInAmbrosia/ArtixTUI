@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.4.3.1 (2026-06-03) — ArtixForge
+
+### Fixed
+- UKI: generation block moved after ESP detection — `esp_mount` and `root_uuid` now available when `ukify build` runs
+- UKI: output and signing paths now use `${esp_mount}` instead of hardcoded `/boot/efi` — UKI written to correct ESP regardless of mount point
+
 ## v8.4.3.0 (2026-06-03) — ArtixForge
 
 ### Changed
