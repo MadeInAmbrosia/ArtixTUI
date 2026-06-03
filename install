@@ -178,10 +178,17 @@ resume_install() {
 start_recovery_install() {
     local recovery_status
     if ! recovery_detect_install; then
-        tui_msg "Recovery Mode" "No partial installation detected in /mnt."; exit 1
+        tui_msg "Recovery Mode" "No installation found at /mnt."
+        if tui_yesno "Auto-mount" "Attempt to automatically unlock LUKS, activate LVM, and mount the installation?"; then
+            recovery_mount_all
+        else
+            clear; tui_msg_quick "Recovery Cancelled" "Recovery cancelled by user."; exit 0
+        fi
     fi
+
     recovery_import_state
     recovery_status="$(recovery_get_status)"
+
     if ! tui_yesno "Recovery Mode" \
 "Detected an existing installation mounted at /mnt.
 
@@ -191,7 +198,7 @@ This usually means a previous installation
 was interrupted or partially completed.
 
 Attempt recovery and continue installation?"; then
-        clear; printf '[*] Recovery cancelled.\n'; exit 0
+        clear; tui_msg_quick "Recovery Cancelled" "Recovery cancelled by user."; exit 0
     fi
     log_info "Entering recovery mode..."
     local recovery_choice

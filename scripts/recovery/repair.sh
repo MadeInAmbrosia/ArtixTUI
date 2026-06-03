@@ -209,6 +209,22 @@ repair_boot() {
         log_warn "UKI file missing."
         repair_uki
     fi
+
+    if [[ "${issues}" =~ missing-cryptdevice ]]; then
+        log_warn "Bootloader config is missing cryptdevice= parameter."
+        if tui_yesno "Repair cmdline" "Regenerate bootloader configuration with correct cryptdevice?"; then
+            source "${SCRIPT_DIR}/install/bootloader.sh"
+            configure_bootloader
+        fi
+    fi
+
+    if [[ "${issues}" =~ missing-encrypt-hook ]]; then
+        log_warn "mkinitcpio.conf is missing the encrypt hook."
+        if tui_yesno "Repair hooks" "Add encrypt hook to mkinitcpio.conf and regenerate initramfs?"; then
+            artix-chroot /mnt sed -i 's/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+            artix-chroot /mnt mkinitcpio -P
+        fi
+    fi
 }
 
 repair_kernel() {

@@ -450,6 +450,50 @@ detect_boot_health() {
             issues+="no-efi-entry "
         fi
     fi
+
+    if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+        local cmdline_missing=0
+        local bootloader
+        bootloader=$(state_get BOOTLOADER grub)
+
+        case "${bootloader}" in
+            grub)
+                if [[ -f "${ROOT}/boot/grub/grub.cfg" ]]; then
+                    grep -q 'cryptdevice=' "${ROOT}/boot/grub/grub.cfg" || cmdline_missing=1
+                else
+                    cmdline_missing=1
+                fi
+                ;;
+            limine)
+                local limine_conf
+                limine_conf="${ROOT}/boot/efi/limine.conf"
+                [[ -f "${ROOT}/boot/limine.conf" ]] && limine_conf="${ROOT}/boot/limine.conf"
+                if [[ -f "${limine_conf}" ]]; then
+                    grep -q 'cryptdevice=' "${limine_conf}" || cmdline_missing=1
+                else
+                    cmdline_missing=1
+                fi
+                ;;
+            refind)
+                if [[ -f "${ROOT}/boot/refind_linux.conf" ]]; then
+                    grep -q 'cryptdevice=' "${ROOT}/boot/refind_linux.conf" || cmdline_missing=1
+                else
+                    cmdline_missing=1
+                fi
+                ;;
+            efistub)
+                ;;
+        esac
+
+        if [[ ${cmdline_missing} -eq 1 ]]; then
+            issues+="missing-cryptdevice "
+        fi
+
+        if [[ -f "${ROOT}/etc/mkinitcpio.conf" ]]; then
+            grep -q 'encrypt' "${ROOT}/etc/mkinitcpio.conf" || issues+="missing-encrypt-hook "
+        fi
+    fi
+
     state_set BOOT_ISSUES "${issues:-none}"
 }
 

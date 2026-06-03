@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.4.3.6 (2026-06-03) — ArtixForge
+
+### Added
+- Recovery: `recovery_mount_all()` — auto-detects LUKS containers, prompts for unlock, activates LVM, mounts root/ESP, and bind-mounts virtual filesystems
+- Recovery: `detect_boot_health` now checks for missing `cryptdevice=` in bootloader config and missing `encrypt` hook in `mkinitcpio.conf`
+- Recovery: `repair_boot` can now regenerate bootloader config with correct `cryptdevice=` and re-add the `encrypt` hook to `mkinitcpio.conf` for all four bootloaders
+
 ## v8.4.3.5 (2026-06-03) — ArtixForge
 
 ### Fixed
