@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+source "${SCRIPT_DIR}/tui/core.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/common.sh" 2>/dev/null || true
+
 repair_fstab() {
     local issues
     issues=$(state_get FSTAB_ISSUES none)
@@ -20,6 +23,11 @@ repair_fstab() {
 }
 
 repair_pacman() {
+    if ! artix-chroot /mnt true &>/dev/null; then
+        log_warn "Chroot environment not available — skipping pacman repairs"
+        return 0
+    fi
+
     local issues
     issues=$(state_get PACMAN_ISSUES none)
 
@@ -36,9 +44,8 @@ repair_pacman() {
         if tui_yesno "Reinstall base" "Reinstall base packages?"; then
             if ! basestrap /mnt base base-devel 2>/dev/null; then
                 log_warn "basestrap failed — trying direct pacman install..."
-                pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm base base-devel 2>/dev/null || {
-                    log_error "Base reinstall failed. Try 'Fix everything' from the recovery menu."
-                }
+                pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm base base-devel 2>/dev/null || \
+                    log_warn "Base reinstall failed. Try 'Fix everything' from the recovery menu."
             fi
             log_info "Base packages reinstalled."
         fi

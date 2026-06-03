@@ -506,7 +506,7 @@ detect_pacman_health() {
         issues+="base-missing "
     fi
     local broken
-    broken=$(pacman --root "${ROOT}" -Qk 2>/dev/null | grep ': missing' | cut -d: -f1 | sort -u | tr '\n' ' ')
+    broken=$(pacman --root "${ROOT}" -Qk 2>/dev/null | grep ': missing' | cut -d: -f1 | sort -u | tr '\n' ' ') || true
     if [[ -n "${broken}" ]]; then
         local count
         count=$(echo "${broken}" | wc -w)

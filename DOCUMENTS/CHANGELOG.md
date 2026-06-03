@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.4.3.8 (2026-06-03) — ArtixForge
+
+### Fixed
+- Recovery: `recovery_mount_all()` now copies `/etc/resolv.conf` into chroot — pacman can resolve mirrors
+- Recovery: `repair_pacman` checks chroot functionality before attempting repairs — skips gracefully instead of crashing
+- Recovery: `detect_pacman_health` pipeline now tolerates pacman failures with `|| true` — detection completes even if pacman database is broken
+- Recovery: `repair_pacman` base reinstall failure downgraded from `die` to `log_warn` — recovery continues with other repairs
+
 ## v8.4.3.6 (2026-06-03) — ArtixForge
 
 ### Added
