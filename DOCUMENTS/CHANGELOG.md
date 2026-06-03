@@ -10,6 +10,7 @@
 - LVM/LUKS: stale device mapper entries and LVM volumes now deactivated before disk wipe — fixes "device in use" and "already mapped" errors on resume/retry
 - LVM/LUKS: mapper device existence check added after `luksOpen` — `pvcreate` failure now shows clear error instead of cryptic "device not found"
 - Partitioning: `blockdev --rereadpt` added after `partprobe` — forces kernel to reload partition table, preventing "kernel still using old table" warnings from breaking `pvcreate`
+- UKI: `uki` hook existence now checked before writing preset and injecting hook — prevents `mkinitcpio` failures on Artix systems where the hook is unavailable
 
 ## v8.4.2.4 (2026-06-03) — ArtixForge
 

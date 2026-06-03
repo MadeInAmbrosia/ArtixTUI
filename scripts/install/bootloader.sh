@@ -9,15 +9,16 @@ configure_bootloader() {
     [[ "${fs_type}" == 'zfs' ]] && root_param='root=ZFS=zroot/root'
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        log_info "Writing UKI preset..."
-        local uki_kernel_image uki_kernel_name uki_kver
-        uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
-        [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI preset"
-        uki_kernel_name=$(basename "${uki_kernel_image}")
-        uki_kver="${uki_kernel_name#vmlinuz-}"
-        local uki_initramfs_name="initramfs-${uki_kver}.img"
+        if [[ -f /mnt/usr/lib/initcpio/hooks/uki ]]; then
+            log_info "Writing UKI preset..."
+            local uki_kernel_image uki_kernel_name uki_kver
+            uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
+            [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI preset"
+            uki_kernel_name=$(basename "${uki_kernel_image}")
+            uki_kver="${uki_kernel_name#vmlinuz-}"
+            local uki_initramfs_name="initramfs-${uki_kver}.img"
 
-        cat > /mnt/etc/mkinitcpio.d/linux-uki.preset <<EOF
+            cat > /mnt/etc/mkinitcpio.d/linux-uki.preset <<EOF
 ALL_config="/etc/mkinitcpio.conf"
 ALL_kver="${uki_kver}"
 PRESETS=('default')
@@ -26,11 +27,15 @@ default_image="/boot/${uki_initramfs_name}"
 default_uki="/boot/efi/EFI/Artix/artix-linux.efi"
 EOF
 
-        if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
-            artix-chroot /mnt sed -i 's/HOOKS=(\(.*\))/HOOKS=(\1 uki)/' /etc/mkinitcpio.conf
-            if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf; then
-                die "Failed to add 'uki' hook to /etc/mkinitcpio.conf — cannot generate UKI"
+            if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
+                artix-chroot /mnt sed -i 's/HOOKS=(\(.*\))/HOOKS=(\1 uki)/' /etc/mkinitcpio.conf
+                if ! grep -q 'uki' /mnt/etc/mkinitcpio.conf; then
+                    die "Failed to add 'uki' hook to /etc/mkinitcpio.conf — cannot generate UKI"
+                fi
             fi
+        else
+            log_warn "UKI hook not available on Artix — UKI generation skipped. System will boot normally."
+            state_set GENERATE_UKI "no"
         fi
     fi
 
