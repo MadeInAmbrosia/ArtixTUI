@@ -71,7 +71,6 @@ configure_bootloader() {
         uki_kver="${uki_kernel_name#vmlinuz-}"
         local uki_initramfs_name="initramfs-${uki_kver}.img"
         local uki_output="${esp_mount#/mnt}/EFI/Linux/artix-${uki_kver}.efi"
-        artix-chroot /mnt mkdir -p /boot/efi/EFI/Linux
 
         local uki_cmdline=""
         if [[ "${fs_type}" == 'zfs' ]]; then
@@ -92,11 +91,12 @@ configure_bootloader() {
 
         if [[ -x /mnt/usr/bin/ukify ]]; then
             log_info "Generating UKI with ukify..."
+            artix-chroot /mnt mkdir -p /boot/efi/EFI/Linux
             artix-chroot /mnt /usr/bin/ukify build \
                 --linux="/boot/${uki_kernel_name}" \
                 --initrd="/boot/${uki_initramfs_name}" \
                 --cmdline="${uki_cmdline}" \
-                --output="${uki_output}" || die "ukify failed — UKI not generated"
+                --output="${uki_output}" || log_warn "ukify failed — UKI not generated"
         else
             die "ukify not found — install eukify package for UKI support"
         fi
