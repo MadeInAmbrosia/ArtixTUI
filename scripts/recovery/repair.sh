@@ -119,25 +119,13 @@ repair_uki() {
 
     if [[ -z "${uki_file}" ]]; then
         log_warn "UKI is enabled but no UKI file found."
-        if tui_yesno "Repair UKI" "Regenerate UKI with ukify?"; then
+        if tui_yesno "Repair UKI" "Regenerate UKI and EFI boot entry?"; then
             if ! artix-chroot /mnt command -v ukify &>/dev/null; then
                 log_warn "ukify not found — install eukify package first"
                 return 1
             fi
-            local kernel_version initramfs_name root_uuid
-            kernel_version=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1 | sed 's/.*vmlinuz-//')
-            initramfs_name="initramfs-${kernel_version}.img"
-            root_uuid=$(findmnt -n -o UUID /mnt 2>/dev/null || blkid -s UUID -o value "$(findmnt -n -o SOURCE /mnt)")
-            mkdir -p /mnt/boot/efi/EFI/Linux
-            artix-chroot /mnt ukify build \
-                --linux="/boot/vmlinuz-${kernel_version}" \
-                --initrd="/boot/${initramfs_name}" \
-                --cmdline="root=UUID=${root_uuid} rw" \
-                --output="/boot/efi/EFI/Linux/artix-${kernel_version}.efi" || {
-                    log_error "ukify failed — UKI not regenerated"
-                    return 1
-                }
-            log_info "UKI regenerated successfully."
+            source "${SCRIPT_DIR}/install/bootloader.sh"
+            configure_bootloader
         fi
     else
         log_info "UKI found: ${uki_file}"
