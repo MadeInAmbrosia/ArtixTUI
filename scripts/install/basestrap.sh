@@ -356,12 +356,12 @@ EOF
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Adding LVM hook to mkinitcpio..."
-        artix-chroot /mnt sed -i 's/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
+        artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
     fi
 
     if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
         log_info "Adding encrypt hook to mkinitcpio..."
-        artix-chroot /mnt sed -i 's/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+        artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
     fi
 
     if ! grep -q 'virtio_blk' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
