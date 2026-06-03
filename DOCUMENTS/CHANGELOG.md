@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.4.3.10 (2026-06-03) — ArtixForge
+
+### Fixed
+- UKI: `mkdir` for output directory now runs inside chroot before `ukify build` — fixes "No such file or directory" when ESP isn't mounted yet
+- UKI: `efibootmgr --create` failure downgraded from `die` to `log_warn` — UKI generation completes even when EFI entry creation fails (recovery context)
+- Initramfs: `sed` hook injection now anchored to `^HOOKS=` — only modifies the active HOOKS line, not commented examples in `mkinitcpio.conf`
+- LUKS: `get_luks_raw_uuid` now walks the full device chain up to the raw partition — correctly resolves LUKS partition UUID for `cryptdevice=` even through LVM layers
+
 ## v8.4.3.9 (2026-06-03) — ArtixForge
 
 ### Fixed

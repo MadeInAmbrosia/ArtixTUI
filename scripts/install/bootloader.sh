@@ -3,10 +3,23 @@ set -Eeuo pipefail
 
 get_luks_raw_uuid() {
     local dev="$1"
-    while [[ "$(lsblk -no TYPE "$dev" 2>/dev/null)" == "crypt" ]]; do
-        dev="/dev/$(lsblk -no PKNAME "$dev" 2>/dev/null)"
+    local current="$dev"
+    while [[ -n "$current" ]]; do
+        if blkid -o value -s TYPE "$current" 2>/dev/null | grep -q 'crypto_LUKS'; then
+            blkid -s UUID -o value "$current" 2>/dev/null || echo ""
+            return 0
+        fi
+        local parent
+        parent="$(lsblk -no PKNAME "$current" 2>/dev/null || true)"
+        if [[ -z "$parent" ]]; then
+            break
+        fi
+        current="/dev/$parent"
+        if [[ "$(lsblk -no TYPE "$current" 2>/dev/null)" == "disk" ]]; then
+            break
+        fi
     done
-    blkid -s UUID -o value "$dev" 2>/dev/null || echo ""
+    echo ""
 }
 
 configure_bootloader() {
