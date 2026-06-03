@@ -77,6 +77,10 @@ configure_bootloader() {
             log_info "Installing GRUB..."
             findmnt -rn -o FSTYPE /mnt/boot/efi | grep -qx 'vfat' || die 'EFI partition not mounted as vfat'
 
+            if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+                echo 'GRUB_ENABLE_CRYPTODISK=y' >> /mnt/etc/default/grub
+            fi
+
             if [[ "${fs_type}" == "xfs" ]]; then
                 log_info "Verifying XFS features for GRUB compatibility..."
                 if artix-chroot /mnt xfs_info "${root_device}" 2>/dev/null | grep -q 'bigtime=1'; then

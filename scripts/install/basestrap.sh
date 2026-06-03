@@ -219,6 +219,10 @@ EOF
         pkgs+=(lvm2)
     fi
 
+    if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+        pkgs+=(cryptsetup)
+    fi
+
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
         pkgs+=(eukify)
     fi
