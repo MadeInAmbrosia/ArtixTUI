@@ -278,7 +278,7 @@ LIMINE_EOF
                         || log_warn "Failed to create signed UKI boot entry"
                     log_info "UKI signed for Secure Boot."
                 else
-                    die "Signing keys not found at /mnt${sb_key} and /mnt${sb_cert}"
+                    log_warn "Signing keys not found at /mnt${sb_key} and /mnt${sb_cert}"
                 fi
             fi
         else
