@@ -4,6 +4,7 @@ set -Eeuo pipefail
 get_luks_raw_uuid() {
     local dev="$1"
     local current="$dev"
+
     while [[ -n "$current" ]]; do
         if blkid -o value -s TYPE "$current" 2>/dev/null | grep -q 'crypto_LUKS'; then
             blkid -s UUID -o value "$current" 2>/dev/null || echo ""
@@ -19,6 +20,14 @@ get_luks_raw_uuid() {
             break
         fi
     done
+    
+    local luks_dev
+    luks_dev=$(blkid -o device -t TYPE=crypto_LUKS 2>/dev/null | head -n1)
+    if [[ -n "$luks_dev" ]]; then
+        blkid -s UUID -o value "$luks_dev" 2>/dev/null || echo ""
+        return 0
+    fi
+    
     echo ""
 }
 
@@ -60,6 +69,18 @@ configure_bootloader() {
         fi
         if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
             mapper_name="cryptlvm"
+        fi
+
+        local luks_check
+        luks_check=$(blkid -o device -t UUID="${crypt_uuid}" 2>/dev/null || true)
+        if [[ -z "${luks_check}" ]] || ! blkid -o value -s TYPE "${luks_check}" 2>/dev/null | grep -q 'crypto_LUKS'; then
+            luks_check=$(blkid -o device -t TYPE=crypto_LUKS 2>/dev/null | head -n1)
+            if [[ -n "${luks_check}" ]]; then
+                crypt_uuid=$(blkid -s UUID -o value "${luks_check}" 2>/dev/null)
+                log_warn "Auto-corrected cryptdevice UUID to ${crypt_uuid} (found LUKS on ${luks_check})"
+            else
+                die "cryptdevice= required but no LUKS partition found"
+            fi
         fi
     fi
 

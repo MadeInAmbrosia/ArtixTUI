@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.4.4.0 (2026-06-03) — ArtixForge
+
+### Fixed
+- LUKS: `crypt_uuid` validation now verifies the UUID points to an actual `crypto_LUKS` partition — auto-corrects if the wrong UUID was derived, preventing "device not found" at boot
+
 ## v8.4.3.10 (2026-06-03) — ArtixForge
 
 ### Fixed

@@ -16,6 +16,7 @@ tui_quick_install() {
         "Development – XFCE, base-devel, git, neovim, development tools" \
         "Media – KDE minimal, mpv, feh, media extras" \
         "Volk's Personal – dinit, KDE minimal, source-built kernel" \
+        "TestingQP – ZFS, LUKS, LVM, Limine, UKI, s6, CachyOS, MangoWM, BusyBox coreutils" \
         "Load custom profile – source a saved configuration file") || return 1
 
     case "${profile}" in
@@ -209,6 +210,30 @@ tui_quick_install() {
             state_set USER_SHELL "bash"
             state_set EXTRAS "git fastfetch tmux htop kitty firewalld flatpak"\
             tui_msg_quick "Volk Profile" "This profile builds a minimal source kernel with auto-detected hardware.\n\nNo VirtIO/VM drivers are included — this system will NOT boot in virtual machines."
+            ;;
+        *TestingQP*)
+            state_set FS_TYPE "zfs"
+            state_set BOOTLOADER "limine"
+            state_set KERNEL_CHOICE "linux-cachyos-bore"
+            state_set INIT "s6"
+            state_set PRIV_ESCALATION "doas"
+            state_set USE_LUKS "yes"
+            state_set USE_LVM "yes"
+            state_set GENERATE_UKI "yes"
+            state_set ALLOW_OFFLINE "no"
+            state_set ENABLE_ARCH_REPOS "yes"
+            state_set MICROCODE_OVERRIDE "none"
+            state_set KEEP_BINARY_KERNEL "yes"
+            state_set COREUTILS "busybox"
+            state_set KERNEL_CONFIG_DEPTH "auto"
+            state_set WM_DE "mango"
+            state_set DISPLAY_MANAGER "lightdm"
+            state_set NETWORK_STACK "dhcpcd+iwd"
+            state_set AUDIO_STACK "pipewire"
+            state_set X_STACK "xlibre"
+            state_set USER_SHELL "fish"
+            state_set EXTRAS "git fastfetch tmux htop kitty firewalld flatpak"
+            tui_msg_quick "Testing Profile" "This profile enables every experimental, complex, and potentially broken combination.\n\nIf this installs and boots, you are legally allowed to complain about bugs."
             ;;
         *Load*)
             local profile_file
