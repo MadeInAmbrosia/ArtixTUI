@@ -24,6 +24,8 @@ partition_disk() {
     swapoff -a 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     zpool export -a 2>/dev/null || true
+    vgchange -an vg0 2>/dev/null || true
+    dmsetup remove_all 2>/dev/null || true
 
     log_info "Wiping existing signatures..."
     wipefs --all --force "${disk}"
@@ -40,9 +42,10 @@ partition_disk() {
         sgdisk -n 2:0:0 -t 2:8300 "${disk}"
     fi
 
-    command -v partprobe &>/dev/null && partprobe "${disk}"
+    partprobe "${disk}" 2>/dev/null || true
     udevadm settle
     sleep 2
+    blockdev --rereadpt "${disk}" 2>/dev/null || true
 
     [[ -b "$(get_partition_name "${disk}" 1)" ]] || die 'EFI partition not created'
     if [[ "${swap_enabled}" == 'yes' ]]; then
@@ -62,16 +65,23 @@ partition_disk() {
         fi
 
         sgdisk -t "$(lsblk -no PARTN "${root_part}" | head -n1)":8e00 "${disk}"
+        partprobe "${disk}" 2>/dev/null || true
+        udevadm settle
 
         local lvm_target="${root_part}"
 
         if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+            dmsetup remove cryptlvm 2>/dev/null || true
+            wipefs -af "${root_part}" || true
             log_info "Formatting LUKS container on ${root_part}..."
             local luks_pass
             luks_pass="$(state_get LUKS_PASS)"
             printf '%s' "${luks_pass}" | cryptsetup luksFormat --type luks2 "${root_part}" -
             log_info "Opening LUKS container..."
             printf '%s' "${luks_pass}" | cryptsetup luksOpen "${root_part}" cryptlvm -
+            if [[ ! -b /dev/mapper/cryptlvm ]]; then
+                die "LUKS mapper /dev/mapper/cryptlvm not created — check passphrase and kernel modules"
+            fi
             lvm_target="/dev/mapper/cryptlvm"
         fi
 

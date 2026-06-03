@@ -7,6 +7,9 @@
 - Debug mode: LVM `*create` commands and `basestrap` now wrapped with `xtrace_safe` — debug output no longer bleeds into child process output
 - Debug mode: `mkfs`, `cryptsetup`, and other informative commands left unwrapped — users can still see filesystem creation progress
 - LVM: `pvcreate -ff` now used instead of `pvcreate` — suppresses "existing filesystem signature" prompt that blocked unattended installs
+- LVM/LUKS: stale device mapper entries and LVM volumes now deactivated before disk wipe — fixes "device in use" and "already mapped" errors on resume/retry
+- LVM/LUKS: mapper device existence check added after `luksOpen` — `pvcreate` failure now shows clear error instead of cryptic "device not found"
+- Partitioning: `blockdev --rereadpt` added after `partprobe` — forces kernel to reload partition table, preventing "kernel still using old table" warnings from breaking `pvcreate`
 
 ## v8.4.2.4 (2026-06-03) — ArtixForge
 
