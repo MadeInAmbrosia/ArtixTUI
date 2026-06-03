@@ -77,6 +77,10 @@ recovery_mount_all() {
     mount --bind /proc /mnt/proc || true
     mount --bind /sys /mnt/sys || true
 
+    if [[ -f /etc/resolv.conf ]]; then
+        cp /etc/resolv.conf /mnt/etc/resolv.conf || true
+    fi
+
     log_info "Recovery environment prepared."
 }
 
