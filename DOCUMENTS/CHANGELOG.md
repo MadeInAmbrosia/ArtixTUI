@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.4.3.9 (2026-06-03) — ArtixForge
+
+### Fixed
+- Recovery: `detect_luks` now walks the full device mapper chain — correctly detects LUKS even under LVM layers
+- Recovery: `repair_uki` checks for UKI directory existence before scanning — fixes crash when `/boot/efi/EFI/Linux` doesn't exist
+
 ## v8.4.3.8 (2026-06-03) — ArtixForge
 
 ### Fixed

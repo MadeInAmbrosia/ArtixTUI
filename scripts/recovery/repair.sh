@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-source "${SCRIPT_DIR}/tui/core.sh" 2>/dev/null || true
-source "${SCRIPT_DIR}/common.sh" 2>/dev/null || true
-
 repair_fstab() {
     local issues
     issues=$(state_get FSTAB_ISSUES none)
@@ -113,8 +110,12 @@ repair_uki() {
         return 0
     fi
 
-    local uki_file
-    uki_file=$(compgen -G "/mnt/boot/efi/EFI/Linux/artix-*.efi" 2>/dev/null | head -n1)
+    local uki_dir="/mnt/boot/efi/EFI/Linux"
+    local uki_file=""
+
+    if [[ -d "${uki_dir}" ]]; then
+        uki_file=$(compgen -G "${uki_dir}/artix-*.efi" 2>/dev/null | head -n1)
+    fi
 
     if [[ -z "${uki_file}" ]]; then
         log_warn "UKI is enabled but no UKI file found."

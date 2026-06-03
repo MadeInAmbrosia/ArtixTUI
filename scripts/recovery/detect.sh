@@ -268,12 +268,27 @@ detect_luks() {
     local source parent
     source="$(findmnt -no SOURCE "${ROOT}" 2>/dev/null || true)"
     [[ -n "${source}" ]] || return 0
-    parent="$(lsblk -no PKNAME "${source}" 2>/dev/null || true)"
-    if [[ -n "${parent}" ]] && cryptsetup isLuks "/dev/${parent}" &>/dev/null; then
-        state_set USE_LUKS yes
-    else
-        state_set USE_LUKS no
-    fi
+    
+    local check_dev="${source}"
+    while [[ -n "${check_dev}" ]]; do
+        if cryptsetup isLuks "${check_dev}" &>/dev/null; then
+            state_set USE_LUKS yes
+            return 0
+        fi
+        parent="$(lsblk -no PKNAME "${check_dev}" 2>/dev/null || true)"
+        [[ -n "${parent}" ]] && check_dev="/dev/${parent}" || break
+    done
+    
+    local mapper_dev
+    for mapper_dev in /dev/mapper/*; do
+        [[ -b "${mapper_dev}" ]] || continue
+        if cryptsetup isLuks "${mapper_dev}" &>/dev/null; then
+            state_set USE_LUKS yes
+            return 0
+        fi
+    done
+    
+    state_set USE_LUKS no
 }
 
 detect_disk() {
