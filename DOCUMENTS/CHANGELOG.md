@@ -1,5 +1,17 @@
 # Changelog
 
+## v8.5.0.0 (2026-06-05) — ArtixForge
+
+### Added
+- System Migration: init system conversion between all 16 combinations (openrc, runit, dinit, s6, systemd)
+- System Migration: automatic service mapping with hub-chaining through OpenRC for non-direct pairs
+- System Migration: custom service detection and backup to `/root/init-backup-*/`
+- System Migration: desktop environment migration for all 13 supported DEs/WMs
+- System Migration: interactive prompts for display manager, display stack, and audio stack during DE migration
+- System Migration: user config backup (~/.config, ~/.local, ~/.cache) during DE migration
+- New `migrations/` module structure: `inits/` and `des/` with shared `common.sh` libraries
+- System Migration entry in main installer menu
+
 ## v8.4.4.1 (2026-06-04) — ArtixForge
 
 ### Fixed

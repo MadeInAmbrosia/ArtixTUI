@@ -118,7 +118,8 @@ main_menu() {
         "Manual – detect existing partitions" \
         "Resume – resume interrupted install" \
         "Recovery – scan /mnt for existing system" \
-        "Power User – source‑built packages") || exit 1
+        "Power User – source‑built packages" \
+        "System Migration – convert init system or desktop environment") || exit 1
 
     case "${mode}" in
         Automatic*) MODE='auto' ;;
@@ -126,6 +127,7 @@ main_menu() {
         Resume*)    MODE='resume' ;;
         Recovery*)  MODE='recovery' ;;
         Power*)     MODE='power' ;;
+        "System Migration"*) MODE='migrate' ;;
         *)          MODE='auto' ;;
     esac
 
@@ -238,6 +240,15 @@ Attempt recovery and continue installation?"; then
     esac
 }
 
+start_system_migration() {
+    if [[ -f "${BASE_DIR}/migrations/migrate.sh" ]]; then
+        source "${BASE_DIR}/migrations/migrate.sh"
+        tui_migration_menu
+    else
+        tui_msg_quick "Not Available" "Migration module not found at migrations/migrate.sh"
+    fi
+}
+
 main() {
     ensure_dirs
     require_root
@@ -274,6 +285,7 @@ main() {
         resume)   resume_install ;;
         recovery) start_recovery_install ;;
         power)    MODE='power' ; state_set POWER_USER "yes" ; start_auto_install ;;
+        migrate)  start_system_migration ;;
         *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
 

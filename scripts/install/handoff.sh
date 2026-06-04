@@ -97,7 +97,6 @@ QUICK_INSTALL="$(state_get QUICK_INSTALL)"
 POWER_USER="$(state_get POWER_USER)"
 POWERUSER_PACKAGES="$(state_get POWERUSER_PACKAGES)"
 POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
-KERNEL_IMAGE="$(state_get KERNEL_IMAGE)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
