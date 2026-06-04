@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.4.4.1 (2026-06-04) — ArtixForge
+
+### Fixed
+- Manual mode: disk selection now runs before partitioning — fixes "No disk selected" crash when choosing Manual installation mode
+- Manual mode: user can now specify which partitions to use after manual partitioning — EFI, root, and swap partitions are prompted and stored
+- `create_filesystems` and `mount_filesystems` now use manually-specified partitions when available, falling back to automatic numbering
+
 ## v8.4.4.0 (2026-06-03) — ArtixForge
 
 ### Fixed

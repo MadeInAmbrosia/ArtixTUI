@@ -9,12 +9,21 @@ create_filesystems() {
     swap_enabled="$(state_get SWAP_ENABLED no)"
 
     local efi_part swap_part root_part
-    efi_part=$(get_partition_name "${disk}" 1)
-    if [[ "${swap_enabled}" == 'yes' ]]; then
-        swap_part=$(get_partition_name "${disk}" 2)
-        root_part=$(get_partition_name "${disk}" 3)
+
+    if [[ -n "$(state_get EFI_PART '')" ]]; then
+        efi_part="$(state_get EFI_PART)"
+        root_part="$(state_get ROOT_PART)"
+        if [[ "$(state_get SWAP_ENABLED no)" == "yes" ]]; then
+            swap_part="$(state_get SWAP_PART)"
+        fi
     else
-        root_part=$(get_partition_name "${disk}" 2)
+        efi_part=$(get_partition_name "${disk}" 1)
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            swap_part=$(get_partition_name "${disk}" 2)
+            root_part=$(get_partition_name "${disk}" 3)
+        else
+            root_part=$(get_partition_name "${disk}" 2)
+        fi
     fi
 
     [[ -b "${efi_part}" ]] || die "invalid EFI partition: ${efi_part}"

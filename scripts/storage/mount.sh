@@ -10,11 +10,17 @@ mount_filesystems() {
     btrfs_layout="$(state_get BTRFS_LAYOUT standard)"
 
     local efi_part root_part efi_mount='/mnt/boot/efi'
-    efi_part=$(get_partition_name "${disk}" 1)
-    if [[ "${swap_enabled}" == 'yes' ]]; then
-        root_part=$(get_partition_name "${disk}" 3)
+
+    if [[ -n "$(state_get EFI_PART '')" ]]; then
+        efi_part="$(state_get EFI_PART)"
+        root_part="$(state_get ROOT_PART)"
     else
-        root_part=$(get_partition_name "${disk}" 2)
+        efi_part=$(get_partition_name "${disk}" 1)
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            root_part=$(get_partition_name "${disk}" 3)
+        else
+            root_part=$(get_partition_name "${disk}" 2)
+        fi
     fi
 
     if [[ "${bootloader}" == 'efistub' ]]; then
