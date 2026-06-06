@@ -273,6 +273,7 @@ main() {
 
     if [[ "${1:-}" == "--non-interactive" ]]; then
         source "${SCRIPT_DIR}/noninteractive.sh"
+        state-load
         MODE="$(state_get MODE auto)"
         log_info "Non‑interactive mode: ${MODE}"
         case "${MODE}" in
