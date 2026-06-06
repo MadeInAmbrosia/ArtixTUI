@@ -345,8 +345,7 @@ main() {
                 log_info "Launching GUI configuration window..."
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
-                export STATE_FILE="${STATE_FILE}"
-                
+
                 ${FORGE_GUI_CMD} --mode config
                 
                 if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE=\"yes\"" "${STATE_FILE}"; then
