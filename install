@@ -340,7 +340,7 @@ main() {
                 
                 (cd "${BASE_DIR}/forge-gui" && python3 -m forge_ui.cli --mode config)
                 
-                if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE=\"yes\"" "${STATE_FILE}"; then
+                if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE="yes"" "${STATE_FILE}"; then
                     log_info "Configuration saved. Restarting installer in non‑interactive mode..."
                     exec "$0" --non-interactive
                     exit 0
@@ -357,7 +357,7 @@ main() {
                 
                 forge-gui --mode config
                 
-                if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE=\"yes\"" "${STATE_FILE}"; then
+                if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE="yes"" "${STATE_FILE}"; then
                     log_info "Configuration saved. Restarting installer in non‑interactive mode..."
                     exec "$0" --non-interactive
                     exit 0
