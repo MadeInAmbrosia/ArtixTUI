@@ -329,8 +329,17 @@ main() {
         exit 0
     fi
 
+    FORGE_GUI_CMD=""
+    if [[ -f "${BASE_DIR}/forge-gui/forge_ui/cli.py" ]]; then
+        FORGE_GUI_CMD="python3 ${BASE_DIR}/forge-gui/forge_ui/cli.py"
+        log_info "Using forge-gui from submodule"
+    elif command -v forge-gui &>/dev/null; then
+        FORGE_GUI_CMD="forge-gui"
+        log_info "Using forge-gui from PATH"
+    fi
+
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-        if command -v forge-gui &>/dev/null; then
+        if [[ -n "${FORGE_GUI_CMD}" ]]; then
             if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
                 clear
                 log_info "Launching GUI configuration window..."
@@ -338,7 +347,7 @@ main() {
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
                 export STATE_FILE="${STATE_FILE}"
                 
-                forge-gui --mode config
+                ${FORGE_GUI_CMD} --mode config
                 
                 if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE=\"yes\"" "${STATE_FILE}"; then
                     log_info "Configuration saved. Restarting installer in non‑interactive mode..."
