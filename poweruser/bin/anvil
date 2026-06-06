@@ -6,7 +6,7 @@ POWERUSER_DIR="/usr/share/artix-poweruser"
 GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
 GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
 
-[[ -f /etc/gartix-theme.conf ]] && source /etc/gartix-theme.conf
+[[ -f /etc/anvil-theme.conf ]] && source /etc/anvil-theme.conf
 
 RECIPES_REPO="https://raw.githubusercontent.com/realvolk/ArtixForge-recipes/main"
 LIST_URL="${RECIPES_REPO}/.LIST"
@@ -15,14 +15,14 @@ SECTION_CONFIG="${POWERUSER_DIR}/recipe-sections.conf"
 DEFAULT_SECTIONS="OFFICIAL/Base"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/gartix_common.bash"
-source "${SCRIPT_DIR}/gartix_tui.bash"
-source "${SCRIPT_DIR}/gartix_cli.bash"
-source "${SCRIPT_DIR}/gartix_recovery.bash"
+source "${SCRIPT_DIR}/anvil_common.bash"
+source "${SCRIPT_DIR}/anvil_tui.bash"
+source "${SCRIPT_DIR}/anvil_cli.bash"
+source "${SCRIPT_DIR}/anvil_recovery.bash"
 
 usage() {
     cat <<EOF
-Usage: gartix [--tui] <command> [args]
+Usage: anvil [--tui] <command> [args]
 
 Commands:
   list              List installed source packages
@@ -68,18 +68,18 @@ main() {
         fetch-all)     fetch_all_sources ;;
         lint)          [[ -n "${2:-}" ]] || { usage; exit 1; }; lint_recipe "${2}" ;;
         checksum)      [[ -n "${2:-}" ]] || { usage; exit 1; }; checksum_recipe "${2}" ;;
-        upgrade)       upgrade_gartix ;;
+        upgrade)       upgrade_anvil ;;
         cache-clean)   cache_clean ;;
         recovery)
             require_root
             if [[ -z "${2:-}" ]]; then
-                gartix_recovery_status
+                anvil_recovery_status
                 if ! tui_yesno "Repair?" "Repair detected issues?"; then
                     exit 0
                 fi
-                gartix_recovery_repair
+                anvil_recovery_repair
             else
-                gartix_recovery_repair "${2}"
+                anvil_recovery_repair "${2}"
             fi
             ;;
         sync)          sync_recipes ;;

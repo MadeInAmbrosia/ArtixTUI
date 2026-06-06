@@ -11,11 +11,8 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v8.4.x | Yes |
-| v8.3.x | Yes |
-| v8.2.3.x | Critical fixes only |
-| v8.2.0.x | Critical fixes only |
-| < v8.2.0.0 | No |
+| v8.4.x and above | Yes |
+| < v8.4.0.0 | No |
 
 ## Scope
 
@@ -40,6 +37,7 @@ Security concerns include, but are not limited to:
 - `rsync` usage during package installation potentially following unsafe symlinks
 - Untrusted recovery: rootkit and malware scan results stored in /tmp
 - Filesystem repair: unmounting and modifying the root partition with fsck/xfs_repair/btrfs check
+- **GUI installer (`forge-gui`):** runs as root, handles LUKS passphrases and user passwords, must not leak sensitive data to logs or crash in a way that exposes memory contents
 
 ## Best Practices
 
@@ -53,3 +51,4 @@ Security concerns include, but are not limited to:
 - Post‑installation, `gartix` runs with root privileges. Users should audit recipes before building, especially those obtained from third‑party sources.
 - The installer's state directory (`/tmp/artix-installer/`) lives on a tmpfs and is lost on reboot. The target configuration file (`/mnt/etc/artix-installer.conf`) is shredded or removed during the finalize stage.
 - Recovery mode requires explicit user confirmation before modifying any system files. Detection is read‑only until the user chooses a repair action.
+- **GUI installer (`forge-gui`):** runs in a separate Python process, passes JSON over stdin/stdout, does not keep secrets in long‑lived memory after the window closes.

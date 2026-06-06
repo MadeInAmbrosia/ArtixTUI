@@ -48,17 +48,17 @@ tui_manage_sections() {
         "COMMUNITY/Base (pending review)" \
         "COMMUNITY/Other (experimental)") || return 0
 
-    GARTIX_SECTIONS="${chosen//$'\n'/ }"
-    [[ -z "${GARTIX_SECTIONS}" ]] && GARTIX_SECTIONS="${DEFAULT_SECTIONS}"
+    ANVIL_SECTIONS="${chosen//$'\n'/ }"
+    [[ -z "${ANVIL_SECTIONS}" ]] && ANVIL_SECTIONS="${DEFAULT_SECTIONS}"
     save_sections
-    tui_msg "Sections Updated" "Enabled sections: ${GARTIX_SECTIONS}"
+    tui_msg "Sections Updated" "Enabled sections: ${ANVIL_SECTIONS}"
 }
 
 tui_main() {
     while true; do
         clear
         local action
-        action=$(tui_menu "gartix" "Select an action:" \
+        action=$(tui_menu "anvil" "Select an action:" \
             "List installed packages" \
             "List available recipes" \
             "Package info" \
@@ -177,12 +177,12 @@ tui_main() {
                 tui_msg "Sync" "Recipes synchronized."
                 ;;
             "Recovery – check & repair source packages")
-                gartix_recovery_status
+                anvil_recovery_status
                 if tui_yesno "Repair source packages?" "Attempt to repair all source‑built packages?"; then
                     local repaired=()
                     while IFS='|' read -r pkgname _; do
                         [[ -n "${pkgname}" ]] || continue
-                        gartix_recovery_repair "${pkgname}" && repaired+=("${pkgname}")
+                        anvil_recovery_repair "${pkgname}" && repaired+=("${pkgname}")
                     done < <(tail -n +2 "${POWERUSER_DIR}/db/local.db" 2>/dev/null)
                     if [[ ${#repaired[@]} -gt 0 ]]; then
                         tui_msg "Recovery Complete" "Repaired: ${repaired[*]}"
@@ -192,7 +192,7 @@ tui_main() {
                 fi
                 ;;
             "Upgrade recipes")
-                upgrade_gartix
+                upgrade_anvil
                 tui_msg "Upgrade" "Recipes upgraded. Old recipes backed up."
                 ;;
             "Clean cache")

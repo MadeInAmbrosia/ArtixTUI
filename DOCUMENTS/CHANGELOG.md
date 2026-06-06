@@ -1,16 +1,72 @@
 # Changelog
 
+## v8.6.0.0 (2026-06-06) — ArtixForge
+
+### Added
+- GUI installer: persistent GTK configuration window (`forge-gui --mode config`) with 12 pages covering all installation options
+- GUI installer: theme preview (Gentoo, Artix, Jet Black, Mono, Retro) with live CSS colour updating
+- GUI installer: LUKS passphrase entry with confirmation and conditional visibility
+- GUI installer: BTRFS layout selector (standard/flat/snapshot) shown only when btrfs filesystem selected
+- GUI installer: Power User mode sub‑page with coreutils selection, fallback kernel toggle, and package checklist
+- GUI installer: Arch repositories and offline mode toggles
+- GUI installer: user and root password fields with visibility hiding
+- GUI installer: summary page with sanity warnings for dangerous combinations (ZFS, glibc source, EFIStub+LUKS)
+- GUI installer: all configuration saved to `/tmp/artix-installer/state.conf` in the same format as the TUI
+- GUI integration: automatic detection of `DISPLAY`/`WAYLAND_DISPLAY` and `forge-gui` presence
+- GUI integration: user prompt at startup to choose GUI over TUI when graphical session detected
+- GUI integration: non‑interactive installer mode (`scripts/noninteractive.sh`) overriding all `tui_*` functions when GUI config is saved
+- GUI integration: full installation pipeline reuses existing stages without UI prompts
+- GUI integration: `forge-gui` added as a git submodule in `forge-gui/`
+- `forge-gui` now installs `jsonschema` and `pygobject` as Python dependencies
+- `preflight.sh` installs GTK3 and system Python bindings when GUI mode is enabled
+- `install` script now supports `--non-interactive` flag (used by GUI after config save)
+- GUI installer: categorized extras page with tabs for System Tools, Editors, Browsers, File Managers, Terminals, Shell & Prompt, Monitoring, and Media – includes "Select All" per category
+- GUI installer: optional black or white background (user‑selectable on Theme page)
+
+### Changed
+- `gartix` package manager renamed to `anvil` – binary, internal scripts, and documentation updated accordingly
+- `forge-gui` repository stripped of all Textual TUI code – now pure GTK3 GUI only
+- `cli.py` extended with `--mode config` to launch persistent configuration window (replaces single‑widget mode for install flow)
+- `tui_yesno` override in `noninteractive.sh` now checks `SIGN_UKI` state variable to answer Secure Boot prompts correctly
+- `state.sh` now includes `GUI_MODE` variable to persist GUI selection across stages
+- `install` script now runs non‑interactive pipeline directly after GUI config saves, without returning to TUI
+- Changelog restructured to separate v8.5 (ISO + migrations) from v8.6 (GUI + integration)
+
+### Fixed
+- `bootloader.sh` Secure Boot prompt no longer blocks non‑interactive installation – reads `SIGN_UKI` from state instead
+- `forge-gui` no longer attempts to run `sudo ./install` on its own – saves config and exits cleanly
+- `forge-gui` theme preview now updates correctly when switching theme options
+
+### Documentation
+- `README.md` updated to describe GUI installer alongside TUI
+- `GUIDE.md` added GUI installation section
+- `forge-gui/README.md` rewritten for pure GTK frontend
+- `poweruser/README.md` updated: all `gartix` references changed to `anvil`
+- `DOCUMENTS/ROADMAP.md` updated: GUI integration moved from think‑tank to v8.6
+
 ## v8.5.0.0 (2026-06-05) — ArtixForge
 
 ### Added
 - System Migration: init system conversion between all 16 combinations (openrc, runit, dinit, s6, systemd)
 - System Migration: automatic service mapping with hub-chaining through OpenRC for non-direct pairs
 - System Migration: custom service detection and backup to `/root/init-backup-*/`
-- System Migration: desktop environment migration for all 13 supported DEs/WMs
-- System Migration: interactive prompts for display manager, display stack, and audio stack during DE migration
+- System Migration: desktop environment migration for all 13 supported DEs/WMs with network stack and extras support
+- System Migration: interactive prompts for display manager, display stack, audio stack, and network stack during DE migration
 - System Migration: user config backup (~/.config, ~/.local, ~/.cache) during DE migration
+- System Migration: init-specific package handling (sddm-dinit, lightdm-openrc, etc.)
 - New `migrations/` module structure: `inits/` and `des/` with shared `common.sh` libraries
 - System Migration entry in main installer menu
+- ISO generation: build custom Artix live ISOs from any Quick Profile or full custom configuration
+- ISO generation: Live Desktop mode (full graphical environment) and Installer mode (boots directly into ArtixForge)
+- ISO generation: installer auto-launch overlays for OpenRC, dinit, and runit
+- ISO generation: offline-capable ISOs with bundled package repository that carries over to installed system
+- ISO generation: offline mode auto-detection in `require_internet` when local repo is present
+- ISO generation: init-specific live service overlays for OpenRC, dinit, runit
+- ISO generation: full ArtixForge installer included on every ISO at `/root/ArtixForge/`
+- ISO generation: user-requested extra packages support via `ISO_EXTRA_PACKAGES`
+- ISO generation: build logs saved alongside ISO output
+- New `iso/` module at repo root: `build.sh`, `common.sh`, `offline.sh`, `cleanup.sh`, `tui.sh`
+- "Build ISO" entry in main installer menu
 
 ## v8.4.4.1 (2026-06-04) — ArtixForge
 

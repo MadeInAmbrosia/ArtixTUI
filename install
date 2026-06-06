@@ -77,6 +77,8 @@ verify_installer_layout() {
     for dir in "${required_dirs[@]}"; do [[ -d "${SCRIPT_DIR}/${dir}" ]] || return 1; done
     [[ -d "${SCRIPT_DIR}/tui/menus" ]] || return 1
     [[ -d "${POWERUSER_DIR:-${BASE_DIR}/poweruser}/tui/menup" ]] || return 1
+    [[ -d "${BASE_DIR}/iso" ]] || return 1
+    [[ -d "${BASE_DIR}/migrations" ]] || return 1
     return 0
 }
 
@@ -106,6 +108,7 @@ fi
 source "${SCRIPT_DIR}/common.sh"
 source "${SCRIPT_DIR}/state.sh"
 source "${SCRIPT_DIR}/kernels.sh"
+source "${BASE_DIR}/iso/tui.sh" 2>/dev/null || true
 source_tree tui storage install post stages recovery
 
 MODE=""
@@ -119,7 +122,8 @@ main_menu() {
         "Resume – resume interrupted install" \
         "Recovery – scan /mnt for existing system" \
         "Power User – source‑built packages" \
-        "System Migration – convert init system or desktop environment") || exit 1
+        "System Migration – convert init system or desktop environment" \
+        "Build ISO – create a custom live ISO") || exit 1
 
     case "${mode}" in
         Automatic*) MODE='auto' ;;
@@ -128,6 +132,7 @@ main_menu() {
         Recovery*)  MODE='recovery' ;;
         Power*)     MODE='power' ;;
         "System Migration"*) MODE='migrate' ;;
+        "Build ISO"*)       MODE='iso' ;;
         *)          MODE='auto' ;;
     esac
 
@@ -266,6 +271,87 @@ main() {
         fi
     fi
 
+    if [[ "$1" == "--non-interactive" ]]; then
+        source "${SCRIPT_DIR}/noninteractive.sh"
+        MODE="$(state_get MODE auto)"
+        log_info "Non‑interactive mode: ${MODE}"
+        case "${MODE}" in
+            auto)
+                stage_preflight || die 'preflight stage failed'
+                stage_storage   || die 'storage stage failed'
+                stage_base      || die 'base stage failed'
+                [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || die 'power user stage failed'
+                stage_chroot    || die 'chroot stage failed'
+                stage_init      || die 'init configuration stage failed'
+                stage_post      || die 'post-install stage failed'
+                stage_finalize  || die 'finalization stage failed'
+                ;;
+            manual)
+                state_set INSTALL_MODE manual
+                stage_preflight || die 'preflight stage failed'
+                stage_storage   || die 'storage stage failed'
+                stage_base      || die 'base stage failed'
+                [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || die 'power user stage failed'
+                stage_chroot    || die 'chroot stage failed'
+                stage_init      || die 'init configuration stage failed'
+                stage_post      || die 'post-install stage failed'
+                stage_finalize  || die 'finalization stage failed'
+                ;;
+            resume)
+                resume_install
+                ;;
+            recovery)
+                start_recovery_install
+                ;;
+            power)
+                state_set POWER_USER "yes"
+                stage_preflight || die 'preflight stage failed'
+                stage_storage   || die 'storage stage failed'
+                stage_base      || die 'base stage failed'
+                stage_poweruser || die 'power user stage failed'
+                stage_chroot    || die 'chroot stage failed'
+                stage_init      || die 'init configuration stage failed'
+                stage_post      || die 'post-install stage failed'
+                stage_finalize  || die 'finalization stage failed'
+                ;;
+            iso)
+                start_iso_build
+                ;;
+            migrate)
+                start_system_migration
+                ;;
+            *)
+                log_error "Unknown mode: ${MODE}"
+                exit 1
+                ;;
+        esac
+        log_info "Installation complete. You may now reboot."
+        exit 0
+    fi
+
+    if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
+        if command -v forge-gui &>/dev/null; then
+            if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
+                clear
+                log_info "Launching GUI configuration window..."
+                export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
+                export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
+                export STATE_FILE="${STATE_FILE}"
+                
+                forge-gui --mode config
+                
+                if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE=\"yes\"" "${STATE_FILE}"; then
+                    log_info "Configuration saved. Restarting installer in non‑interactive mode..."
+                    exec "$0" --non-interactive
+                    exit 0
+                else
+                    log_error "GUI configuration was not saved. Falling back to TUI."
+                fi
+            fi
+        fi
+    fi
+
+    # Fallback to TUI
     clear
     main_menu
 
@@ -286,6 +372,7 @@ main() {
         recovery) start_recovery_install ;;
         power)    MODE='power' ; state_set POWER_USER "yes" ; start_auto_install ;;
         migrate)  start_system_migration ;;
+        iso)      start_iso_build ;;
         *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
 

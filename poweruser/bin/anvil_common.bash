@@ -28,11 +28,11 @@ load_sections() {
     if [[ -f "${SECTION_CONFIG}" ]]; then
         source "${SECTION_CONFIG}"
     fi
-    GARTIX_SECTIONS="${GARTIX_SECTIONS:-${DEFAULT_SECTIONS}}"
+    ANVIL_SECTIONS="${ANVIL_SECTIONS:-${DEFAULT_SECTIONS}}"
 }
 
 save_sections() {
-    printf 'GARTIX_SECTIONS="%s"\n' "${GARTIX_SECTIONS}" > "${SECTION_CONFIG}"
+    printf 'ANVIL_SECTIONS="%s"\n' "${ANVIL_SECTIONS}" > "${SECTION_CONFIG}"
 }
 
 fetch_list() {
@@ -49,7 +49,7 @@ list_available() {
     [[ -f "${LOCAL_LIST}" ]] || fetch_list || { echo "No recipe list available."; return 1; }
     local IFS='|'
     while read -r name section desc; do
-        for s in ${GARTIX_SECTIONS}; do
+        for s in ${ANVIL_SECTIONS}; do
             if [[ "${section}" == "${s}" ]]; then
                 echo "${name} - ${desc:-no description} [${section}]"
                 break

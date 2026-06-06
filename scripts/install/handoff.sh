@@ -100,7 +100,7 @@ POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
-    cat > /mnt/etc/gartix-theme.conf <<EOF
+    cat > /mnt/etc/anvil-theme.conf <<EOF
 GUM_TITLE_COLOR="$(state_get GUM_TITLE_COLOR 212)"
 GUM_ACCENT_COLOR="$(state_get GUM_ACCENT_COLOR 34)"
 EOF

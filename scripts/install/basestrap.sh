@@ -380,5 +380,20 @@ EOF
         fstabgen -U /mnt > /mnt/etc/fstab
     fi
 
+    if [[ -d /mnt/repo ]]; then
+        log_info "Offline mode: copying local repository to target..."
+        mkdir -p /mnt/mnt/repo
+        cp -a /mnt/repo/. /mnt/mnt/repo/ 2>/dev/null || true
+        if ! grep -q '\[custom\]' /mnt/etc/pacman.conf 2>/dev/null; then
+            cat >> /mnt/etc/pacman.conf <<'EOF'
+
+[custom]
+SigLevel = Optional
+Server = file:///mnt/repo/
+EOF
+        fi
+        log_info "Target system configured for offline package access"
+    fi
+
     log_info "Base system installation complete."
 }

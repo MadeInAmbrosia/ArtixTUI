@@ -18,6 +18,7 @@ The installer runs entirely on your local machine. It does not:
 | Stage progress markers | `/tmp/artix-installer/stages/` | Deleted on reboot (tmpfs) |
 | User password hashes | Memory only, never written to disk | Gone when installer exits |
 | LUKS passphrase | Memory only, never written to disk | Gone when installer exits |
+| GUI installer state (forge-gui) | Python memory | Cleared when GUI window closes |
 | Target system config | `/mnt/etc/artix-installer.conf` | Shredded or removed during finalize stage |
 | Quick Profile save | `/mnt/etc/artixforge-profile.conf` | Remains on installed system for reuse |
 | Installer log | `/mnt/var/log/artix-installer.log` | Remains on the installed system for debugging |
@@ -42,6 +43,9 @@ fails. This only happens during an active build failure — never during normal 
 The recovery mode rootkit scanner (`rkhunter`) downloads its database updates
 from the rkhunter project servers when first run. This is the only optional
 third-party network request outside of package management.
+
+**The GUI installer (`forge-gui`) makes no network connections of its own.**
+It only reads/writes `state.conf` and spawns the non‑interactive Bash installer.
 
 ## Third-party services
 

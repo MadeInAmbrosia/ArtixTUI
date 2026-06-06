@@ -12,11 +12,11 @@ fetch_recipe() {
     [[ -n "${section}" ]] || { echo "Recipe '${name}' not found in .LIST"; return 1; }
 
     local allowed=0
-    for s in ${GARTIX_SECTIONS}; do
+    for s in ${ANVIL_SECTIONS}; do
         [[ "${section}" == "${s}" ]] && allowed=1 && break
     done
     [[ ${allowed} -eq 1 ]] || {
-        echo "Section '${section}' is not enabled. Enable it with: gartix sections"
+        echo "Section '${section}' is not enabled. Enable it with: anvil sections"
         return 1
     }
 
@@ -48,7 +48,7 @@ fetch_all_sources() {
     local IFS='|'
     while read -r name section desc; do
         local allowed=0
-        for s in ${GARTIX_SECTIONS}; do
+        for s in ${ANVIL_SECTIONS}; do
             [[ "${section}" == "${s}" ]] && allowed=1 && break
         done
         [[ ${allowed} -eq 0 ]] && continue
@@ -67,14 +67,14 @@ sync_recipes() {
     load_sections
     fetch_list || return 1
 
-    echo "Available recipes (enabled sections: ${GARTIX_SECTIONS}):"
+    echo "Available recipes (enabled sections: ${ANVIL_SECTIONS}):"
     list_available
     echo ""
     if tui_yesno "Update all?" "Download/update all enabled recipes from the community repo?"; then
         local IFS='|'
         while read -r name section desc; do
             local allowed=0
-            for s in ${GARTIX_SECTIONS}; do
+            for s in ${ANVIL_SECTIONS}; do
                 [[ "${section}" == "${s}" ]] && allowed=1 && break
             done
             [[ ${allowed} -eq 0 ]] && continue
@@ -119,7 +119,7 @@ new_recipe() {
     fi
     cp "${POWERUSER_DIR}/recipes/template.sh" "${recipe_file}"
     ${EDITOR:-nano} "${recipe_file}"
-    echo "Recipe ${name} created. Run 'gartix lint ${name}' to validate."
+    echo "Recipe ${name} created. Run 'anvil lint ${name}' to validate."
 }
 
 edit_recipe() {
@@ -136,10 +136,10 @@ edit_config() {
         ${EDITOR:-nano} "${config_file}"
     else
         echo "No config found at ${config_file}"
-        echo "Run 'gartix rebuild linux' to regenerate the kernel and its config."
+        echo "Run 'anvil rebuild linux' to regenerate the kernel and its config."
         exit 1
     fi
-    echo "Config edited. Rebuild with: gartix rebuild linux"
+    echo "Config edited. Rebuild with: anvil rebuild linux"
 }
 
 launch_menuconfig() {
@@ -148,10 +148,10 @@ launch_menuconfig() {
     if [[ -d "${src_dir}" ]]; then
         cd "${src_dir}"
         make menuconfig
-        echo "Config saved. Rebuild with: gartix rebuild linux"
+        echo "Config saved. Rebuild with: anvil rebuild linux"
     else
         echo "Kernel source not found at ${src_dir}"
-        echo "Run 'gartix fetch-source linux' to download the kernel source."
+        echo "Run 'anvil fetch-source linux' to download the kernel source."
         exit 1
     fi
 }
@@ -209,7 +209,7 @@ checksum_recipe() {
     done
 }
 
-upgrade_gartix() {
+upgrade_anvil() {
     require_root
     local recipe_dir="${POWERUSER_DIR}/recipes"
     local backup_dir="${POWERUSER_DIR}/recipes.old"
@@ -285,7 +285,7 @@ upgrade_gartix() {
         done
         echo ""
         echo "[*] Old recipes saved to ${backup_path}"
-        echo "[*] Run 'gartix rebuild <recipe>' for any changed packages."
+        echo "[*] Run 'anvil rebuild <recipe>' for any changed packages."
     else
         echo "[*] No recipe changes detected."
     fi

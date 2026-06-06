@@ -7,15 +7,15 @@
 
 <p align="center">
   <strong>THIS IS A TESTING BRANCH FOR v9. SHOULD NOT BE USED.</strong><br>
-  Any bugs found and repoted are welcome but it is not needed.
+  Any bugs found and reported are welcome but it is not needed.
 </p>
 
-
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.4.4.1-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.6.0.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
-  <img src="https://img.shields.io/badge/License-Volk Open License 1.0-yellow?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
+  <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
 </p>
 
 ---
@@ -24,11 +24,14 @@
 
 ArtixForge is a **modular operating system deployment framework** for Artix Linux (OpenRC, runit, dinit, s6, and BusyBox init).
 
-It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools — all from a single terminal interface.
+It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools – all from a single interface.
 
-* Built with `gum` by Charmbracelet.
+* **Two interfaces:** Terminal UI (keyboard‑only, works in any TTY) and Graphical UI (GTK, mouse‑friendly, launches automatically in desktop environments).
+* Built with `gum` for the TUI and `GTK3` + `Python` for the GUI.
 * Custom colour themes (Gentoo Purple, Artix Blue, Jet Black, Mono, Retro) that persist to the installed system.
-* Resilience hardened: automatic pacman lock recovery, exponential backoff retries, mid-build resume, disk space checks at every stage.
+* Resilience hardened: automatic pacman lock recovery, exponential backoff retries, mid‑build resume, disk space checks at every stage.
+* **Build custom live ISOs** from any Quick Profile or full configuration – includes offline package bundles.
+* **System Migration:** convert between init systems (openrc, runit, dinit, s6, systemd) or desktop environments without reinstalling.
 * Over 9 trillion system configurations in a standard install, over 1 quintillion with Power User mode.
 
 ---
@@ -68,6 +71,8 @@ sudo ./install
 
 You'll be greeted by a main menu where you choose your installation mode.
 
+**If you booted a desktop environment (KDE, XFCE, etc.)**, you will be asked whether you want to use the **Graphical UI (GTK)** instead of the terminal interface. Answer `Yes` to launch a persistent configuration window with mouse support.
+
 ---
 
 # Installation Modes
@@ -80,6 +85,8 @@ You'll be greeted by a main menu where you choose your installation mode.
 | 🟠 Recovery      | Auto-detect full system config, smart issue detection, surgical repair, filesystem repair (safe/destructive), rootkit/malware scanning. |
 | 🔴 Power User    | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control.                                                    |
 | ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal, and custom profile loading.                            |
+| 🧩 Build ISO     | Create a custom Artix live ISO from any Quick Profile or full configuration – includes offline package bundles.                         |
+| 🔄 System Migration | Convert init system (openrc ↔ runit ↔ dinit ↔ s6 ↔ systemd) or desktop environment without reinstalling.                            |
 
 A debug toggle is available for every mode from the same menu.
 
@@ -89,7 +96,9 @@ A debug toggle is available for every mode from the same menu.
 
 ## Core Installer
 
+* **Two UIs:** Terminal (TUI) with `gum` or Graphical (GUI) with GTK – same backend, different frontend.
 * Tabbed full-screen TUI – navigate steps with keyboard, jump between tabs, see completed steps with checkmarks
+* Persistent GUI configuration window – all options collected in one window, progress window during installation
 * Modular architecture – separate scripts for storage, install, post, stages, recovery, and TUI sub-menus
 * Universal logger – writes to `/tmp/artix-installer/install.log` and `/mnt/var/log/artix-installer.log`
 * Safe passwords – hashed with `openssl passwd -6`, never written to disk
@@ -101,11 +110,28 @@ A debug toggle is available for every mode from the same menu.
 * Multiple boot methods – UKI, EFIStub, GRUB, rEFInd, Limine
 * Optional Secure Boot signing for UKI images using `sbsign`
 * Privilege escalation choice – `sudo` or `doas`
-* Custom colour themes with live preview
-* Resilience features – disk space checks, pacman lock recovery, download retry with exponential backoff, mid-build resume
-* Offline mode with cached packages
+* Custom colour themes with live preview (both TUI and GUI)
+* Resilience features – disk space checks, pacman lock recovery, download retry with exponential backoff, mid‑build resume
+* Offline mode with cached packages (and offline ISO generation)
 * State persistence for full resume/recovery
 * Privacy-respecting – collects nothing, removes itself after installation
+
+## ISO Generation
+
+* Build custom Artix live ISOs from any Quick Profile or full custom configuration.
+* **Live Desktop mode** – includes a full desktop environment (KDE, XFCE, etc.) with the ArtixForge installer icon on the desktop.
+* **Installer mode** – boots directly into the ArtixForge TUI (no desktop, minimal size).
+* **Offline ISO** – bundle all packages into the ISO; installation works without an internet connection.
+* Add extra packages beyond the profile selection.
+* Build logs saved alongside the ISO.
+
+## System Migration
+
+* **Init migration:** convert between openrc, runit, dinit, s6, and systemd (if Arch repos enabled) without reinstalling.
+* Automatic service mapping; custom services are backed up and listed.
+* **Desktop migration:** convert between any of the 13 supported desktop environments/window managers.
+* Migrates display manager, display stack, audio stack, and network stack alongside the desktop.
+* User configurations (`~/.config`, `~/.local`, `~/.cache`) are backed up before migration.
 
 ## Power User Mode
 
@@ -120,7 +146,7 @@ A debug toggle is available for every mode from the same menu.
 * Offline source bootstrap
 * Build queue with resume, error recovery, and live log viewer
 * Post-build validation
-* `gartix` package manager (CLI + TUI) with recipe editor, offline bootstrap, and recipe self-healing
+* `gartix` package manager (CLI + TUI) with recipe editor, offline bootstrap, and recipe self‑healing
 
 ## Extras
 
@@ -135,7 +161,10 @@ Terminals, Shell & Prompt, Monitoring, and Media. Includes:
 
 # Dependencies
 
-ArtixForge requires `gum` for its TUI. If not present, it will be built from source during preflight (requires `go`, also installed automatically). Everything else is handled by the installer.
+* **TUI:** `gum` (installed automatically if missing).
+* **GUI:** `gtk3`, `python-gobject`, `jsonschema` (installed automatically when GUI mode is selected).
+
+Everything else is handled by the installer.
 
 ---
 
@@ -148,9 +177,8 @@ Contributions are welcome and appreciated.
 Please read [CONTRIBUTING](DOCUMENTS/CONTRIBUTING) for guidelines on testing,
 submissions, and code of conduct.
 
-
 ---
 
 # License
 
-Licensed under the [Volk Open License 1.0](DOCUMENTS/LICENSE) © [realvolk](https://github.com/realvolk) 2026.
+Licensed under the [Forge Attribution License 1.0](DOCUMENTS/LICENSE) © [Volk](https://github.com/realvolk) 2026.

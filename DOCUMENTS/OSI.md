@@ -1,6 +1,6 @@
 # License & Open Source Status
 
-## Is the Volk Open License 1.0 open source?
+## Is the Forge Attribution License 1.0 open source?
 
 Yes, in the commonly understood sense of the term. The license grants
 everyone the right to use, copy, modify, merge, publish, distribute,
@@ -11,7 +11,7 @@ freely modifiable, and freely redistributable.
 
 No. The Open Source Initiative (OSI) maintains the formal Open Source
 Definition — a 10-point checklist that a license must satisfy to carry
-the OSI "certified open source" designation. The Volk Open License has
+the OSI "certified open source" designation. The Forge Attribution License has
 not been submitted to the OSI for review, and condition 2 (prohibiting
 misrepresentation of authorship) may not align with every element of the
 OSI definition.
@@ -65,9 +65,10 @@ engage in good faith to address them.
 ## Why not use an existing OSI-approved license?
 
 The MIT license already grants all the freedoms the author wanted. The
-Volk Open License adds exactly one condition: "don't claim you wrote it."
-This condition is important to the author, and the chosen license reflects
-that priority. There is no plan to seek OSI approval or change the license.
+Forge Attribution License adds exactly two conditions: "don't claim you
+wrote it" and protection of project names and trademarks. These conditions
+are important to the author, and the chosen license reflects that priority.
+There is no plan to seek OSI approval or change the license.
 
 ## Could the license prevent inclusion in a distribution?
 

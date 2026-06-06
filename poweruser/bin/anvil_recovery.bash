@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-gartix_recovery_status() {
+anvil_recovery_status() {
     log_info "Checking source‑built packages..."
     local db="${POWERUSER_DIR}/db/local.db"
     [[ -f "${db}" ]] || { echo "No source packages installed."; return 0; }
@@ -34,7 +34,7 @@ gartix_recovery_status() {
     fi
 }
 
-gartix_recovery_repair() {
+anvil_recovery_repair() {
     local pkg="${1:-linux-custom}"
     log_info "Rebuilding ${pkg} for recovery..."
 
