@@ -4,14 +4,16 @@ set -Eeuo pipefail
 # Override all tui_* functions to return defaults (no user interaction)
 tui_msg() { return 0; }
 tui_yesno() {
-    local title="$1" msg="$2"
+    local title="$1"
     case "${title}" in
+        "Mirror Ranking")
+            return 1  # Skipping, until I find a better solution
+            ;;
         "Secure Boot")
-            [[ "$(state_get SIGN_UKI no)" == "yes" ]]
-            return $?
+            [[ "$(state_get SIGN_UKI no)" == "yes" ]] && return 0 || return 1
             ;;
         *)
-            return 0  # default to Yes
+            return 0  # default to Yes for everything else
             ;;
     esac
 }
