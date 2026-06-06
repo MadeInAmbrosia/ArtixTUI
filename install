@@ -329,24 +329,32 @@ main() {
         exit 0
     fi
 
-    FORGE_GUI_CMD=""
-    if [[ -f "${BASE_DIR}/forge-gui/forge_ui/cli.py" ]]; then
-        FORGE_GUI_CMD="python3 ${BASE_DIR}/forge-gui/forge_ui/cli.py"
-        log_info "Using forge-gui from submodule"
-    elif command -v forge-gui &>/dev/null; then
-        FORGE_GUI_CMD="forge-gui"
-        log_info "Using forge-gui from PATH"
-    fi
-
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-        if [[ -n "${FORGE_GUI_CMD}" ]]; then
+        if [[ -d "${BASE_DIR}/forge-gui" ]]; then
             if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
                 clear
-                log_info "Launching GUI configuration window..."
+                log_info "Launching GUI configuration window from submodule..."
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
-
-                ${FORGE_GUI_CMD} --mode config
+                
+                (cd "${BASE_DIR}/forge-gui" && python3 -m forge_ui.cli --mode config)
+                
+                if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE=\"yes\"" "${STATE_FILE}"; then
+                    log_info "Configuration saved. Restarting installer in non‑interactive mode..."
+                    exec "$0" --non-interactive
+                    exit 0
+                else
+                    log_error "GUI configuration was not saved. Falling back to TUI."
+                fi
+            fi
+        elif command -v forge-gui &>/dev/null; then
+            if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
+                clear
+                log_info "Launching GUI configuration window from PATH..."
+                export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
+                export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
+                
+                forge-gui --mode config
                 
                 if [[ -f "${STATE_FILE}" ]] && grep -q "GUI_MODE=\"yes\"" "${STATE_FILE}"; then
                     log_info "Configuration saved. Restarting installer in non‑interactive mode..."
