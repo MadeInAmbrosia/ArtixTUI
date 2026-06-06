@@ -278,25 +278,11 @@ main() {
         log_info "Non‑interactive mode: ${MODE}"
         case "${MODE}" in
             auto)
-                stage_preflight || die 'preflight stage failed'
-                stage_storage   || die 'storage stage failed'
-                stage_base      || die 'base stage failed'
-                [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || die 'power user stage failed'
-                stage_chroot    || die 'chroot stage failed'
-                stage_init      || die 'init configuration stage failed'
-                stage_post      || die 'post-install stage failed'
-                stage_finalize  || die 'finalization stage failed'
+                run_install_pipeline
                 ;;
             manual)
                 state_set INSTALL_MODE manual
-                stage_preflight || die 'preflight stage failed'
-                stage_storage   || die 'storage stage failed'
-                stage_base      || die 'base stage failed'
-                [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || die 'power user stage failed'
-                stage_chroot    || die 'chroot stage failed'
-                stage_init      || die 'init configuration stage failed'
-                stage_post      || die 'post-install stage failed'
-                stage_finalize  || die 'finalization stage failed'
+                run_install_pipeline
                 ;;
             resume)
                 resume_install
@@ -306,14 +292,7 @@ main() {
                 ;;
             power)
                 state_set POWER_USER "yes"
-                stage_preflight || die 'preflight stage failed'
-                stage_storage   || die 'storage stage failed'
-                stage_base      || die 'base stage failed'
-                stage_poweruser || die 'power user stage failed'
-                stage_chroot    || die 'chroot stage failed'
-                stage_init      || die 'init configuration stage failed'
-                stage_post      || die 'post-install stage failed'
-                stage_finalize  || die 'finalization stage failed'
+                run_install_pipeline
                 ;;
             iso)
                 start_iso_build
