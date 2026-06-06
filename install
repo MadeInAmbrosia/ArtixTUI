@@ -271,7 +271,7 @@ main() {
         fi
     fi
 
-    if [[ "$1" == "--non-interactive" ]]; then
+    if [[ "${1:-}" == "--non-interactive" ]]; then
         source "${SCRIPT_DIR}/noninteractive.sh"
         MODE="$(state_get MODE auto)"
         log_info "Non‑interactive mode: ${MODE}"
