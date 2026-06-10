@@ -222,6 +222,8 @@ EOF
     cat > "${out_dir}/profile.conf" <<EOF
 initsys="${init}"
 kernel="${kernel}"
+username="artix"
+password="artix"
 dist_release="artixforge-${profile_name,,}"
 dist_branding="${profile_name}"
 EOF
