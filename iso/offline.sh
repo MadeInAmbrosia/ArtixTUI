@@ -5,8 +5,8 @@ build_offline_repo() {
     local repo_dir="${1}"
     mkdir -p "${repo_dir}"
 
-    local blankdb="/tmp/blackdb"
-    mkdir -p "${blankdb}"
+    local blank_db="/tmp/blank_db"
+    mkdir -p "${blank_db}"
 
     log_info "Downloading all packages for offline installation..."
 
