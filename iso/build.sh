@@ -51,7 +51,7 @@ PACMAN
     log_info "Building ISO (this may take a while)..."
     mkdir -p "${output_dir}"
     local iso_log="${workspace}/iso-build-$(date +%Y%m%d-%H%M%S).log"
-    if buildiso -p "${profile_name}" -i "${init}" -o "${output_dir}" -w "${workspace}" 2>&1 | tee "${iso_log}"; then
+    if buildiso -p "${profile_name}" -i "${init}" -t "${output_dir}" -w "${workspace}" 2>&1 | tee "${iso_log}"; then
         local iso_file
         iso_file=$(find "${output_dir}" -name '*.iso' -type f | head -n1)
         log_info "ISO created: ${iso_file}"
