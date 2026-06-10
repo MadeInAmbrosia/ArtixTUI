@@ -4,6 +4,10 @@ set -Eeuo pipefail
 build_offline_repo() {
     local repo_dir="${1}"
     mkdir -p "${repo_dir}"
+
+    local blankdb="/tmp/blackdb"
+    mkdir -p "${blankdb}"
+
     log_info "Downloading all packages for offline installation..."
 
     local -a offline_pkgs=(
@@ -35,7 +39,7 @@ build_offline_repo() {
         mpv feh
     )
 
-    pacman -Syw --cachedir "${repo_dir}" --dbpath /tmp/blankdb --noconfirm "${offline_pkgs[@]}" 2>/dev/null || {
+    pacman -Syw --cachedir "${repo_dir}" --dbpath "${blank_db}" --noconfirm "${offline_pkgs[@]}" 2>/dev/null || {
         log_warn "Some packages could not be downloaded – continuing with what we have"
     }
 

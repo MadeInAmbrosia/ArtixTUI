@@ -8,6 +8,9 @@ build_artix_iso() {
     local offline="${4:-no}"
     local boot_mode="${5:-live}"
 
+    local ISO_DIR
+    ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
     local workspace="${HOME}/artools-workspace"
     local iso_profile_dir="${workspace}/iso-profiles/${profile_name}"
     local output_dir="${HOME}/artixforge-iso"
