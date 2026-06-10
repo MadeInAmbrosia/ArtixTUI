@@ -30,7 +30,7 @@ build_artix_iso() {
     if [[ "${offline}" == "yes" ]]; then
         source "${ISO_DIR}/offline.sh"
         log_info "Building offline package repository..."
-        build_offline_repo "${iso_profile_dir}/airootfs/mnt/repo"
+        build_offline_repo "${iso_profile_dir}/airootfs/mnt/repo" "${iso_profile_dir}/packages.x86_64"
         mkdir -p "${iso_profile_dir}/airootfs/etc"
         cat > "${iso_profile_dir}/airootfs/etc/pacman.conf" <<'PACMAN'
 [options]
@@ -49,6 +49,119 @@ Include = /etc/pacman.d/mirrorlist-artix
 [galaxy]
 Include = /etc/pacman.d/mirrorlist-artix
 PACMAN
+    fi
+
+    local wm_de kernel_choice
+    wm_de="$(state_get WM_DE none)"
+    kernel_choice="$(state_get KERNEL_CHOICE linux)"
+
+    local first_boot_script="${iso_profile_dir}/airootfs/root/setup.sh"
+    local needs_first_boot=0
+
+    if [[ "${wm_de}" == "mango" || "${wm_de}" == "vxwm" ]]; then
+        needs_first_boot=1
+    fi
+    if [[ "${kernel_choice}" == "linux-bazzite-bin" || "${kernel_choice}" == "tkg" ]]; then
+        needs_first_boot=1
+    fi
+
+    if [[ ${needs_first_boot} -eq 1 ]]; then
+        log_info "Creating first-boot setup script for non-repo packages..."
+        cat > "${first_boot_script}" <<'SETUP'
+#!/bin/bash
+set -e
+
+if grep -q 'ENABLE_ARCH_REPOS=yes' /etc/artix-installer.conf 2>/dev/null; then
+    pacman -S --noconfirm --needed artix-archlinux-support archlinux-keyring
+    if ! grep -q '^\[extra\]' /etc/pacman.conf; then
+        cat >> /etc/pacman.conf <<'REPO'
+[extra]
+Include = /etc/pacman.d/mirrorlist-arch
+
+[multilib]
+Include = /etc/pacman.d/mirrorlist-arch
+REPO
+    fi
+    pacman -Sy --noconfirm
+fi
+SETUP
+
+        if [[ "${wm_de}" == "mango" ]]; then
+            cat >> "${first_boot_script}" <<'SETUP'
+
+pacman -S --noconfirm --needed base-devel git
+cd /tmp
+git clone https://aur.archlinux.org/mangowm-git.git
+chown -R nobody: /tmp/mangowm-git
+su nobody -c 'cd /tmp/mangowm-git && makepkg -si --noconfirm'
+rm -rf /tmp/mangowm-git
+SETUP
+        fi
+
+        if [[ "${wm_de}" == "vxwm" ]]; then
+            cat >> "${first_boot_script}" <<'SETUP'
+
+pacman -S --noconfirm --needed base-devel git libx11 libxft libxinerama freetype2 xorg-server xorg-xinit
+cd /tmp
+git clone https://codeberg.org/wh1tepearl/vxwm.git
+cd vxwm
+make clean && make && make install
+cd .. && rm -rf vxwm
+SETUP
+        fi
+
+        if [[ "${kernel_choice}" == "linux-bazzite-bin" ]]; then
+            cat >> "${first_boot_script}" <<'SETUP'
+
+pacman -S --noconfirm --needed base-devel git
+cd /tmp
+git clone https://aur.archlinux.org/linux-bazzite-bin.git
+chown -R nobody: /tmp/linux-bazzite-bin
+su nobody -c 'cd /tmp/linux-bazzite-bin && makepkg -si --noconfirm --skippgpcheck'
+rm -rf /tmp/linux-bazzite-bin
+SETUP
+        fi
+
+        if [[ "${kernel_choice}" == "tkg" ]]; then
+            cat >> "${first_boot_script}" <<'SETUP'
+
+pacman -S --noconfirm --needed git
+git clone https://github.com/Frogging-Family/linux-tkg /opt/linux-tkg || true
+echo "TKG source ready in /opt/linux-tkg. Compile manually after reboot."
+SETUP
+        fi
+
+        chmod +x "${first_boot_script}"
+
+        # Auto-run on first boot via init-specific mechanism
+        case "${init}" in
+            openrc)
+                mkdir -p "${iso_profile_dir}/live-overlay/etc/local.d"
+                ln -sf /root/setup.sh "${iso_profile_dir}/live-overlay/etc/local.d/setup.start" 2>/dev/null || true
+                ;;
+            dinit)
+                mkdir -p "${iso_profile_dir}/live-overlay/etc/dinit.d"
+                cat > "${iso_profile_dir}/live-overlay/etc/dinit.d/iso-setup" <<'DINIT'
+type = process
+command = /root/setup.sh
+restart = false
+DINIT
+                mkdir -p "${iso_profile_dir}/live-overlay/etc/dinit.d/boot.d"
+                ln -sf ../iso-setup "${iso_profile_dir}/live-overlay/etc/dinit.d/boot.d/iso-setup" 2>/dev/null || true
+                ;;
+            runit)
+                mkdir -p "${iso_profile_dir}/live-overlay/etc/runit/sv/iso-setup"
+                cat > "${iso_profile_dir}/live-overlay/etc/runit/sv/iso-setup/run" <<'RUNIT'
+#!/bin/sh
+/root/setup.sh
+RUNIT
+                chmod +x "${iso_profile_dir}/live-overlay/etc/runit/sv/iso-setup/run"
+                mkdir -p "${iso_profile_dir}/live-overlay/etc/runit/runsvdir/default"
+                ln -sf /etc/runit/sv/iso-setup "${iso_profile_dir}/live-overlay/etc/runit/runsvdir/default/iso-setup" 2>/dev/null || true
+                ;;
+        esac
+
+        log_info "First-boot setup script added for ${wm_de}${wm_de:+ / }${kernel_choice}"
     fi
 
     log_info "Building ISO (this may take a while)..."

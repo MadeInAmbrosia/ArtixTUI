@@ -121,6 +121,8 @@ start_iso_build() {
     offline="no"
     if tui_yesno "Offline ISO" "Include all packages for offline installation?"; then
         offline="yes"
+        tui_msg_quick "Offline Configuration" "Now configure the target system.\nThese packages will be bundled for offline installation."
+        tui_collect_install_config
     fi
 
     source "${ISO_DIR}/build.sh"

@@ -72,9 +72,9 @@ generate_iso_package_list() {
         niri)    pkg_list+=(niri swaybg swaylock) ;;
         i3wm)    pkg_list+=(i3-wm i3status i3lock dmenu xterm lightdm lightdm-gtk-greeter "lightdm-${init}") ;;
         dwm)     pkg_list+=(dwm dmenu xterm lightdm lightdm-gtk-greeter "lightdm-${init}") ;;
-        vxwm)    pkg_list+=(vxwm base-devel git libx11 libxft libxinerama freetype2 xorg-server xorg-xinit) ;;
+        vxwm)    pkg_list+=(base-devel git libx11 libxft libxinerama freetype2 xorg-server xorg-xinit) ;;
         icewm)   pkg_list+=(icewm lightdm lightdm-gtk-greeter "lightdm-${init}") ;;
-        mango)   pkg_list+=(mangowm base-devel git) ;;
+        mango)   pkg_list+=(base-devel git) ;;
     esac
 
     local x_stack
