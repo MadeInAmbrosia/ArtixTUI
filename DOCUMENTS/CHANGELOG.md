@@ -1,5 +1,18 @@
 # Changelog
 
+## v8.6.2.0 (2026-06-10) — ArtixForge
+
+### Added
+- Recovery: migration health detection — detects multiple init systems, init mismatches, orphaned service symlinks
+- Recovery: ISO health detection — detects missing pacman, broken package database, missing kernel, incomplete base
+- Recovery: migration repair — reinstalls correct init system, cleans up conflicting init directories
+- Recovery: ISO repair — reinstalls missing base packages and kernel when salvageable
+- Recovery: extended detection prompt — migration and ISO checks are opt-in, keeping standard recovery fast
+
+### Fixed
+- Recovery: `esp_disk` and `esp_part` undefined variables in `repair_boot` Limine EFI entry repair
+- Recovery: `_kernel_pkg` incorrectly listed `linux-bazzite-bin-headers` as a repo package (AUR, same as TKG)
+
 ## v8.6.1.0 (2026-06-10) — ArtixForge
 
 ### Fixed

@@ -136,13 +136,20 @@ recovery_get_status() {
     status+="Kernel: $(state_get KERNEL_CHOICE unknown)"$'\n'
     status+="Power User: $(state_get POWER_USER no)"$'\n'
     status+="Coreutils: $(state_get COREUTILS unknown)"$'\n'
-    local fstab_issues boot_issues pacman_issues
+
+    local fstab_issues boot_issues pacman_issues migration_issues iso_issues
     fstab_issues=$(state_get FSTAB_ISSUES none)
     boot_issues=$(state_get BOOT_ISSUES none)
     pacman_issues=$(state_get PACMAN_ISSUES none)
+    migration_issues=$(state_get MIGRATION_ISSUES none)
+    iso_issues=$(state_get ISO_ISSUES none)
+
     [[ "${fstab_issues}" != "none" ]] && status+=$'\n'"FSTAB issues: ${fstab_issues}"
     [[ "${boot_issues}" != "none" ]] && status+=$'\n'"Boot issues: ${boot_issues}"
     [[ "${pacman_issues}" != "none" ]] && status+=$'\n'"Pacman issues: ${pacman_issues}"
+    [[ "${migration_issues}" != "none" ]] && status+=$'\n'"Migration issues: ${migration_issues}"
+    [[ "${iso_issues}" != "none" ]] && status+=$'\n'"ISO issues: ${iso_issues}"
+
     printf '%s\n' "${status}"
 }
 
@@ -180,6 +187,10 @@ reconstruct_state_from_system() {
     detect_fstab_health
     detect_boot_health
     detect_pacman_health
+    if tui_yesno "Extended Detection" "Run extended checks for INIT migration issues or broken ISO builds?"; then
+        detect_migration_health
+        detect_iso_health
+    fi
 
     state_save
 }

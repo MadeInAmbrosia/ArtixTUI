@@ -532,3 +532,80 @@ detect_pacman_health() {
     fi
     state_set PACMAN_ISSUES "${issues:-none}"
 }
+
+detect_init_actual() {
+    if [[ -x "${ROOT}/usr/bin/runit" ]]; then echo "runit"
+    elif [[ -x "${ROOT}/usr/bin/dinit" ]]; then echo "dinit"
+    elif [[ -x "${ROOT}/usr/bin/s6-rc" ]]; then echo "s6"
+    elif [[ -x "${ROOT}/usr/bin/openrc" ]]; then echo "openrc"
+    else echo "unknown"
+    fi
+}
+
+detect_migration_health() {
+    local issues=""
+    local found_inits=()
+    
+    [[ -d "${ROOT}/etc/runit" ]] && found_inits+=("runit")
+    [[ -d "${ROOT}/etc/dinit.d" ]] && found_inits+=("dinit")
+    [[ -d "${ROOT}/etc/s6" ]] && found_inits+=("s6")
+    [[ -d "${ROOT}/etc/init.d" ]] && found_inits+=("openrc")
+    
+    if [[ ${#found_inits[@]} -gt 1 ]]; then
+        issues+="multiple-inits:${found_inits[*]} "
+    fi
+    
+    # Active init doesn't match expected (from state)
+    local current_init expected_init
+    current_init="$(state_get INIT openrc)"
+    expected_init="$(detect_init_actual)"  # read from system, not state
+    if [[ "${current_init}" != "${expected_init}" && "${expected_init}" != "unknown" ]]; then
+        issues+="init-mismatch:state=${current_init},system=${expected_init} "
+    fi
+    
+    # Check if dinit services exist but dinit not actually running/enabled
+    if [[ -d "${ROOT}/etc/dinit.d/boot.d" ]] && [[ ! -f "${ROOT}/usr/bin/dinit" ]]; then
+        issues+="dinit-services-no-binary "
+    fi
+    
+    # Check for orphaned runit symlinks
+    if [[ -d "${ROOT}/etc/runit/runsvdir/default" ]]; then
+        local orphan
+        orphan=$(find "${ROOT}/etc/runit/runsvdir/default" -type l ! -exec test -e {} \; -print 2>/dev/null | wc -l)
+        [[ ${orphan} -gt 0 ]] && issues+="runit-orphaned-symlinks:${orphan} "
+    fi
+    
+    state_set MIGRATION_ISSUES "${issues:-none}"
+}
+
+detect_iso_health() {
+    local issues=""
+    
+    # Essential tools missing
+    if ! command -v pacman &>/dev/null; then
+        issues+="no-pacman "
+    else
+        # Pacman exists but database might be empty/corrupt
+        if [[ ! -d "${ROOT}/var/lib/pacman/local" ]] || \
+           ! pacman --root "${ROOT}" -Q base &>/dev/null 2>&1; then
+            issues+="pacman-db-broken "
+        fi
+    fi
+    
+    # ArtixForge installer missing
+    if [[ ! -f /root/ArtixForge/install ]]; then
+        issues+="missing-artixforge "
+    fi
+    
+    # Base packages incomplete
+    if ! pacman --root "${ROOT}" -Qk base 2>/dev/null | grep -q '0 missing'; then
+        issues+="base-incomplete "
+    fi
+    
+    # No kernel at all
+    if ! compgen -G "${ROOT}/boot/vmlinuz-*" >/dev/null 2>&1; then
+        issues+="no-kernel-iso "
+    fi
+    
+    state_set ISO_ISSUES "${issues:-none}"
+}

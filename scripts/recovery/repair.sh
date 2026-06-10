@@ -188,8 +188,15 @@ repair_boot() {
                     artix-chroot /mnt pacman -S --noconfirm limine
                     mkdir -p /mnt/boot/efi/EFI/BOOT
                     cp /mnt/usr/share/limine/BOOTX64.EFI /mnt/boot/efi/EFI/BOOT/
-                    artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
-                        --label 'Limine' --loader '\EFI\BOOT\BOOTX64.EFI' --verbose || true
+                    local esp_disk esp_part
+                    esp_disk="$(lsblk -no PKNAME "$(findmnt -no SOURCE /mnt/boot/efi 2>/dev/null)" 2>/dev/null || true)"
+                    esp_part="$(lsblk -no PARTN "$(findmnt -no SOURCE /mnt/boot/efi 2>/dev/null)" 2>/dev/null || true)"
+                    if [[ -n "${esp_disk}" && -n "${esp_part}" ]]; then
+                        artix-chroot /mnt efibootmgr --create --disk "/dev/${esp_disk}" --part "${esp_part}" \
+                            --label 'Limine' --loader '\EFI\BOOT\BOOTX64.EFI' --verbose || true
+                    else
+                        log_warn "Could not detect EFI partition — skipping EFI entry creation"
+                    fi
                     ;;
                 refind)
                     artix-chroot /mnt refind-install
@@ -280,10 +287,12 @@ repair_kernel() {
 }
 
 repair_detected_issues() {
-    local fstab_issues boot_issues pacman_issues
+    local fstab_issues boot_issues pacman_issues migration_issues iso_issues
     fstab_issues=$(state_get FSTAB_ISSUES none)
     boot_issues=$(state_get BOOT_ISSUES none)
     pacman_issues=$(state_get PACMAN_ISSUES none)
+    migration_issues=$(state_get MIGRATION_ISSUES none)
+    iso_issues=$(state_get ISO_ISSUES none)
 
     local did_something=0
 
@@ -302,6 +311,18 @@ repair_detected_issues() {
     if [[ "${boot_issues}" != "none" ]]; then
         log_info "Boot issues detected: ${boot_issues}"
         repair_boot
+        did_something=1
+    fi
+
+    if [[ "${migration_issues}" != "none" ]]; then
+        log_info "Migration issues detected: ${migration_issues}"
+        repair_migration
+        did_something=1
+    fi
+
+    if [[ "${iso_issues}" != "none" ]]; then
+        log_info "ISO issues detected: ${iso_issues}"
+        repair_iso
         did_something=1
     fi
 
@@ -518,4 +539,75 @@ Always back up your data first."
     fi
 
     log_info "Filesystem repair complete."
+}
+
+repair_migration() {
+    local issues
+    issues=$(state_get MIGRATION_ISSUES none)
+    [[ "${issues}" == "none" ]] && return 0
+
+    if [[ "${issues}" =~ multiple-inits ]]; then
+        log_warn "Multiple init systems detected. This usually means a migration was interrupted."
+        if tui_yesno "Repair Migration" "Reinstall the correct init system and clean up orphaned files?"; then
+            local correct_init
+            correct_init=$(state_get INIT openrc)
+            log_info "Reinstalling ${correct_init}..."
+            case "${correct_init}" in
+                openrc) artix-chroot /mnt pacman -S --noconfirm openrc ;;
+                runit)  artix-chroot /mnt pacman -S --noconfirm runit ;;
+                dinit)  artix-chroot /mnt pacman -S --noconfirm dinit dinit-base dinit-rc ;;
+                s6)     artix-chroot /mnt pacman -S --noconfirm s6 s6-rc ;;
+            esac
+            # Remove conflicting init directories
+            for init in runit dinit.d s6 init.d; do
+                if [[ "${init}" != "${correct_init}"* ]] && [[ "${init}" != "init.d" || "${correct_init}" != "openrc" ]]; then
+                    [[ -d "/mnt/etc/${init}" ]] && rm -rf "/mnt/etc/${init}" && log_info "Removed /etc/${init}"
+                fi
+            done
+        fi
+    fi
+
+    if [[ "${issues}" =~ init-mismatch ]]; then
+        log_warn "Init system mismatch between state and installed system."
+        if tui_yesno "Fix Init" "Set the detected init as the correct one?"; then
+            local actual
+            actual=$(detect_init_actual)
+            state_set INIT "${actual}"
+            log_info "State updated to ${actual}"
+        fi
+    fi
+}
+
+repair_iso() {
+    local issues
+    issues=$(state_get ISO_ISSUES none)
+    [[ "${issues}" == "none" ]] && return 0
+
+    if [[ "${issues}" =~ no-pacman || "${issues}" =~ pacman-db-broken ]]; then
+        log_error "Pacman is broken or missing. This ISO is too damaged to repair automatically."
+        tui_msg "Cannot Repair" "Pacman is required for all repairs.\n\nReinstall from a working ISO."
+        return 1
+    fi
+
+    if [[ "${issues}" =~ missing-artixforge ]]; then
+        log_warn "ArtixForge installer not found at /root/ArtixForge."
+        tui_msg "Missing ArtixForge" "The installer is missing but the system may still be bootable.\n\nRun 'pacman -S artixforge' after boot if available."
+    fi
+
+    if [[ "${issues}" =~ base-incomplete ]]; then
+        log_warn "Base packages incomplete."
+        if tui_yesno "Repair Base" "Reinstall base packages?"; then
+            artix-chroot /mnt pacman -S --noconfirm base base-devel
+            log_info "Base reinstalled."
+        fi
+    fi
+
+    if [[ "${issues}" =~ no-kernel-iso ]]; then
+        log_warn "No kernel found in /boot."
+        if tui_yesno "Install Kernel" "Install linux kernel?"; then
+            artix-chroot /mnt pacman -S --noconfirm linux linux-headers
+            artix-chroot /mnt mkinitcpio -P
+            log_info "Kernel installed."
+        fi
+    fi
 }
