@@ -145,16 +145,19 @@ EOF
     esac
 
     if [[ ${#pkgs[@]} -gt 0 ]]; then
-        log_info "Installing required tools: ${pkgs[*]}";
+        log_info "Installing required tools: ${pkgs[*]}"
         if ! gum spin --spinner dot --title "Preflight – installing dependencies" -- \
             pacman -S --noconfirm --needed "${pkgs[@]}"; then
-            log_warn "Primary mirror failed – restoring original mirrorlist and retrying."
+            log_warn "Package installation failed — restoring original mirrors and retrying."
             if [[ -f "${original_mirrorlist}" ]]; then
                 cp "${original_mirrorlist}" /etc/pacman.d/mirrorlist
+                pacman -Sy --noconfirm || true
             fi
-            pacman -Sy --noconfirm || true
-            gum spin --spinner dot --title "Preflight – retrying with original mirrors" -- \
-                pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies"
+            if ! gum spin --spinner dot --title "Preflight – retrying" -- \
+                pacman -S --noconfirm --needed "${pkgs[@]}"; then
+                log_error "Failed to install: ${pkgs[*]}"
+                die "Package installation failed. Check network and mirrorlist."
+            fi
         fi
         log_info "Preflight dependencies installed.";
         for pkg in "${pkgs[@]}"; do
