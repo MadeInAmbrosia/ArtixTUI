@@ -166,8 +166,7 @@ EOF
             ;;
         tkg)
             log_info "Setting up TKG build dependencies..."
-            pkgs+=(dkms bc cpio flex libelf pahole base-devel git)
-            log_warn "TKG kernels must be manually compiled after installation. Repository will be cloned into /opt/linux-tkg."
+            pkgs+=(bc cpio flex libelf pahole base-devel git dkms)
             ;;
         *)
             die "unsupported kernel: ${kernel}" ;;
@@ -415,9 +414,56 @@ ZFSMOUNT
     fi
 
     if [[ "${kernel}" == 'tkg' ]]; then
-        log_info "Cloning linux-tkg repository..."
-        artix-chroot /mnt git clone https://github.com/Frogging-Family/linux-tkg /opt/linux-tkg || true
-        log_info "TKG source ready in /opt/linux-tkg. Compile manually after reboot."
+        log_info "Building TKG kernel. This will take a while..."
+
+        local tkg_dir="/tmp/linux-tkg"
+        rm -rf "${tkg_dir}"
+        git clone --depth 1 https://github.com/Frogging-Family/linux-tkg.git "${tkg_dir}"
+
+        cat > "${tkg_dir}/customization.cfg" <<'EOF'
+_distro="Generic"
+_auto_configuration="true"
+_configfile="running-kernel"
+_cpusched="bore"
+_preempt="voluntary"
+_hz="250"
+_default_cpu_gov="schedutil"
+_compiler="gcc"
+_force_all_threads="true"
+_install_after_building="yes"
+_logging_use_script="no"
+EOF
+
+        cd "${tkg_dir}"
+        source linux-tkg-config/prepare
+        aggregate_user_config
+
+        _tkg_initscript
+        _tkg_srcprep
+
+        cd "$_kernel_work_folder_abs"
+        make -j$(nproc)
+
+        [[ "$_STRIP" == "true" ]] && strip -v $STRIP_STATIC vmlinux
+
+        make modules_install
+        make install
+
+        local kver
+        kver=$(ls /lib/modules/ | grep tkg | head -1)
+        if [[ -n "${kver}" ]]; then
+            cp -a /lib/modules/"${kver}" /mnt/lib/modules/
+            cp /boot/vmlinuz-*tkg*      /mnt/boot/ 2>/dev/null || true
+            cp /boot/initramfs-*tkg*     /mnt/boot/ 2>/dev/null || true
+            cp /boot/System.map-*tkg*    /mnt/boot/ 2>/dev/null || true
+            cp /boot/config-*tkg*        /mnt/boot/ 2>/dev/null || true
+            log_info "TKG kernel (${kver}) installed to /mnt"
+        else
+            log_warn "TKG build may have failed — no kernel found in /lib/modules"
+        fi
+        artix-chroot /mnt mkinitcpio -P || log_warn "mkinitcpio failed – you may need to run it manually after reboot"
+
+        log_info "TKG build complete."
     fi
 
     if [[ "${fs_type}" != 'zfs' ]]; then

@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.6.4.2 (2026-06-12) — ArtixForge
+
+### Changed
+- TKG: kernel now compiled automatically during installation instead of requiring manual post‑install build
+- TKG: uses TKG's own `_tkg_srcprep` + `make` with a non‑interactive customization.cfg (BORE scheduler, running‑kernel config, GCC)
+- TKG: built kernel and modules copied to `/mnt` automatically; target initramfs regenerated
+
 ## v8.6.4.1 (2026-06-12) — ArtixForge
 
 ### Added
