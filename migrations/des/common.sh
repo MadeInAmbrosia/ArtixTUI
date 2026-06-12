@@ -48,6 +48,10 @@ DM_PACKAGES=(
     ["lightdm-runit"]="lightdm lightdm-gtk-greeter lightdm-runit"
     ["lightdm-dinit"]="lightdm lightdm-gtk-greeter lightdm-dinit"
     ["lightdm-s6"]="lightdm lightdm-gtk-greeter lightdm-s6"
+    ["soniclogin-openrc"]="sonic-login-manager sonic-login-manager-openrc"
+    ["soniclogin-runit"]="sonic-login-manager sonic-login-manager-runit"
+    ["soniclogin-dinit"]="sonic-login-manager sonic-login-manager-dinit"
+    ["soniclogin-s6"]="sonic-login-manager sonic-login-manager-s6"
 )
 
 declare -A AUDIO_PACKAGES
@@ -246,7 +250,7 @@ apply_migration_choices() {
                 install_packages "${DM_PACKAGES[$key]:-}"
                 enable_service "${dm_pkg}" 2>/dev/null || log_warn "Could not enable $dm_pkg service"
                 ;;
-            none) remove_packages "sddm sddm-openrc sddm-runit sddm-dinit sddm-s6 lightdm lightdm-gtk-greeter lightdm-openrc lightdm-runit lightdm-dinit lightdm-s6 sonic-login-manager gdm" ;;
+            none) remove_packages "sddm sddm-openrc sddm-runit sddm-dinit sddm-s6 lightdm lightdm-gtk-greeter lightdm-openrc lightdm-runit lightdm-dinit lightdm-s6 sonic-login-manager sonic-login-manager-openrc sonic-login-manager-runit sonic-login-manager-dinit sonic-login-manager-s6 gdm" ;;
         esac
     fi
 
