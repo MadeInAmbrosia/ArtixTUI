@@ -119,6 +119,8 @@ detect_desktop() {
         state_set WM_DE vxwm
     elif pacman_root_has icewm; then
         state_set WM_DE icewm
+    elif pacman_root_has sonicde-meta; then
+        state_set WM_DE sonicde
     elif pacman_root_has plasma-desktop; then
         state_set WM_DE kde
         if pacman_root_has kde-applications; then
@@ -134,7 +136,9 @@ detect_desktop() {
 }
 
 detect_display_manager() {
-    if pacman_root_has sddm; then
+    if pacman_root_has sonic-login-manager; then
+        state_set DISPLAY_MANAGER soniclogin
+    elif pacman_root_has sddm; then
         state_set DISPLAY_MANAGER sddm
     elif pacman_root_has lightdm; then
         state_set DISPLAY_MANAGER lightdm

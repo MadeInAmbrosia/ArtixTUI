@@ -5,6 +5,7 @@ declare -A DE_PACKAGES
 DE_PACKAGES=(
     ["kde"]="plasma-desktop dolphin konsole kde-applications"
     ["kde-minimal"]="plasma-desktop dolphin konsole"
+    ["sonicde"]="sonicde-meta"
     ["xfce"]="xfce4 xfce4-goodies"
     ["lxqt"]="lxqt"
     ["lxde"]="lxde-common lxde"
@@ -22,6 +23,7 @@ DE_PACKAGES=(
 declare -A DE_DISPLAY_MANAGER
 DE_DISPLAY_MANAGER=(
     ["kde"]="sddm"
+    ["sonicde"]="soniclogin"
     ["xfce"]="lightdm"
     ["lxqt"]="sddm"
     ["lxde"]="lightdm"
@@ -116,7 +118,8 @@ EXTRA_PACKAGES=(
 )
 
 detect_current_de() {
-    if pacman -Qq plasma-desktop &>/dev/null; then echo "kde"
+    if pacman -Qq sonicde-meta &>/dev/null; then echo "sonicde"
+    elif pacman -Qq plasma-desktop &>/dev/null; then echo "kde"
     elif pacman -Qq xfce4 &>/dev/null; then echo "xfce"
     elif pacman -Qq lxqt &>/dev/null; then echo "lxqt"
     elif pacman -Qq lxde-common &>/dev/null || pacman -Qq lxde &>/dev/null; then echo "lxde"
@@ -132,7 +135,8 @@ detect_current_de() {
 }
 
 detect_current_dm() {
-    if pacman -Qq sddm &>/dev/null; then echo "sddm"
+    if pacman -Qq sonic-login-manager &>/dev/null; then echo "soniclogin"
+    elif pacman -Qq sddm &>/dev/null; then echo "sddm"
     elif pacman -Qq lightdm &>/dev/null; then echo "lightdm"
     elif pacman -Qq gdm &>/dev/null; then echo "gdm"
     else echo "none"; fi
@@ -204,7 +208,7 @@ prompt_migration_choices() {
     local dm_choice x_choice audio_choice network_choice extras_choice
 
     dm_choice=$(tui_menu "Display Manager" "Current: $current_dm\nSelect display manager:" \
-        "Keep current ($current_dm)" "SDDM" "LightDM" "None") || dm_choice="Keep current"
+        "Keep current ($current_dm)" "SDDM" "LightDM" "Sonic Login" "None") || dm_choice="Keep current"
     state_set DE_MIG_DM "${dm_choice}"
 
     x_choice=$(tui_menu "Display Stack" "Current: $current_x\nSelect display stack:" \
@@ -237,12 +241,12 @@ apply_migration_choices() {
     if [[ "$dm_choice" != "Keep current"* ]]; then
         local dm_pkg="${dm_choice,,}"
         case "$dm_pkg" in
-            sddm|lightdm)
+            sddm|lightdm|soniclogin)
                 local key="${dm_pkg}-${init}"
                 install_packages "${DM_PACKAGES[$key]:-}"
                 enable_service "${dm_pkg}" 2>/dev/null || log_warn "Could not enable $dm_pkg service"
                 ;;
-            none) remove_packages "sddm sddm-openrc sddm-runit sddm-dinit sddm-s6 lightdm lightdm-gtk-greeter lightdm-openrc lightdm-runit lightdm-dinit lightdm-s6 gdm" ;;
+            none) remove_packages "sddm sddm-openrc sddm-runit sddm-dinit sddm-s6 lightdm lightdm-gtk-greeter lightdm-openrc lightdm-runit lightdm-dinit lightdm-s6 sonic-login-manager gdm" ;;
         esac
     fi
 
@@ -357,11 +361,11 @@ tui_de_migration_menu() {
     tui_msg "Current Desktop" "Detected desktop environment: ${current_de}"
 
     source_de=$(tui_menu "Source Desktop" "Select desktop to migrate FROM:" \
-        "kde" "xfce" "lxqt" "lxde" "hyprland" "sway" "niri" \
+        "kde" "sonicde" "xfce" "lxqt" "lxde" "hyprland" "sway" "niri" \
         "i3wm" "dwm" "vxwm" "icewm" "mango" "none") || return 1
 
     target_de=$(tui_menu "Target Desktop" "Select desktop to migrate TO:" \
-        "kde" "xfce" "lxqt" "lxde" "hyprland" "sway" "niri" \
+        "kde" "sonicde" "xfce" "lxqt" "lxde" "hyprland" "sway" "niri" \
         "i3wm" "dwm" "vxwm" "icewm" "mango" "none") || return 1
 
     [[ "$source_de" != "$target_de" ]] || die "Source and target are the same."

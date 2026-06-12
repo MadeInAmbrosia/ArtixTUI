@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.6.2.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.6.4.1-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
@@ -46,7 +46,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Storage              | Standard partitions, LVM, LUKS, LVM-on-LUKS                                                                             |
 | Boot method          | UKI, GRUB, rEFInd, EFIStub, Limine                                                                                      |
 | Kernel               | linux, zen, lts, hardened, libre, cachyos-bore, bazzite, xanmod, tkg                                                    |
-| Desktop              | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, vxwm, IceWM, none                                 |
+| Desktop              | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, vxwm, IceWM, SonicDE, none                                 |
 | Network              | NetworkManager, dhcpcd+iwd, ConnMan, none                                                                               |
 | Audio                | PipeWire, PulseAudio, none                                                                                              |
 | Shell                | bash, zsh, fish                                                                                                         |

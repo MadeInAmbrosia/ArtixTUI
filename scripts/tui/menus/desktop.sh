@@ -5,7 +5,7 @@ tui_select_desktop() {
     local d
     d=$(tui_menu "Desktop Environment" "Select desktop:" \
         "xfce4" "lxqt" "kde" "lxde" "mango" "hyprland" "niri" "sway" \
-        "i3wm" "dwm" "vxwm" "icewm" "none") || return 1
+        "i3wm" "dwm" "vxwm" "icewm" "sonicde" "none") || return 1
     state_set WM_DE "${d}"
 
     if [[ "${d}" == "kde" ]]; then

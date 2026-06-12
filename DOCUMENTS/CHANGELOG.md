@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.6.4.1 (2026-06-12) — ArtixForge
+
+### Added
+- SonicDE: full desktop environment support — repository setup, package installation, and Sonic Login Manager integration
+- SonicDE: migration support — DE_PACKAGES, DE_DISPLAY_MANAGER, and DM_PACKAGES entries for sonicde ↔ any DE
+- SonicDE: recovery detection — `detect_desktop()` and `detect_display_manager()` recognize sonicde-meta and sonic-login-manager
+- SonicDE: GUI support — desktop combo boxes in `base.py` and `iso.py` include sonicde
+
 ## v8.6.4.0 (2026-06-12) — ArtixForge
 
 ### Added

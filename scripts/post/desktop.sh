@@ -31,6 +31,23 @@ install_desktop() {
         icewm)    pkgs+=(icewm icewm-themes xterm) ;;
         none)     return 0 ;;
 
+        sonicde)
+            log_info "Setting up SonicDE repository..."
+            if ! grep -q '^\[sonicde\]' /etc/pacman.conf; then
+                cat <<'EOF' >> /etc/pacman.conf
+[sonicde]
+Server = https://sonicde-artix.github.io/$arch
+EOF
+                pacman-key --recv-keys 72AAA51726BC3C29 --keyserver hkp://keyserver.ubuntu.com
+                pacman-key --lsign-key 72AAA51726BC3C29
+            fi
+            pacman -Sy --noconfirm
+            pkgs+=(sonicde-meta)
+            if [[ "${display_manager}" == "sddm" ]]; then
+                display_manager="soniclogin"
+            fi
+            ;;
+
         kde)
             case "${kde_profile}" in
                 minimal)       pkgs+=(plasma-desktop dolphin konsole xdg-desktop-portal-kde) ;;
@@ -79,6 +96,9 @@ EOF
                 pkgs+=(lightdm lightdm-gtk-greeter "lightdm-${init}")
             fi
             ;;
+        soniclogin)
+            pkgs+=(sonic-login-manager)
+            ;;
         sddm)    pkgs+=(sddm "sddm-${init}") ;;
     esac
 
@@ -120,8 +140,9 @@ EOF
     fi
 
     case "${display_manager}" in
-        lightdm) enable_service lightdm || { log_error "Failed to enable LightDM."; return 1; } ;;
-        sddm)    enable_service sddm || { log_error "Failed to enable SDDM."; return 1; } ;;
+        lightdm)     enable_service lightdm || { log_error "Failed to enable LightDM."; return 1; } ;;
+        soniclogin)  enable_service soniclogin || { log_error "Failed to enable Sonic Login Manager."; return 1; } ;;
+        sddm)        enable_service sddm || { log_error "Failed to enable SDDM."; return 1; } ;;
     esac
 
     case "${wm_de}" in
