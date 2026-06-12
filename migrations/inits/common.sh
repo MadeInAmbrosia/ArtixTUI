@@ -131,7 +131,69 @@ map_service() {
     return 1
 }
 
+list_init_packages() {
+    local init_suffix="${1}"  # openrc, runit, dinit, s6, systemd
+    pacman -Qsq "${init_suffix}" 2>/dev/null || true
+}
+
+cache_target_init_packages() {
+    local source_init="${1}" target_init="${2}"
+    log_info "Downloading target init packages before removing ${source_init}..."
+    local init_pkgs
+    init_pkgs=$(list_init_packages "${source_init}")
+    if [[ -z "${init_pkgs}" ]]; then
+        log_warn "No ${source_init} packages found — skipping download"
+        return 0
+    fi
+
+    local target_pkgs
+    target_pkgs=$(echo "${init_pkgs}" | sed "s/${source_init}/${target_init}/g")
+    log_info "Caching: ${target_pkgs}"
+    pacman -Sw --noconfirm ${target_pkgs} 2>/dev/null || log_warn "Some packages could not be downloaded"
+}
+
+remove_source_init() {
+    local src="${1}"
+    case "$src" in
+        systemd)
+            log_info "Removing systemd and related packages..."
+            pacman -Rdd --noconfirm systemd systemd-libs systemd-sysvcompat pacman-mirrorlist dbus 2>/dev/null || true
+            rm -fv /etc/resolv.conf
+            cp -vf /etc/pacman.d/mirrorlist.artix /etc/pacman.d/mirrorlist
+            ;;
+        *)
+            local init_pkgs
+            init_pkgs=$(list_init_packages "${src}")
+            if [[ -n "${init_pkgs}" ]]; then
+                log_info "Removing ${src} packages: ${init_pkgs}"
+                pacman -Rdd --noconfirm ${init_pkgs} 2>/dev/null || log_warn "Some packages could not be removed"
+            else
+                log_warn "No ${src} packages found to remove"
+            fi
+            ;;
+    esac
+}
+
 install_target_init() {
+    local source_init="${1}" target_init="${2}"
+    local init_pkgs
+    init_pkgs=$(list_init_packages "${source_init}" 2>/dev/null || true)
+
+    if [[ -n "${init_pkgs}" ]]; then
+        local target_pkgs
+        target_pkgs=$(echo "${init_pkgs}" | sed "s/${source_init}/${target_init}/g")
+        log_info "Installing target init packages: ${target_pkgs}"
+        pacman -S --noconfirm ${target_pkgs} 2>/dev/null || {
+            log_warn "Batch install failed — falling back to hardcoded package list"
+            _install_target_init_fallback "${target_init}"
+        }
+    else
+        log_warn "No ${source_init} packages to migrate — using hardcoded list"
+        _install_target_init_fallback "${target_init}"
+    fi
+}
+
+_install_target_init_fallback() {
     local init="${1}"
     local pkgs=()
     case "$init" in
@@ -141,7 +203,7 @@ install_target_init() {
         s6)     pkgs=(s6 s6-rc elogind-s6 s6-system) ;;
         *) die "Unknown init system: $init" ;;
     esac
-    log_info "Installing target init packages: ${pkgs[*]}"
+    log_info "Installing target init packages (fallback): ${pkgs[*]}"
     pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install ${init}"
 }
 
@@ -210,7 +272,6 @@ _run_single_migration() {
     log_info "Step complete: $migrated services migrated, $skipped skipped"
 }
 
-# Ripped straight off the artix wiki :)
 prepare_artix_repos() {
     log_info "Replacing pacman.conf and mirrorlist with Artix versions..."
     mv -vf /etc/pacman.conf /etc/pacman.conf.arch
@@ -271,28 +332,6 @@ remove_systemd() {
     pacman -Rdd --noconfirm systemd systemd-libs systemd-sysvcompat pacman-mirrorlist dbus 2>/dev/null || true
     rm -fv /etc/resolv.conf
     cp -vf /etc/pacman.d/mirrorlist.artix /etc/pacman.d/mirrorlist
-}
-
-remove_source_init() {
-    local src="${1}"
-    case "$src" in
-        systemd)
-            remove_systemd
-            ;;
-        openrc)
-            log_info "Removing openrc packages..."
-            pacman -Rns --noconfirm openrc elogind-openrc openrc-system 2>/dev/null || true
-            ;;
-        runit)
-            pacman -Rns --noconfirm runit elogind-runit runit-system 2>/dev/null || true
-            ;;
-        dinit)
-            pacman -Rns --noconfirm dinit dinit-base dinit-rc elogind-dinit dinit-system 2>/dev/null || true
-            ;;
-        s6)
-            pacman -Rns --noconfirm s6 s6-rc elogind-s6 s6-system 2>/dev/null || true
-            ;;
-    esac
 }
 
 reinstall_artix_packages() {
@@ -359,6 +398,16 @@ update_bootloader() {
     fi
 }
 
+cold_reboot() {
+    log_info "Init has been swapped — performing cold reboot via SysRq..."
+    sync
+    mount / -o remount,ro 2>/dev/null || true
+    echo s >| /proc/sysrq-trigger 2>/dev/null || true
+    echo u >| /proc/sysrq-trigger 2>/dev/null || true
+    echo b >| /proc/sysrq-trigger 2>/dev/null || true
+    reboot
+}
+
 run_init_migration() {
     local source_init="${1}" target_init="${2}"
     validate_migration "$source_init" "$target_init"
@@ -375,7 +424,7 @@ run_init_migration() {
         install_artix_keyring
         cache_artix_packages "$target_init"
         remove_systemd
-        install_target_init "$target_init"
+        install_target_init "$source_init" "$target_init"
         log_info "Installing base Artix packages..."
         pacman -S --noconfirm base base-devel grub linux linux-headers mkinitcpio \
             rsync lsb-release esysusers etmpfiles artix-branding-base
@@ -400,8 +449,9 @@ run_init_migration() {
             log_info "Custom services saved to $backup_dir/custom/"
         fi
 
+        cache_target_init_packages "$source_init" "$target_init"
         remove_source_init "$source_init"
-        install_target_init "$target_init"
+        install_target_init "$source_init" "$target_init"
     fi
 
     if has_direct_table "$source_init" "$target_init"; then
@@ -421,9 +471,19 @@ run_init_migration() {
     [[ "$source_init" == "systemd" ]] && cleanup_systemd_junk
     update_bootloader
 
-    log_info "Init migration complete. Please reboot."
-    if tui_yesno "Reboot" "Reboot now?"; then
-        reboot
+    log_info "Init migration complete."
+
+    if [[ "$source_init" != "systemd" ]]; then
+        if tui_yesno "Reboot" "A cold reboot is required. Proceed?"; then
+            cold_reboot
+        else
+            log_warn "You must cold reboot manually to complete the migration."
+            log_warn "Run: sync && echo b > /proc/sysrq-trigger"
+        fi
+    else
+        if tui_yesno "Reboot" "Reboot now?"; then
+            reboot
+        fi
     fi
 }
 

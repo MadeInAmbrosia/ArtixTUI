@@ -74,7 +74,7 @@ There is no plan to seek OSI approval or change the license.
 
 Possibly. Some distributions (notably Debian, Fedora, and openSUSE) require
 all software in their official repositories to carry an OSI-approved license.
-The Volk Open License has not been submitted for OSI review. This means
+The Forge Attribution License has not been submitted for OSI review. This means
 ArtixForge may not be eligible for inclusion in those distributions'
 official package repositories.
 

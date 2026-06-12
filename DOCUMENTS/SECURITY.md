@@ -11,7 +11,9 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v8.4.x and above | Yes |
+| v9.x (future) | Yes |
+| v8.6.x (v9-merger) | Best effort |
+| v8.4.x (current main) | Best effort |
 | < v8.4.0.0 | No |
 
 ## Scope
@@ -22,6 +24,7 @@ Security concerns include, but are not limited to:
 - Unsafe handling of LUKS passphrases (storage in memory, passing to `cryptsetup`)
 - LUKS + LVM combinations where encryption boundaries are incorrectly configured
 - LUKS containers created without proper formatting (`luksFormat` bypass)
+- ZFS native encryption passphrases held in memory during pool creation, never persisted to disk
 - Privilege escalation within the installer or the resulting system
 - Unsafe package downloads (missing or weak checksum verification)
 - Source‑compiled packages that introduce vulnerabilities via untrusted upstream sources

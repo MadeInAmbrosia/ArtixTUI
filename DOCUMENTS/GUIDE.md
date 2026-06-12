@@ -242,9 +242,9 @@ If you selected Power User mode, you can compile packages from source instead of
 ArtixForge can download additional recipes from the community repository at
 [ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes).
 
-Use `gartix sync` to pull the latest recipe list and download new recipes.
+Use `anvil sync` to pull the latest recipe list and download new recipes.
 By default, only tested OFFICIAL recipes are included. You can enable
-COMMUNITY recipes through the "Manage recipe sections" option in `gartix --tui`.
+COMMUNITY recipes through the "Manage recipe sections" option in `anvil --tui`.
 
 To contribute your own recipes, see the [ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes) repository.
 
@@ -379,7 +379,7 @@ You can then choose:
 | Repair filesystem corruption | Check and optionally repair the root filesystem (safe or destructive) |
 | Untrusted Recovery | Rootkit scan, malware indicator check, optional ClamAV |
 
-After installation, you can also run `gartix recovery` from the installed
+After installation, you can also run `anvil recovery` from the installed
 system to check and repair source‑built packages.
 
 **Filesystem repair** will unmount your root partition and run filesystem-specific

@@ -18,6 +18,7 @@ This roadmap is updated regularly based on:
 - ~~Graphical (GUI) installer variant~~ (**Done — GTK persistent config window, progress viewer**)
 - ~~Renaming `gartix` to something more original (`Anvil`? `Blacksmith`?)~~ (**Renamed to Anvil to fit the Forge/Blacksmithing theme of the project naming**)
 - Bug fixing and stabilisation
+- Adding sonicDE support(?)
 
 ## v9.0 (planned)
 - Merge `v9-merger` → `main`

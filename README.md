@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <strong>THIS IS A TESTING BRANCH FOR v9. SHOULD NOT BE USED.</strong><br>
+  <strong>THIS IS A TESTING BRANCH FOR v9. EXPECT BUGS.</strong><br>
   Any bugs found and reported are welcome but it is not needed.
 </p>
 
@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/Artix-[galaxy] *soon*-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy">
 </p>
 
 ---
@@ -52,7 +53,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Display stack        | X.Org, xLibre                                                                                                           |
 | Coreutils            | GNU, BusyBox, uutils, ArtixForge minimal, Custom                                                                        |
 | Privilege escalation | sudo, doas                                                                                                              |
-| Encryption           | LUKS full-disk encryption, LUKS-on-LVM                                                                                  |
+| Encryption           | LUKS full-disk encryption, LUKS-on-LVM, ZFS native encryption                                                           |                                                                             |
 | Recovery             | Smart issue detection, surgical repair, filesystem repair (safe/destructive), untrusted recovery (rootkit/malware scan) |
 | Power User           | Source compilation, custom kernel config, community recipes, recipe self-healing                                        |
 | Quick Profiles       | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal                                         |
@@ -60,7 +61,20 @@ It walks you through partitioning, filesystem creation, base system installation
 
 ---
 
-# Quick Start
+# Installation
+
+## Artix Linux (recommended)
+
+```bash
+sudo pacman -S artixforge
+sudo artixforge
+```
+
+## Alternative: Git Clone
+
+For the latest development version or if the package is not yet available in your mirrors:
+
+# Quick Start (Git)
 
 ```bash
 git clone https://github.com/realvolk/ArtixForge.git

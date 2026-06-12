@@ -6,7 +6,6 @@ partition_disk() {
     disk="$(state_get DISK)"
     [[ -n "${disk}" ]] || die 'no disk selected'
     [[ -b "${disk}" ]] || die 'invalid disk device'
-    [[ -n "${disk}" ]] || die 'no disk selected'
 
     if tui_yesno "Swap Partition" "Would you like to create a swap partition?"; then
         swap_enabled='yes'
@@ -33,13 +32,30 @@ partition_disk() {
     dd if=/dev/zero of="${disk}" bs=1M count=32 conv=fsync status=none
     blockdev --rereadpt "${disk}" 2>/dev/null || true
 
-    log_info "Creating GPT partition layout..."
-    sgdisk -n 1:0:+1024M -t 1:ef00 "${disk}"
-    if [[ "${swap_enabled}" == 'yes' ]]; then
-        sgdisk -n 2:0:+"${swap_size}" -t 2:8200 "${disk}"
-        sgdisk -n 3:0:0 -t 3:8300 "${disk}"
+    local fs_type
+    fs_type="$(state_get FS_TYPE ext4)"
+
+    if [[ "${fs_type}" == "zfs" ]]; then
+        log_info "Creating ZFS GPT partition layout..."
+        # EFI System (1GB)
+        sgdisk -n1:0:+1G -t1:EF00 "${disk}"
+        # Boot pool (4GB)
+        sgdisk -n2:0:+4G -t2:BE00 "${disk}"
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            sgdisk -n3:0:-"${swap_size}" -t3:BF00 "${disk}"
+            sgdisk -n4:0:0 -t4:8200 "${disk}"
+        else
+            sgdisk -n3:0:0 -t3:BF00 "${disk}"
+        fi
     else
-        sgdisk -n 2:0:0 -t 2:8300 "${disk}"
+        log_info "Creating GPT partition layout..."
+        sgdisk -n1:0:+1024M -t1:ef00 "${disk}"
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            sgdisk -n2:0:+"${swap_size}" -t2:8200 "${disk}"
+            sgdisk -n3:0:0 -t3:8300 "${disk}"
+        else
+            sgdisk -n2:0:0 -t2:8300 "${disk}"
+        fi
     fi
 
     partprobe "${disk}" 2>/dev/null || true
@@ -48,14 +64,22 @@ partition_disk() {
     blockdev --rereadpt "${disk}" 2>/dev/null || true
 
     [[ -b "$(get_partition_name "${disk}" 1)" ]] || die 'EFI partition not created'
-    if [[ "${swap_enabled}" == 'yes' ]]; then
-        [[ -b "$(get_partition_name "${disk}" 2)" ]] || die 'swap partition not created'
-        [[ -b "$(get_partition_name "${disk}" 3)" ]] || die 'root partition not created'
+    if [[ "${fs_type}" == "zfs" ]]; then
+        [[ -b "$(get_partition_name "${disk}" 2)" ]] || die 'boot pool partition not created'
+        [[ -b "$(get_partition_name "${disk}" 3)" ]] || die 'root pool partition not created'
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            [[ -b "$(get_partition_name "${disk}" 4)" ]] || die 'swap partition not created'
+        fi
     else
-        [[ -b "$(get_partition_name "${disk}" 2)" ]] || die 'root partition not created'
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            [[ -b "$(get_partition_name "${disk}" 2)" ]] || die 'swap partition not created'
+            [[ -b "$(get_partition_name "${disk}" 3)" ]] || die 'root partition not created'
+        else
+            [[ -b "$(get_partition_name "${disk}" 2)" ]] || die 'root partition not created'
+        fi
     fi
 
-    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+    if [[ "$(state_get USE_LVM no)" == "yes" && "${fs_type}" != "zfs" ]]; then
         log_info "Setting up LVM..."
         local root_part
         if [[ "${swap_enabled}" == 'yes' ]]; then
@@ -76,7 +100,7 @@ partition_disk() {
             log_info "Formatting LUKS container on ${root_part}..."
             local luks_pass
             luks_pass="$(state_get LUKS_PASS)"
-            printf '%s' "${luks_pass}" | cryptsetup luksFormat --type luks2 "${root_part}" -
+            printf '%s' "${luks_pass}" | cryptsetup luksFormat --type luks2 --pbkdf pbkdf2 "${root_part}" -
             log_info "Opening LUKS container..."
             printf '%s' "${luks_pass}" | cryptsetup luksOpen "${root_part}" cryptlvm -
             if [[ ! -b /dev/mapper/cryptlvm ]]; then

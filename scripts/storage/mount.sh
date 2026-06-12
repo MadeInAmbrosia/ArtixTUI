@@ -16,10 +16,14 @@ mount_filesystems() {
         root_part="$(state_get ROOT_PART)"
     else
         efi_part=$(get_partition_name "${disk}" 1)
-        if [[ "${swap_enabled}" == 'yes' ]]; then
+        if [[ "${fs_type}" == "zfs" ]]; then
             root_part=$(get_partition_name "${disk}" 3)
         else
-            root_part=$(get_partition_name "${disk}" 2)
+            if [[ "${swap_enabled}" == 'yes' ]]; then
+                root_part=$(get_partition_name "${disk}" 3)
+            else
+                root_part=$(get_partition_name "${disk}" 2)
+            fi
         fi
     fi
 
@@ -36,6 +40,7 @@ mount_filesystems() {
         xfs)   modprobe xfs 2>/dev/null || true ;;
         f2fs)  modprobe f2fs 2>/dev/null || true ;;
         exfat) modprobe exfat 2>/dev/null || true ;;
+        zfs)   modprobe zfs 2>/dev/null || true ;;
     esac
     command -v mount >/dev/null || die 'mount unavailable (util-linux missing)'
 
@@ -52,6 +57,36 @@ mount_filesystems() {
     umount -R /mnt/boot/efi 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     mkdir -p /mnt
+
+    if [[ "${fs_type}" == "zfs" ]]; then
+        if ! mountpoint -q /mnt; then
+            local INST_UUID
+            INST_UUID="$(state_get ZFS_UUID)"
+            [[ -n "${INST_UUID}" ]] || die "ZFS UUID not found in state — was filesystem.sh run?"
+
+            log_info "Importing ZFS pools..."
+            zpool import -N -R /mnt "rpool_${INST_UUID}" 2>/dev/null || true
+            zpool import -N -R /mnt "bpool_${INST_UUID}" 2>/dev/null || true
+
+            if [[ "$(state_get ZFS_PASSPHRASE '')" != "" ]]; then
+                log_info "Loading ZFS encryption key..."
+                printf '%s\n' "$(state_get ZFS_PASSPHRASE)" | zfs load-key "rpool_${INST_UUID}" || die "Failed to load ZFS key"
+            fi
+
+            zfs mount "rpool_${INST_UUID}/ROOT/default"
+            mkdir -p /mnt/boot
+            mount -t zfs "bpool_${INST_UUID}/BOOT/default" /mnt/boot
+            zfs mount -a
+        fi
+        mountpoint -q /mnt || die 'failed to mount ZFS root'
+
+        log_info "Mounting EFI partition..."
+        mount -t vfat --mkdir "${efi_part}" "${efi_mount}"
+        mountpoint -q "${efi_mount}" || die 'failed to mount EFI partition'
+
+        log_info "ZFS mount setup completed."
+        return 0
+    fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Activating LVM volumes..."
@@ -115,12 +150,6 @@ mount_filesystems() {
                     mount --mkdir -o noatime,compress=zstd,subvol=@home "${root_part}" /mnt/home
                     ;;
             esac
-            ;;
-        zfs)
-            zpool export zroot 2>/dev/null || true
-            zpool import -R /mnt zroot
-            zfs mount zroot/root
-            mountpoint -q /mnt || die 'failed to mount ZFS root dataset'
             ;;
         ext4|xfs|f2fs|bcachefs)
             local mount_opts="defaults"

@@ -1,5 +1,36 @@
 # Changelog
 
+## v8.6.4.0 (2026-06-12) — ArtixForge
+
+### Added
+- ZFS: full wiki-compliant ZFS-on-root support with dual-pool setup (bpool + rpool)
+- ZFS: optional native encryption on root pool (aes-256-gcm) with passphrase confirmation
+- ZFS: container and filesystem datasets with data separation (home, root, srv, usr/local, var/log, var/spool, var/tmp)
+- ZFS: dedicated boot pool partition (BE00) and root pool partition (BF00) in GPT layout
+- ZFS: `archzfs` repository configuration on target system
+- ZFS: `zfs-mount` init script for automatic dataset mounting at boot
+- ZFS: `zpool.cache` generation for initramfs embedding
+- ZFS: GRUB compatibility workarounds (`ZPOOL_VDEV_NAME_PATH`, pool name detection in `10_linux`, `--removable` install)
+- ZFS: manual fstab entries for boot pool and EFI partition (replaces fstabgen)
+- LUKS: PBKDF2 key derivation added to all `luksFormat` calls for GRUB compatibility
+- LUKS/LVM: init-specific service packages (`cryptsetup-${init}`, `lvm2-${init}`) installed on target
+- LUKS/LVM: `dmcrypt`, `device-mapper`, and `lvm` services enabled at boot via `enable_service_boot()`
+- Services: `enable_service_boot()` function added for boot-runlevel service activation across all four inits
+- README: installation instructions for `pacman -S artixforge` package
+- README: [galaxy] soonTM badge added
+- PKGBUILD: ready for Artix [galaxy] submission? (pending v9 merger)
+
+### Changed
+- Migration: `install_target_init` now queries installed init packages via `pacman -Qsq` instead of hardcoded lists
+- Migration: `cache_target_init_packages` downloads new init packages before removing old ones (network-safe)
+- Migration: `remove_source_init` uses `pacman -Qsq` to find and remove all init-specific packages
+- Migration: `cold_reboot()` function for SysRq-based reboot after init swap (prevents broken symlink hangs)
+- Partition: ZFS layout now creates 1GB EFI + 4GB boot pool + root pool partitions
+- ISO: `build.sh` now uses wiki method for non-repo packages (`buildiso -x` → chroot → `-sc` → `-zc`)
+- SECURITY.md: supported versions table updated (v9.x future, v8.6.x best effort)
+- OSI.md: corrected license name reference
+- GUIDE.md: `gartix` references updated to `anvil`
+
 ## v8.6.3.0 (2026-06-12) — ArtixForge
 
 ### Added
