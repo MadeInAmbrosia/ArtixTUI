@@ -9,7 +9,7 @@ tui_show_sanity_warnings() {
     [[ "$(state_get FS_TYPE)" == "bcachefs" ]] && warnings+=("bcachefs is experimental — tools may be unstable")
 
     [[ "$(state_get KERNEL_CHOICE)" == "linux-libre" ]] && warnings+=("linux-libre removes non-free firmware — hardware may not work")
-    [[ "$(state_get KERNEL_CHOICE)" == "tkg" ]] && warnings+=("TKG kernel requires manual compilation after install")
+    [[ "$(state_get KERNEL_CHOICE)" == "tkg" ]] && warnings+=("TKG kernel is built from source during install (20-30 min) — upstream has 90+ open issues")
 
     [[ "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("EFIStub needs compatible UEFI firmware")
     [[ "$(state_get BOOTLOADER)" == "uki" ]] && warnings+=("UKI is UEFI-only — BIOS systems not supported")
