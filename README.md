@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>THIS IS A TESTING BRANCH FOR v9. EXPECT BUGS.</strong><br>
-  Any bugs found and reported are welcome but it is not needed.
+  Any bugs found and reported are welcome.
 </p>
 
 <p align="center">
@@ -18,6 +18,36 @@
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Artix-[galaxy] *soon*-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy">
 </p>
+
+---
+
+# **TESTING BRANCH BABOONERY**
+###### We're going to milky way [galaxy] edition!
+### AKA *Here's how to test v9-merger:*
+```bash
+git clone --branch v9-merger --recursive https://github.com/realvolk/ArtixForge.git ArtixForge
+cd ArtixForge
+chmod +x install
+sudo ./install
+```
+Currently, the following needs testing:
+- Does ZFS Boot properly?
+- LUKS+LVM, LUKS+UKI, LUKS+LVM+UKI, LVM+UKI with any bootloader (*Pref. Grub or Limine*)
+- Migrations for both DE and INITs need testing
+- Does ISO building pass?
+- Does the GUI render everything properly?
+- Does SonicDE work?
+- Does TKG compile properly?
+- Does offline mode allow proper package bundling from user config?
+- How well does Recovery handle edge cases?
+
+### **FOUND A BUG? SOMETHING NOT WORKING?**
+
+Open an issue [here](https://github.com/realvolk/ArtixForge/issues)! Please describe:
+
+- The exact combination you tested (e.g., "LUKS+LVM+UKI with GRUB")
+- Any error messages from /tmp/artix-installer/install.log
+- Whether the GUI or TUI was used
 
 ---
 
@@ -63,7 +93,7 @@ It walks you through partitioning, filesystem creation, base system installation
 
 # Installation
 
-## Artix Linux (recommended)
+## Artix Linux (via future PKGBUILD)
 
 ```bash
 sudo pacman -S artixforge
@@ -73,8 +103,6 @@ sudo artixforge
 ## Alternative: Git Clone
 
 For the latest development version or if the package is not yet available in your mirrors:
-
-# Quick Start (Git)
 
 ```bash
 git clone https://github.com/realvolk/ArtixForge.git
