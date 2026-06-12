@@ -1,5 +1,21 @@
 # Changelog
 
+## v8.6.3.0 (2026-06-12) — ArtixForge
+
+### Added
+- Migration: full Arch→Artix migration path following the official Artix wiki — replaces pacman.conf/mirrorlist, installs Artix keyring, removes systemd, reinstalls all packages from Artix repos
+- Migration: LVM service enablement for all init systems after migration
+- Migration: systemd junk cleanup (accounts, directories)
+- Migration: bootloader update (mkinitcpio + GRUB reinstall) after migration
+- Migration: pacman cache cleanup and security level toggle for keyring installation
+
+### Changed
+- Migration: `run_init_migration` now handles systemd→Artix as a complete system replacement (wiki parity)
+- Migration: `install_target_init` now includes elogind and init-system packages for all inits
+- Migration: `remove_source_init` replaces manual package removal with batched init-specific cleanup
+- Migration: init migration now always updates bootloader and enables LVM services post-migration
+- `services.sh`: relaxed sourcing — no longer dies when `/etc/artix-installer.conf` is missing (supports migration/recovery contexts)
+
 ## v8.6.2.0 (2026-06-10) — ArtixForge
 
 ### Added
