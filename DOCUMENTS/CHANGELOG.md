@@ -1,5 +1,16 @@
 # Changelog
 
+## v8.6.4.4 (2026-06-13) — ArtixForge
+
+### Fixed
+- MangoWM: complete AUR dependency chain now built in order (wlroots0.19-hidpi-xprop → scenefx0.4 → mangowm-git)
+- MangoWM: temporary passwordless sudo configured during AUR builds, cleaned up automatically
+- MangoWM: build user added to `seat` group so compositor can launch without root
+- MangoWM: Arch repositories now enforced when MangoWM is selected
+
+### Changed
+- MangoWM: AUR build now uses `makepkg -si --noconfirm` to automatically resolve all dependencies
+
 ## v8.6.4.3 (2026-06-13) — ArtixForge
 
 ### Fixed

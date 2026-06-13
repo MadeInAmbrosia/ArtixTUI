@@ -2,12 +2,13 @@
 set -Eeuo pipefail
 
 configure_users() {
-    local username password root_password shell priv_esc
+    local username password root_password shell priv_esc wm_de
     username="$(state_get USER_NAME)"
     password="$(state_get USER_PASS)"
     root_password="$(state_get ROOT_PASS)"
     shell="$(state_get USER_SHELL /bin/bash)"
     priv_esc="$(state_get PRIV_ESCALATION sudo)"
+    wm_de="$(state_get WM_DE none)"
 
     [[ "${username}" =~ ^[a-z_][a-z0-9_-]*$ ]] || die 'invalid username'
 
@@ -31,6 +32,11 @@ if ! id '${username}' &>/dev/null; then
     useradd -m -G wheel,audio,video,storage -s '${shell}' '${username}'
     usermod -p '${user_hash}' '${username}'
 fi
+
+if [[ '${wm_de}' =~ ^(hyprland|sway|niri|mango)$ ]]; then
+    usermod -aG seat '${username}'
+fi
+
 if [[ '${priv_esc}' == 'sudo' ]]; then
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
     sed -i 's/^# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
