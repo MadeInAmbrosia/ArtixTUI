@@ -31,7 +31,7 @@ tui_select_arch_repos() {
         zfs) required='yes'; reasons+=("ZFS filesystem") ;;
     esac
     case "${wm_de}" in
-        hyprland|niri) required='yes'; reasons+=("${wm_de} may need Arch packages") ;;
+        hyprland|niri|mango) required='yes'; reasons+=("${wm_de} requires Arch repositories") ;;
     esac
 
     if [[ "${required}" == "yes" ]]; then
