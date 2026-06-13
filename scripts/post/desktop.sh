@@ -33,18 +33,24 @@ install_desktop() {
 
         sonicde)
             log_info "Setting up SonicDE repository..."
-            if ! grep -q '^\[sonicde\]' /etc/pacman.conf; then
-                cat <<'EOF' >> /etc/pacman.conf
+            sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
+            sed -i '/duckdns.org\/repos\/sonicde/d' /etc/pacman.conf
+            sed -i '/x11libre.net\/repo\/arch_based\/x86_64\/sonicde/d' /etc/pacman.conf
+
+            cat <<'EOF' >> /etc/pacman.conf
 [sonicde]
-SigLevel = Never
+SigLevel = Required DatabaseOptional
 Server = https://sonicde-artix.github.io/$arch
 EOF
-                curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
-                pacman-key --add /tmp/sonicde.asc
-                pacman-key --lsign-key 72AAA51726BC3C29
-                rm -f /tmp/sonicde.asc
-            fi
+
+            curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
+            pacman-key --add /tmp/sonicde.asc
+            pacman-key --lsign-key 72AAA51726BC3C29
+            pacman-key --delete 70B4B1EF0FF2A94E 2>/dev/null || true
+            rm -f /tmp/sonicde.asc
+            rm -rf /var/lib/pacman/sync/sonicde*
             pacman -Syy --noconfirm
+
             pkgs+=(sonicde-meta)
             if [[ "${display_manager}" == "sddm" ]]; then
                 display_manager="soniclogin"
