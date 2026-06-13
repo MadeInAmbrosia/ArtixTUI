@@ -96,26 +96,31 @@ EOF
     fi
 
     if [[ "${wm_de}" == 'mango' ]]; then
-        log_info "Building MangoWM and its AUR dependencies..."
+        log_info "Building MangoWM and AUR dependencies..."
         local aur_dir="/tmp/mango-deps"
         rm -rf "${aur_dir}"
         mkdir -p "${aur_dir}"
 
-        log_info "Building wlroots0.19..."
-        git clone https://aur.archlinux.org/wlroots0.19-hidpi-xprop.git "${aur_dir}/wlroots0.19-hidpi-xprop"
-        chown -R "${USER_NAME}:${USER_NAME}" "${aur_dir}/wlroots0.19-hidpi-xprop"
-        su - "${USER_NAME}" -c "cd '${aur_dir}/wlroots0.19-hidpi-xprop' && makepkg -si --noconfirm" || { log_error "Failed to build wlroots0.19."; return 1; }
+        echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/artixforge-mango
+        chmod 440 /etc/sudoers.d/artixforge-mango
 
-        log_info "Building scenefx0.4..."
-        git clone https://aur.archlinux.org/scenefx0.4.git "${aur_dir}/scenefx0.4"
-        chown -R "${USER_NAME}:${USER_NAME}" "${aur_dir}/scenefx0.4"
-        su - "${USER_NAME}" -c "cd '${aur_dir}/scenefx0.4' && makepkg -si --noconfirm" || { log_error "Failed to build scenefx0.4."; return 1; }
+        for repo in wlroots0.19-hidpi-xprop scenefx0.4 mangowm-git; do
+            git clone "https://aur.archlinux.org/${repo}.git" "${aur_dir}/${repo}" || {
+                rm -f /etc/sudoers.d/artixforge-mango
+                rm -rf "${aur_dir}"
+                log_error "Failed to clone ${repo}"
+                return 1
+            }
+            chown -R "${USER_NAME}:${USER_NAME}" "${aur_dir}/${repo}"
+            su - "${USER_NAME}" -c "cd '${aur_dir}/${repo}' && makepkg -si --noconfirm" || {
+                rm -f /etc/sudoers.d/artixforge-mango
+                rm -rf "${aur_dir}"
+                log_error "Failed to build ${repo}"
+                return 1
+            }
+        done
 
-        log_info "Building MangoWM..."
-        git clone https://aur.archlinux.org/mangowm-git.git "${aur_dir}/mangowm-git"
-        chown -R "${USER_NAME}:${USER_NAME}" "${aur_dir}/mangowm-git"
-        su - "${USER_NAME}" -c "cd '${aur_dir}/mangowm-git' && makepkg -si --noconfirm" || { log_error "Failed to build MangoWM."; return 1; }
-
+        rm -f /etc/sudoers.d/artixforge-mango
         rm -rf "${aur_dir}"
         log_info "MangoWM installation complete."
     fi
