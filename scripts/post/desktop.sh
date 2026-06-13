@@ -32,7 +32,7 @@ install_desktop() {
         none)     return 0 ;;
 
         sonicde)
-            log_info "Setting up SonicDE repository..."
+            log_info "Setting up INSECURE SonicDE repository..."
             sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
             cat <<'EOF' >> /etc/pacman.conf
 [sonicde]

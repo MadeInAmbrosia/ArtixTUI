@@ -1,5 +1,15 @@
 # Changelog
 
+## v8.6.4.6 (2026-06-13) — ArtixForge
+
+### Added
+- SonicDE: user warning before installation — notifies that signature verification is disabled due to upstream key infrastructure issues
+- SonicDE: user can cancel and return to desktop selection if they decline unsigned installation
+
+### Fixed
+- SonicDE: removed old repository URLs before adding new one to prevent key conflicts
+- SonicDE: `SigLevel = Never` at repo level to work around missing upstream signing key (70B4B1EF0FF2A94E)???
+
 ## v8.6.4.5 (2026-06-13) — ArtixForge
 
 ### Changed
