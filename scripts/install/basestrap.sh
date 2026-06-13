@@ -439,6 +439,7 @@ EOF
 
         cd "${tkg_dir}"
         _where="${tkg_dir}"
+        _distro="Generic"
         source linux-tkg-config/prepare
 
         _tkg_initscript
