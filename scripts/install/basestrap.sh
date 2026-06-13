@@ -150,6 +150,9 @@ EOF
                 log_info "Skipping binary xanmod kernel (fallback disabled)"
             else
                 log_info "Setting up Chaotic-AUR for XanMod..."
+                export GNUPGHOME="/etc/pacman.d/gnupg"
+                mkdir -p "${GNUPGHOME}"
+                chmod 700 "${GNUPGHOME}"
                 pacman-key --init
                 pacman-key --populate artix
                 pacman-key --recv-keys 3056513887B78AEB --keyserver hkp://keyserver.ubuntu.com
