@@ -116,14 +116,28 @@ EOF
     fi
 
     if [[ "${wm_de}" == 'mango' ]]; then
-        log_info "Building MangoWM from AUR..."
-        local build_dir='/tmp/mangowm-git'
-        rm -rf "${build_dir}"
-        git clone 'https://aur.archlinux.org/mangowm-git.git' "${build_dir}" || { log_error "Failed to clone MangoWM repo."; return 1; }
-        chown -R "${USER_NAME}:${USER_NAME}" "${build_dir}"
-        su - "${USER_NAME}" -c "cd '${build_dir}' && makepkg --noconfirm" || { log_error "Failed to build MangoWM."; return 1; }
-        retry_command "MangoWM install" pacman -U --noconfirm "${build_dir}"/*.pkg.tar.* || { log_error "Failed to install MangoWM package."; return 1; }
-        rm -rf "${build_dir}"
+        log_info "Building MangoWM and its AUR dependencies..."
+        local aur_dir="/tmp/mango-deps"
+        rm -rf "${aur_dir}"
+        mkdir -p "${aur_dir}"
+
+        log_info "Building wlroots0.19..."
+        git clone https://aur.archlinux.org/wlroots0.19-hidpi-xprop.git "${aur_dir}/wlroots0.19-hidpi-xprop"
+        chown -R "${USER_NAME}:${USER_NAME}" "${aur_dir}/wlroots0.19-hidpi-xprop"
+        su - "${USER_NAME}" -c "cd '${aur_dir}/wlroots0.19-hidpi-xprop' && makepkg -si --noconfirm" || { log_error "Failed to build wlroots0.19."; return 1; }
+
+        log_info "Building scenefx0.4..."
+        git clone https://aur.archlinux.org/scenefx0.4.git "${aur_dir}/scenefx0.4"
+        chown -R "${USER_NAME}:${USER_NAME}" "${aur_dir}/scenefx0.4"
+        su - "${USER_NAME}" -c "cd '${aur_dir}/scenefx0.4' && makepkg -si --noconfirm" || { log_error "Failed to build scenefx0.4."; return 1; }
+
+        log_info "Building MangoWM..."
+        git clone https://aur.archlinux.org/mangowm-git.git "${aur_dir}/mangowm-git"
+        chown -R "${USER_NAME}:${USER_NAME}" "${aur_dir}/mangowm-git"
+        su - "${USER_NAME}" -c "cd '${aur_dir}/mangowm-git' && makepkg -si --noconfirm" || { log_error "Failed to build MangoWM."; return 1; }
+
+        rm -rf "${aur_dir}"
+        log_info "MangoWM installation complete."
     fi
 
     if [[ "${wm_de}" == 'vxwm' ]]; then
