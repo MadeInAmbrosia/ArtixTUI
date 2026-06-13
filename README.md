@@ -6,6 +6,11 @@
 </p>
 
 <p align="center">
+  <strong>Want to try out the latest features?</strong><br>
+  Check out the v9-merger branch!
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Version-v8.4.4.1-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
