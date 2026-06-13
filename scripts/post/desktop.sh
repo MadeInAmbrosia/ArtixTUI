@@ -38,8 +38,10 @@ install_desktop() {
 [sonicde]
 Server = https://sonicde-artix.github.io/$arch
 EOF
-                pacman-key --recv-keys 72AAA51726BC3C29 --keyserver hkp://keyserver.ubuntu.com
+                curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
+                pacman-key --add /tmp/sonicde.asc
                 pacman-key --lsign-key 72AAA51726BC3C29
+                rm -f /tmp/sonicde.asc
             fi
             pacman -Sy --noconfirm
             pkgs+=(sonicde-meta)
