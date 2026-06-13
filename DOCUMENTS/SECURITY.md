@@ -40,6 +40,7 @@ Security concerns include, but are not limited to:
 - `rsync` usage during package installation potentially following unsafe symlinks
 - Untrusted recovery: rootkit and malware scan results stored in /tmp
 - Filesystem repair: unmounting and modifying the root partition with fsck/xfs_repair/btrfs check
+- Third-party repositories (SonicDE, Chaotic-AUR, CachyOS, archzfs) used during installation — packages are verified where possible; SonicDE currently requires SigLevel = Never due to upstream key infrastructure issues
 - **GUI installer (`forge-gui`):** runs as root, handles LUKS passphrases and user passwords, must not leak sensitive data to logs or crash in a way that exposes memory contents
 
 ## Best Practices
@@ -50,6 +51,7 @@ Security concerns include, but are not limited to:
 - Recipe sources should use verified checksums. The `SKIP` placeholder is for development only and should never appear in published recipes.
 - Recipe self‑healing only fetches version information from the same upstream domain as the original recipe source. New URLs are not blindly trusted.
 - The installer does not expose network services during installation. Any network configuration (WiFi passwords, static IPs) is applied to the target system, not the live environment.
+- Third-party repository signing keys are imported from official sources where available. SonicDE packages are installed with a user-visible warning about disabled signature verification.
 - Package installation uses `rsync --keep-dirlinks` to prevent symlink traversal attacks when writing to the target filesystem.
 - Post‑installation, `gartix` runs with root privileges. Users should audit recipes before building, especially those obtained from third‑party sources.
 - The installer's state directory (`/tmp/artix-installer/`) lives on a tmpfs and is lost on reboot. The target configuration file (`/mnt/etc/artix-installer.conf`) is shredded or removed during the finalize stage.

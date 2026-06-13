@@ -44,6 +44,8 @@ The recovery mode rootkit scanner (`rkhunter`) downloads its database updates
 from the rkhunter project servers when first run. This is the only optional
 third-party network request outside of package management.
 
+SonicDE packages are downloaded from the sonicde-artix.github.io third-party repository. The user is warned before installation that signature verification is disabled for this source.
+
 **The GUI installer (`forge-gui`) makes no network connections of its own.**
 It only reads/writes `state.conf` and spawns the non‑interactive Bash installer.
 
