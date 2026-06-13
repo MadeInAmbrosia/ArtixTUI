@@ -36,15 +36,14 @@ install_desktop() {
             if ! grep -q '^\[sonicde\]' /etc/pacman.conf; then
                 cat <<'EOF' >> /etc/pacman.conf
 [sonicde]
+SigLevel = Optional
 Server = https://sonicde-artix.github.io/$arch
 EOF
                 curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
                 pacman-key --add /tmp/sonicde.asc
-                pacman-key --finger 72AAA51726BC3C29
                 pacman-key --lsign-key 72AAA51726BC3C29
                 rm -f /tmp/sonicde.asc
             fi
-            pacman-key --populate sonicde 2>/dev/null || true
             pacman -Syy --noconfirm
             pkgs+=(sonicde-meta)
             if [[ "${display_manager}" == "sddm" ]]; then
