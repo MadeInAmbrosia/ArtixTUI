@@ -73,7 +73,7 @@ install_desktop() {
 Include = /etc/pacman.d/chaotic-mirrorlist
 EOF
             pacman -Sy --noconfirm || { log_error "Failed to sync package databases."; return 1; }
-            pkgs+=(foot waybar wofi xdg-desktop-portal-hyprland seatd "seatd-${init}" base-devel git cjson scenefx0.4 xorg-xwayland)
+            pkgs+=(foot waybar wofi xdg-desktop-portal-hyprland seatd "seatd-${init}" base-devel git cjson xorg-xwayland)
             ;;
     esac
 
