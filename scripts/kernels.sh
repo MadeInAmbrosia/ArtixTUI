@@ -73,6 +73,10 @@ detect_kernel_package() {
 
             KERNEL_HEADERS="${KERNEL_PACKAGE}-headers";
             ;;
+        tkg)
+            KERNEL_PACKAGE=""
+            KERNEL_HEADERS=""
+        ;;
 
         *)
             die "unsupported kernel: ${kernel}";
