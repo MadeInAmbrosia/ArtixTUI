@@ -442,6 +442,9 @@ EOF
         _distro="Generic"
         source linux-tkg-config/prepare
 
+        _set_cpu_scheduler() { :; }
+        _set_compiler() { :; }
+
         _tkg_initscript
         _tkg_srcprep
 
