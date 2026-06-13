@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.6.4.3 (2026-06-13) — ArtixForge
+
+### Fixed
+- MangoWM: pacman keyring initialization now sets `GNUPGHOME` before Chaotic-AUR key import
+- MangoWM: AUR build dependencies (`cjson`, `scenefx0.4`, `xorg-xwayland`) installed before compilation
+- SonicDE: `sonic-login-manager-${init}` init-specific package restored in desktop installation
+- XanMod: pacman keyring initialization now sets `GNUPGHOME` before Chaotic-AUR key import
+
 ## v8.6.4.2 (2026-06-12) — ArtixForge
 
 ### Changed

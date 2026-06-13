@@ -75,6 +75,9 @@ EOF
 
         mango)
             log_info "Setting up Chaotic-AUR for MangoWM..."
+            export GNUPGHOME="/etc/pacman.d/gnupg"
+            mkdir -p "${GNUPGHOME}"
+            chmod 700 "${GNUPGHOME}"
             [[ "$(state_get ENABLE_ARCH_REPOS no)" == 'yes' ]] && pacman -S --noconfirm archlinux-keyring || { log_error "Failed to install Arch Linux keyring."; return 1; }
             pacman-key --init || { log_error "Failed to initialize pacman keys."; return 1; }
             pacman-key --populate artix archlinux || { log_error "Failed to populate pacman keys."; return 1; }
@@ -87,7 +90,8 @@ EOF
 Include = /etc/pacman.d/chaotic-mirrorlist
 EOF
             pacman -Sy --noconfirm || { log_error "Failed to sync package databases."; return 1; }
-            pkgs+=(foot waybar wofi xdg-desktop-portal-hyprland seatd "seatd-${init}" base-devel git) ;;
+            pkgs+=(foot waybar wofi xdg-desktop-portal-hyprland seatd "seatd-${init}" base-devel git cjson scenefx0.4 xorg-xwayland)
+            ;;
     esac
 
     case "${display_manager}" in
@@ -97,7 +101,7 @@ EOF
             fi
             ;;
         soniclogin)
-            pkgs+=(sonic-login-manager)
+            pkgs+=(sonic-login-manager "sonic-login-manager-${init}")
             ;;
         sddm)    pkgs+=(sddm "sddm-${init}") ;;
     esac
