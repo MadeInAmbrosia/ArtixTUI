@@ -438,8 +438,8 @@ _logging_use_script="no"
 EOF
 
         cd "${tkg_dir}"
+        _where="${tkg_dir}"
         source linux-tkg-config/prepare
-        aggregate_user_config
 
         _tkg_initscript
         _tkg_srcprep
