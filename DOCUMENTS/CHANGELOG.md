@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.6.4.5 (2026-06-13) — ArtixForge
+
+### Changed
+- TKG: completely rewritten build process — no longer depends on TKG's interactive scripts (they suck)
+- TKG: clones Artix's current kernel version from kernel.org, applies TKG patches directly
+- TKG: uses `make defconfig` for a clean baseline (no LiveISO kernel dependency)
+- TKG: GRUB configuration regenerated after kernel install
+
 ## v8.6.4.4 (2026-06-13) — ArtixForge
 
 ### Added

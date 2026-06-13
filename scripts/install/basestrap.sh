@@ -417,59 +417,54 @@ ZFSMOUNT
     fi
 
     if [[ "${kernel}" == 'tkg' ]]; then
-        log_info "Building TKG kernel. This will take a while..."
+        log_info "Building TKG kernel (using TKG patches, AF's poweruser process)..."
 
         local tkg_dir="/tmp/linux-tkg"
-        rm -rf "${tkg_dir}"
+        local kernel_src="/tmp/linux-custom"
+        rm -rf "${tkg_dir}" "${kernel_src}"
+
         git clone --depth 1 https://github.com/Frogging-Family/linux-tkg.git "${tkg_dir}"
 
-        cat > "${tkg_dir}/customization.cfg" <<'EOF'
-_distro="Generic"
-_auto_configuration="true"
-_configfile="running-kernel"
-_cpusched="bore"
-_preempt="voluntary"
-_hz="250"
-_default_cpu_gov="schedutil"
-_compiler="gcc"
-_force_all_threads="true"
-_install_after_building="yes"
-_logging_use_script="no"
-EOF
+        local artix_kver=$(pacman -Si linux 2>/dev/null | grep Version | awk '{print $3}' | cut -d- -f1)
+        [[ -z "${artix_kver}" ]] && artix_kver=$(uname -r | cut -d- -f1)
 
-        cd "${tkg_dir}"
-        _where="${tkg_dir}"
-        _distro="Generic"
-        source linux-tkg-config/prepare
+        git clone --depth 1 --branch "v${artix_kver}" \
+            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "${kernel_src}" 2>/dev/null || \
+        git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "${kernel_src}"
 
-        _set_cpu_scheduler() { :; }
-        _set_compiler() { :; }
+        cd "${kernel_src}"
 
-        _tkg_initscript
-        _tkg_srcprep
+        local kver=$(make kernelversion | cut -d. -f1-2)
+        local patch_dir="${tkg_dir}/linux-tkg-patches/${kver}"
+        if [[ -d "${patch_dir}" ]]; then
+            log_info "Applying TKG patches for kernel ${kver}..."
+            for patch in "${patch_dir}"/*.patch; do
+                patch -Np1 < "$patch" || log_warn "Patch ${patch} failed – continuing"
+            done
+        fi
 
-        cd "$_kernel_work_folder_abs"
+        make defconfig
         make -j$(nproc)
-
-        [[ "$_STRIP" == "true" ]] && strip -v $STRIP_STATIC vmlinux
-
         make modules_install
         make install
 
-        local kver
-        kver=$(ls /lib/modules/ | grep tkg | head -1)
-        if [[ -n "${kver}" ]]; then
-            cp -a /lib/modules/"${kver}" /mnt/lib/modules/
-            cp /boot/vmlinuz-*tkg*      /mnt/boot/ 2>/dev/null || true
-            cp /boot/initramfs-*tkg*     /mnt/boot/ 2>/dev/null || true
-            cp /boot/System.map-*tkg*    /mnt/boot/ 2>/dev/null || true
-            cp /boot/config-*tkg*        /mnt/boot/ 2>/dev/null || true
-            log_info "TKG kernel (${kver}) installed to /mnt"
+        local kver_full=$(ls /lib/modules/ | grep -E '^[0-9]' | tail -1)
+        if [[ -n "${kver_full}" ]]; then
+            cp -a /lib/modules/"${kver_full}" /mnt/lib/modules/
+            cp /boot/vmlinuz-* /mnt/boot/ 2>/dev/null || true
+            cp /boot/initramfs-*.img /mnt/boot/ 2>/dev/null || true
+            cp /boot/System.map-* /mnt/boot/ 2>/dev/null || true
+            cp /boot/config-* /mnt/boot/ 2>/dev/null || true
+            artix-chroot /mnt mkinitcpio -P
+            if [[ -d /mnt/boot/grub ]]; then
+                artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+            fi
+            log_info "TKG kernel (${kver_full}) installed"
         else
-            log_warn "TKG build may have failed — no kernel found in /lib/modules"
+            die "TKG build failed – no kernel modules found"
         fi
-        artix-chroot /mnt mkinitcpio -P || log_warn "mkinitcpio failed – you may need to run it manually after reboot"
 
+        rm -rf "${tkg_dir}" "${kernel_src}"
         log_info "TKG build complete."
     fi
 
