@@ -2,6 +2,10 @@
 
 ## v8.6.4.4 (2026-06-13) — ArtixForge
 
+### Added
+- Extras: "Wayland Extras" category with swaybg, swaylock, waybar, wofi, fuzzel, foot, hyprpaper
+- Wayland compositors now show a recommendation message during extras selection
+
 ### Fixed
 - MangoWM: complete AUR dependency chain now built in order (wlroots0.19-hidpi-xprop → scenefx0.4 → mangowm-git)
 - MangoWM: temporary passwordless sudo configured during AUR builds, cleaned up automatically

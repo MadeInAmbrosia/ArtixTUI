@@ -2,7 +2,24 @@
 set -Eeuo pipefail
 
 tui_select_extras() {
-    local extras category
+    local wm_de extras category
+    wm_de="$(state_get WM_DE none)"
+
+    case "${wm_de}" in
+        mango)
+            tui_msg_quick "MangoWM" "MangoWM is a minimal compositor.\nYou'll want a wallpaper, launcher, and status bar."
+            ;;
+        hyprland|sway|niri)
+            tui_msg_quick "Wayland Setup" "${wm_de} needs a few extras for a full desktop.\nConsider a wallpaper, launcher, and bar."
+            ;;
+    esac
+
+    local -A wayland_defaults=(
+        ["mango"]="swaybg wofi waybar"
+        ["hyprland"]="waybar wofi hyprpaper"
+        ["sway"]="swaybg waybar wofi"
+        ["niri"]="swaybg waybar wofi"
+    )
 
     category=$(tui_menu "Extras" "Select category:" \
         "System Tools" \
@@ -13,6 +30,7 @@ tui_select_extras() {
         "Shell & Prompt" \
         "Monitoring" \
         "Media" \
+        "Wayland Extras" \
         "Done (finish selection)") || return 1
 
     local selected=""
@@ -50,6 +68,22 @@ tui_select_extras() {
                 selected+=$(tui_checklist "Media" "Select media tools:" \
                     "mpv" "feh") || true
                 ;;
+            "Wayland Extras")
+                local wayland_items=(
+                    "swaybg" "wallpaper daemon for wlroots compositors"
+                    "swaylock" "screen locker"
+                    "waybar" "status bar"
+                    "wofi" "application launcher"
+                    "fuzzel" "application launcher"
+                    "foot" "terminal emulator"
+                    "hyprpaper" "wallpaper daemon for Hyprland"
+                )
+                local wayland_checklist=()
+                for ((i=0; i<${#wayland_items[@]}; i+=2)); do
+                    wayland_checklist+=("${wayland_items[i]}")
+                done
+                selected+=$(tui_checklist "Wayland Extras" "Select Wayland tools:" "${wayland_checklist[@]}") || true
+                ;;
         esac
         selected+=$'\n'
         category=$(tui_menu "Extras" "Select category:" \
@@ -61,6 +95,7 @@ tui_select_extras() {
             "Shell & Prompt" \
             "Monitoring" \
             "Media" \
+            "Wayland Extras" \
             "Done (finish selection)") || break
     done
 
