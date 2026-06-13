@@ -36,7 +36,7 @@ install_desktop() {
             if ! grep -q '^\[sonicde\]' /etc/pacman.conf; then
                 cat <<'EOF' >> /etc/pacman.conf
 [sonicde]
-SigLevel = Optional
+SigLevel = Never
 Server = https://sonicde-artix.github.io/$arch
 EOF
                 curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
