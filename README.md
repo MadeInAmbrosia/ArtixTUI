@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <strong>Want to try out the latest features?</strong><br>
+  <strong>Want to use the latest bug fixes and features?<strong><br>
   Check out the v9-merger branch!
 </p>
 
@@ -19,6 +19,9 @@
 
 ---
 
+#### The `v9-merger` branch can be found [here](https://github.com/realvolk/ArtixForge/tree/v9-merger).
+
+---
 # What is ArtixForge?
 
 ArtixForge is a **modular operating system deployment framework** for Artix Linux (OpenRC, runit, dinit, s6, and BusyBox init).
