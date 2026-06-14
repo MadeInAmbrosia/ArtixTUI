@@ -1,6 +1,38 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# SAFETY FILTER!!!
+readonly EXTRAS_SAFETY_FILTER='linux-*|systemd*|plasma*|grub|mkinitcpio|*-openrc|*-runit|*-dinit|*-s6|sddm|lightdm|gdm|xorg-*|xlibre-*|wayland|hyprland|sway|niri|pipewire|pulseaudio|networkmanager|connman|dhcpcd|efibootmgr|filesystem|pacman|bash|coreutils|util-linux'
+
+tui_search_extras() {
+    log_info "Building safe package index..."
+
+    local full_list
+    full_list=$(pacman -Sl {world,galaxy} 2>/dev/null \
+        | awk '{print $2}' \
+        | grep -vE "${EXTRAS_SAFETY_FILTER}" \
+        | sort -u)
+
+    if [[ -z "${full_list}" ]]; then
+        tui_msg_quick "Error" "Could not load package list from pacman."
+        return 1
+    fi
+
+    local selected
+    selected=$(printf '%s\n' "${full_list}" \
+        | tui_filter "Package Search" "Type to search packages (Tab to mark, Enter to confirm)" \
+            --no-limit --placeholder "e.g. firefox, cmatrix, neovim...") || return 1
+
+    if [[ -n "${selected}" ]]; then
+        local count
+        count=$(echo "${selected}" | wc -l)
+        log_info "User selected ${count} package(s) from search"
+        printf '%s\n' "${selected}"
+        return 0
+    fi
+    return 1
+}
+
 tui_select_extras() {
     local wm_de extras category
     wm_de="$(state_get WM_DE none)"
@@ -31,6 +63,7 @@ tui_select_extras() {
         "Monitoring" \
         "Media" \
         "Wayland Extras" \
+        "Search for packages..." \
         "Done (finish selection)") || return 1
 
     local selected=""
@@ -84,6 +117,16 @@ tui_select_extras() {
                 done
                 selected+=$(tui_checklist "Wayland Extras" "Select Wayland tools:" "${wayland_checklist[@]}") || true
                 ;;
+            "Search for packages..."*)
+                local search_result
+                search_result=$(tui_search_extras) || true
+                if [[ -n "${search_result}" ]]; then
+                    selected+="${search_result}"$'\n'
+                    local count
+                    count=$(echo "${search_result}" | wc -l)
+                    tui_msg_quick "Added" "${count} package(s) added."
+                fi
+                ;;
         esac
         selected+=$'\n'
         category=$(tui_menu "Extras" "Select category:" \
@@ -96,6 +139,7 @@ tui_select_extras() {
             "Monitoring" \
             "Media" \
             "Wayland Extras" \
+            "Search for packages..." \
             "Done (finish selection)") || break
     done
 

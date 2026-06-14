@@ -1,5 +1,17 @@
 # Changelog
 
+## v8.7.0.2 (2026-06-15) — ArtixForge
+
+### Added
+- Extras: "Search for packages..." — live fuzzy search over Artix `world` and `galaxy` repositories
+- Extras: `tui_search_extras()` using `tui_filter` (wraps `gum filter`) for real-time package filtering
+- Extras: `EXTRAS_SAFETY_FILTER` excludes DEs, kernels, bootloaders, init services, and system packages from search results
+- TUI: `tui_filter()` wrapper added to `scripts/tui/core.sh`
+
+### Changed
+- Post-install: `install_extras()` refactored — `SIMPLE` array loop replaces repetitive `[[ ]]` checks; init-specific packages remain explicit
+- Post-install: searched packages install as plain `pacman` packages, curated list unchanged
+
 ## v8.7.0.1 (2026-06-14) — ArtixForge
 
 ### Changed

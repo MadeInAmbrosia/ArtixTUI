@@ -130,6 +130,14 @@ tui_checklist() {
     gum choose --no-limit --height=15 "$@" </dev/tty
 }
 
+tui_filter() {
+    local title="${1}" msg="${2}"
+    shift 2
+    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
+    [[ -n "${msg}" ]] && gum format "${msg}" >&2
+    gum filter --height=20 "$@" </dev/tty
+}
+
 tui_radiolist() {
     tui_menu "$@"
 }
