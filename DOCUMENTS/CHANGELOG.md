@@ -1,5 +1,29 @@
 # Changelog
 
+## v8.7.0.0 (2026-06-14) — ArtixForge
+
+### Added
+- Kernels: sub-menu grouping — standard kernels (linux, zen, lts, hardened) under "linux-*" and CachyOS variants under "linux-cachyos-*"
+- CachyOS: full variant support — all 9 CachyOS kernels (cachyos, bore, eevdf, bmq, rt-bore, hardened, lts, server, deckify)
+- CachyOS: architecture-specific repository tiers — v3 (AVX2) and v4 (AVX512) optimized repos configured based on CPU detection
+- Bazzite: kernel now compiled from AUR during basestrap instead of post-install
+
+### Changed
+- `basestrap.sh`: atomized — kernel packages, target repos, custom kernel builds, and ZFS config extracted to `scripts/install/basestraps/`
+- `bootloader.sh`: atomized — GRUB, Limine, rEFInd, and EFIStub each in `scripts/install/bootloaders/`
+- `detect.sh`: atomized — detection functions grouped into `scripts/recovery/detects/{system,desktop,network_audio,packages,hardware,health}.sh`
+- `repair.sh`: atomized — repair functions grouped into `scripts/recovery/repairs/{system,packages,advanced,migration_iso}.sh`
+- `kernel.sh`: removed unused `install_kernel_bazzite` (now in `basestraps/kernel_build.sh`)
+- `stages/post.sh`: removed dead bazzite build call
+- Recovery: `detect_kernel` refactored to single loop over all known kernels
+- Recovery: `detect_extras` refactored to single loop with special case for zram-tools
+- Recovery: `detect_desktop` refactored to associative array lookup
+- TUI: kernel menu uses `-*` suffix notation to indicate sub-menu choices
+
+### Fixed
+- Limine: kernel panic on boot — config now creates an entry for every installed kernel with exact filenames and matching initramfs
+- Limine: missing kernel path error replaced with clear failure during install if no kernels found
+
 ## v8.6.4.7 (2026-06-14) — ArtixForge
 
 ### Fixed

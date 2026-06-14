@@ -34,9 +34,9 @@ detect_kernel_package() {
             KERNEL_HEADERS='linux-libre-headers';
             ;;
 
-        linux-cachyos-bore)
-            KERNEL_PACKAGE='linux-cachyos-bore';
-            KERNEL_HEADERS='linux-cachyos-bore-headers';
+        linux-cachyos*)
+            KERNEL_PACKAGE="${kernel}";
+            KERNEL_HEADERS="${kernel}-headers";
             ;;
 
         linux-bazzite-bin)

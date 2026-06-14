@@ -11,7 +11,8 @@ This roadmap is updated regularly based on:
 
 ## v8.6 (current — `v9-merger` branch)
 - # Bug fixing and stabilisation, testing
-There is literally nothing else to do. ^
+~~There is literally nothing else to do. ^~~
+There is always something to improve.
 
 ## v9.0 (planned)
 - Merge `v9-merger` → `main`

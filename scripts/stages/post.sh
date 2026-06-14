@@ -57,11 +57,6 @@ source ./scripts/post/audio.sh
 source ./scripts/post/extras.sh
 source ./scripts/post/kernel.sh
 
-if [[ "${KERNEL_CHOICE}" == 'linux-bazzite-bin' ]]; then
-    log_info "Building Bazzite kernel..."
-    install_kernel_bazzite
-fi
-
 log_info "Configuring networking..."
 setup_networking
 

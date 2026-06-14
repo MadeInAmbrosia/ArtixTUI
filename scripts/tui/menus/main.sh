@@ -67,9 +67,38 @@ tui_select_uki() {
 tui_select_kernel() {
     local k
     k=$(tui_menu "Kernel" "Select kernel:" \
-        "linux" "linux-zen" "linux-lts" "linux-hardened" "linux-libre" \
-        "linux-cachyos-bore" "linux-bazzite-bin" "xanmod" "tkg") || return 1
-    state_set KERNEL_CHOICE "${k}"
+        "linux-* (standard)" "linux-cachyos-*" "linux-bazzite-bin" "xanmod" "tkg" \
+        "linux-libre") || return 1
+
+    case "${k}" in
+        "linux (standard)")
+            local variant
+            variant=$(tui_menu "Standard Kernel" "Select variant:" \
+                "linux" \
+                "linux-zen" \
+                "linux-lts" \
+                "linux-hardened") || return 1
+            state_set KERNEL_CHOICE "${variant}"
+            ;;
+        "linux-cachyos")
+            local variant
+            variant=$(tui_menu "CachyOS Kernel" "Select variant:" \
+                "linux-cachyos (EEVDF)" \
+                "linux-cachyos-bore (BORE)" \
+                "linux-cachyos-eevdf" \
+                "linux-cachyos-bmq (BMQ)" \
+                "linux-cachyos-rt-bore (RT + BORE)" \
+                "linux-cachyos-hardened (BORE + hardening)" \
+                "linux-cachyos-lts (EEVDF, long-term)" \
+                "linux-cachyos-server (EEVDF, server)" \
+                "linux-cachyos-deckify (BORE, Steam Deck)") || return 1
+            variant="${variant%% *}"
+            state_set KERNEL_CHOICE "${variant}"
+            ;;
+        *)
+            state_set KERNEL_CHOICE "${k}"
+            ;;
+    esac
 }
 
 tui_select_theme() {

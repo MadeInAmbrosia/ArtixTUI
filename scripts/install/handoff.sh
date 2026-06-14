@@ -13,7 +13,12 @@ prepare_handoff() {
         linux-lts)           kernel_image='/mnt/boot/vmlinuz-linux-lts' ; initramfs_image='/mnt/boot/initramfs-linux-lts.img' ;;
         linux-hardened)     kernel_image='/mnt/boot/vmlinuz-linux-hardened' ; initramfs_image='/mnt/boot/initramfs-linux-hardened.img' ;;
         linux-libre)        kernel_image='/mnt/boot/vmlinuz-linux-libre' ; initramfs_image='/mnt/boot/initramfs-linux-libre.img' ;;
-        linux-cachyos-bore) kernel_image='/mnt/boot/vmlinuz-linux-cachyos-bore' ; initramfs_image='/mnt/boot/initramfs-linux-cachyos-bore.img' ;;
+        linux-cachyos*)
+            mapfile -t k < <(find /mnt/boot -maxdepth 1 -type f -name 'vmlinuz-linux-cachyos*' 2>/dev/null | sort)
+            mapfile -t i < <(find /mnt/boot -maxdepth 1 -type f -name 'initramfs-linux-cachyos*.img' ! -name '*fallback*' 2>/dev/null | sort)
+            [[ ${#k[@]} -gt 0 ]] && kernel_image="${k[0]}"
+            [[ ${#i[@]} -gt 0 ]] && initramfs_image="${i[0]}"
+            ;;
         linux-bazzite-bin)  kernel_image='/mnt/boot/vmlinuz-linux-bazzite-bin' ; initramfs_image='/mnt/boot/initramfs-linux-bazzite-bin.img' ;;
         xanmod)
             mapfile -t k < <(find /mnt/boot -maxdepth 1 -type f -name 'vmlinuz-linux-xanmod*' 2>/dev/null | sort)
