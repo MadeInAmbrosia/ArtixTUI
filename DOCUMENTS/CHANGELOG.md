@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.7.0.1 (2026-06-14) — ArtixForge
+
+### Changed
+- Main menu: Recovery, Power User, Migration, and ISO modes moved under "Advanced" sub-menu
+- Each advanced mode now shows a clear warning explaining what it does and its risks before proceeding
+
 ## v8.7.0.0 (2026-06-14) — ArtixForge
 
 ### Added
