@@ -12,7 +12,7 @@ Do not open a public issue for security issues.
 | Version | Supported |
 |---------|-----------|
 | v9.x (future) | Yes |
-| v8.6.x (v9-merger) | Best effort |
+| v8.7.x (v9-merger) | Best effort |
 | v8.4.x (current main) | Best effort |
 | < v8.4.0.0 | No |
 
