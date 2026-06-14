@@ -217,7 +217,7 @@ Contributions are welcome and appreciated.
 **🫱 Looking for: Testers • Contributors • Distro Packagers**
 
 Please read [CONTRIBUTING](DOCUMENTS/CONTRIBUTING) for guidelines on testing,
-submissions, and code of conduct.
+submissions, and [code of conduct](DOCUMENTS/CODE_OF_CONDUCT.md).
 
 ---
 

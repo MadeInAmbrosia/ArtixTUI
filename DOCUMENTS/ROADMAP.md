@@ -10,21 +10,11 @@ This roadmap is updated regularly based on:
 *Version numbers are not strict release targets. Features may ship earlier or later depending on development pace, tester feedback, and available time. This roadmap reflects general direction, not fixed deadlines.*
 
 ## v8.6 (current — `v9-merger` branch)
-- ~~Init migration tool~~ (**Done**)
-- ~~Desktop environment migration~~ (**Done**)
-- ~~UKI builder wizard~~ (**Done — v8.4.x**)
-- ~~ISO generation~~ (**Done**)
-- ~~Full offline installation mode with bundled packages~~ (**Done**)
-- ~~Graphical (GUI) installer variant~~ (**Done — GTK persistent config window, progress viewer**)
-- ~~Renaming `gartix` to something more original (`Anvil`? `Blacksmith`?)~~ (**Renamed to Anvil to fit the Forge/Blacksmithing theme of the project naming**)
-- Bug fixing and stabilisation
-- ~~Adding sonicDE support(?)~~ (**Done**)
+- # Bug fixing and stabilisation, testing
+There is literally nothing else to do. ^
 
 ## v9.0 (planned)
 - Merge `v9-merger` → `main`
-- Volk's Forge Framework (VFF) integration
-- ~~New shared TUI library~~ (**Abandoned – Building a TUI library is a pain in the ass**)
-- Proper comments and comment blocks for all scripts
 
 # The think-tank
 
@@ -32,7 +22,7 @@ Ideas under consideration, construction or already being worked on with no real 
 
 ## Power User Upgrades
 
-- `gartix-tools` — debloated coreutils in C
+- `anvil-tools` — debloated coreutils in C
 
 ## Community & Ecosystem
 

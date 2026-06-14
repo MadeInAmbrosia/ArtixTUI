@@ -28,6 +28,9 @@ maintainer reserves the right to commit changes directly to the repository
 without prior public testing or review. All such commits remain subject to
 the license's disclaimer of liability.
 
+Once ArtixForge is in the [galaxy] repository, packagers should follow the 
+Artix Linux packaging guidelines.
+
 Malicious or intentionally harmful contributions will be rejected and the
 submitter permanently banned from further participation. This includes, but
 is not limited to, introducing backdoors, spyware, logic bombs, or any code
@@ -43,13 +46,3 @@ in the project's README.md, listing their name alongside the release
 version(s) their work appears in, unless they request otherwise. Credit is
 given as a sign of appreciation and does not imply any additional rights or
 responsibilities.
-
-## Code of Conduct
-
-Be respectful, constructive, and honest. Treat others as you would in a
-professional engineering team. Harassment, spam, or disruptive behaviour
-will not be tolerated.
-
-To report a violation, open an issue on GitHub or contact the maintainer
-directly at [realvolk](https://github.com/realvolk), or otherwise over
-Discord: `volk.v`.

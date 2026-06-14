@@ -53,7 +53,7 @@ Security concerns include, but are not limited to:
 - The installer does not expose network services during installation. Any network configuration (WiFi passwords, static IPs) is applied to the target system, not the live environment.
 - Third-party repository signing keys are imported from official sources where available. SonicDE packages are installed with a user-visible warning about disabled signature verification.
 - Package installation uses `rsync --keep-dirlinks` to prevent symlink traversal attacks when writing to the target filesystem.
-- Post‑installation, `gartix` runs with root privileges. Users should audit recipes before building, especially those obtained from third‑party sources.
+- Post‑installation, `anvil` runs with root privileges. Users should audit recipes before building, especially those obtained from third‑party sources.
 - The installer's state directory (`/tmp/artix-installer/`) lives on a tmpfs and is lost on reboot. The target configuration file (`/mnt/etc/artix-installer.conf`) is shredded or removed during the finalize stage.
 - Recovery mode requires explicit user confirmation before modifying any system files. Detection is read‑only until the user chooses a repair action.
 - **GUI installer (`forge-gui`):** runs in a separate Python process, passes JSON over stdin/stdout, does not keep secrets in long‑lived memory after the window closes.
