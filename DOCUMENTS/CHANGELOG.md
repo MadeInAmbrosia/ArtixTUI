@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.6.4.7 (2026-06-14) — ArtixForge
+
+### Fixed
+- Limine: kernel panic on boot — config now creates an entry for every installed kernel with exact filenames and matching initramfs
+- Limine: missing kernel path error replaced with clear failure during install if no kernels found
+
 ## v8.6.4.6 (2026-06-13) — ArtixForge
 
 ### Added

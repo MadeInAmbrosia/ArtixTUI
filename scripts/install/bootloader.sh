@@ -270,16 +270,8 @@ configure_bootloader() {
             fi
             log_info "Limine EFI binary installed to /boot/efi/EFI/BOOT/"
 
-            local limine_kernel limine_initramfs limine_microcode
-            limine_kernel=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
-            [[ -n "${limine_kernel}" ]] || die 'No kernel image found'
-            limine_initramfs=$(ls /mnt/boot/initramfs-*.img 2>/dev/null | grep -v fallback | head -n1)
-            [[ -n "${limine_initramfs}" ]] || log_warn 'No initramfs image found'
+            local limine_microcode
             limine_microcode="$(state_get MICROCODE_IMAGE)"
-
-            local limine_kernel_name limine_initramfs_name
-            limine_kernel_name="$(basename "${limine_kernel}")"
-            limine_initramfs_name="$(basename "${limine_initramfs}")"
 
             local limine_root_cmdline=""
             if [[ "${fs_type}" == 'zfs' ]]; then
@@ -308,48 +300,79 @@ configure_bootloader() {
             cat > "${esp_mount}/limine.conf" <<LIMINE_EOF
 timeout: 5
 
-/Linux
-    protocol: linux
-    kernel_path: boot():/${limine_kernel_name}
 LIMINE_EOF
 
-            if [[ -n "${limine_microcode}" && -f "/mnt/boot/${limine_microcode}" ]]; then
-                cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
-    module_path: boot():/${limine_microcode}
-LIMINE_EOF
-            fi
+            local found_kernel=0
+            local limine_kernel
+            for limine_kernel in /mnt/boot/vmlinuz-*; do
+                [[ -f "${limine_kernel}" ]] || continue
+                found_kernel=1
+                local limine_kernel_name limine_initramfs limine_initramfs_name
+                limine_kernel_name="$(basename "${limine_kernel}")"
+                local kver="${limine_kernel_name#vmlinuz-}"
 
-            cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
-    module_path: boot():/${limine_initramfs_name}
-    cmdline: ${limine_root_cmdline}
-    comment: Boot Artix Linux
-LIMINE_EOF
-
-            if [[ "${fs_type}" == "btrfs" && "$(state_get BTRFS_LAYOUT standard)" == "snapshot" ]]; then
-                if [[ -d /mnt/.snapshots ]]; then
-                    log_info "BTRFS snapshot layout detected — generating snapshot boot entries..."
-                    local snapshot
-                    for snapshot in $(ls -1t /mnt/.snapshots/ 2>/dev/null | head -n5); do
-                        local snap_path="/mnt/.snapshots/${snapshot}/snapshot"
-                        [[ -d "${snap_path}" ]] || continue
-                        cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
-
-/Snapshot: ${snapshot}
-    protocol: linux
-    kernel_path: boot():/${limine_kernel_name}
-LIMINE_EOF
-                        if [[ -n "${limine_microcode}" && -f "/mnt/boot/${limine_microcode}" ]]; then
-                            cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
-    module_path: boot():/${limine_microcode}
-LIMINE_EOF
-                        fi
-                        cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
-    module_path: boot():/${limine_initramfs_name}
-    cmdline: ${limine_root_cmdline} rootflags=subvol=.snapshots/${snapshot}/snapshot
-    comment: Boot into snapshot ${snapshot}
-LIMINE_EOF
-                    done
+                limine_initramfs=$(ls /mnt/boot/initramfs-${kver}.img 2>/dev/null | head -n1)
+                if [[ -z "${limine_initramfs}" ]]; then
+                    limine_initramfs=$(ls /mnt/boot/initramfs-*.img 2>/dev/null | grep -v fallback | head -n1)
                 fi
+                [[ -n "${limine_initramfs}" ]] && limine_initramfs_name="$(basename "${limine_initramfs}")"
+
+                cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+/Artix (${kver})
+    protocol: linux
+    kernel_path: boot():/${limine_kernel_name}
+LIMINE_EOF
+
+                if [[ -n "${limine_microcode}" && -f "/mnt/boot/${limine_microcode}" ]]; then
+                    cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+    module_path: boot():/${limine_microcode}
+LIMINE_EOF
+                fi
+
+                if [[ -n "${limine_initramfs_name:-}" ]]; then
+                    cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+    module_path: boot():/${limine_initramfs_name}
+LIMINE_EOF
+                fi
+
+                cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+    cmdline: ${limine_root_cmdline}
+    comment: Boot Artix Linux (${kver})
+LIMINE_EOF
+
+                if [[ "${fs_type}" == "btrfs" && "$(state_get BTRFS_LAYOUT standard)" == "snapshot" ]]; then
+                    if [[ -d /mnt/.snapshots ]]; then
+                        local snapshot
+                        for snapshot in $(ls -1t /mnt/.snapshots/ 2>/dev/null | head -n5); do
+                            local snap_path="/mnt/.snapshots/${snapshot}/snapshot"
+                            [[ -d "${snap_path}" ]] || continue
+                            cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+
+/Snapshot: ${snapshot} (${kver})
+    protocol: linux
+    kernel_path: boot():/${limine_kernel_name}
+LIMINE_EOF
+                            if [[ -n "${limine_microcode}" && -f "/mnt/boot/${limine_microcode}" ]]; then
+                                cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+    module_path: boot():/${limine_microcode}
+LIMINE_EOF
+                            fi
+                            if [[ -n "${limine_initramfs_name:-}" ]]; then
+                                cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+    module_path: boot():/${limine_initramfs_name}
+LIMINE_EOF
+                            fi
+                            cat >> "${esp_mount}/limine.conf" <<LIMINE_EOF
+    cmdline: ${limine_root_cmdline} rootflags=subvol=.snapshots/${snapshot}/snapshot
+    comment: Boot into snapshot ${snapshot} (${kver})
+LIMINE_EOF
+                        done
+                    fi
+                fi
+            done
+
+            if [[ ${found_kernel} -eq 0 ]]; then
+                die "No kernel images found in /mnt/boot"
             fi
 
             if [[ -f /mnt/boot/efi/EFI/Microsoft/Boot/bootmgfw.efi ]]; then
