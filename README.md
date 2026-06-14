@@ -126,9 +126,9 @@ You'll be greeted by a main menu where you choose your installation mode.
 | 🟡 Resume        | Continue from the last saved installation stage.                                                                                        |
 | 🟠 Recovery      | Auto-detect full system config, smart issue detection, surgical repair, filesystem repair (safe/destructive), rootkit/malware scanning. |
 | 🔴 Power User    | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control.                                                    |
-| ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal, and custom profile loading.                            |
+| ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal, and custom profile loading.                           |
 | 🧩 Build ISO     | Create a custom Artix live ISO from any Quick Profile or full configuration – includes offline package bundles.                         |
-| 🔄 System Migration | Convert init system (openrc ↔ runit ↔ dinit ↔ s6 ↔ systemd) or desktop environment without reinstalling.                            |
+| 🔄 System Migration | Convert init system (openrc ↔ runit ↔ dinit ↔ s6 ↔ systemd) or desktop environment without reinstalling.                             |
 
 A debug toggle is available for every mode from the same menu.
 
