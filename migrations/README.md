@@ -106,25 +106,6 @@ Migration is handled by four generic scripts:
 
 ---
 
-## What Gets Migrated
-
-- Full removal of the current desktop environment
-- Full installation of the target desktop environment
-- Display manager selection:
-  - SDDM
-  - LightDM
-  - None
-- Display stack selection:
-  - xlibre
-  - Xorg
-  - Wayland
-- Audio stack selection:
-  - PipeWire
-  - PulseAudio
-  - None
-
----
-
 ## What Gets Backed Up
 
 For all local users:
