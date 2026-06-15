@@ -147,7 +147,8 @@ EOF
         fi
         log_info "Preflight dependencies installed.";
         for pkg in "${pkgs[@]}"; do
-            pacman -Q "${pkg}" &>/dev/null || die "Failed to install ${pkg}"
+            local pkg_name="${pkg##*/}"
+            pacman -Q "${pkg_name}" &>/dev/null || die "Failed to install ${pkg}"
         done
     fi;
 
