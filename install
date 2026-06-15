@@ -116,7 +116,7 @@ DEBUG="false"
 
 main_menu() {
     local mode
-    mode=$(tui_menu "ArtixForge v8" "Select installation mode:" \
+    mode=$(tui_menu "ArtixForge v9?" "Select installation mode:" \
         "Automatic – guided installation" \
         "Manual – detect existing partitions" \
         "Resume – resume interrupted install" \
