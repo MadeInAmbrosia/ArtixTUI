@@ -126,7 +126,7 @@ EOF
                 pacman -Sl archzfs >/dev/null 2>&1 || die "archzfs repository unusable"
             fi
 
-            pkgs+=(zfs-dkms zfs-utils base-devel)
+            pkgs+=(archzfs/zfs-dkms archzfs/zfs-utils base-devel)
             ;;
     esac
 
@@ -160,13 +160,10 @@ EOF
         depmod -a
 
         if ! modprobe zfs 2>/dev/null; then
-            local expected_kver
-            expected_kver=$(pacman -Qi "${zfs_pkg}" 2>/dev/null | grep -oP 'for kernel \K[\d.]+' || true)
-            if [[ -n "${expected_kver}" ]]; then
-                log_error "Prebuilt ZFS module (${zfs_pkg}) is for kernel ${expected_kver}, but running kernel is $(uname -r)."
-                die "Kernel version mismatch. The archzfs repo has not yet built ZFS for this kernel. Wait for an update or use a different live ISO."
-            fi
-            die "Failed to load ZFS kernel module."
+            log_error "Failed to load ZFS kernel module."
+            log_error "DKMS status:"
+            dkms status 2>/dev/null || true
+            die "ZFS kernel module not available. DKMS build may have failed or kernel $(uname -r) is unsupported."
         fi
         log_info "ZFS kernel module loaded successfully."
     fi

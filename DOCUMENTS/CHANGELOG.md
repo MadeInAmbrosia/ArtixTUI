@@ -3,7 +3,9 @@
 ## v8.7.0.4 (2026-06-15) — ArtixForge
 
 ### Fixed
-- ZFS: preflight now installs `zfs-dkms` instead of prebuilt kernel-specific module — live ISO kernel rarely matches archzfs ABI
+- ZFS: preflight now installs `zfs-dkms` from archzfs with repo prefix — live ISO kernel rarely matches prebuilt ABI and may ship outdated ZFS
+- ZFS: preflight forces `archzfs/zfs-dkms` to override outdated live ISO packages
+- ZFS: removed unbound `zfs_pkg` variable in modprobe check — now reports DKMS status on failure
 
 ## v8.7.0.3 (2026-06-15) — ArtixForge
 
