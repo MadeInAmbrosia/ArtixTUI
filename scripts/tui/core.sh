@@ -135,7 +135,7 @@ tui_filter() {
     shift 2
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum filter --height=20 "$@" </dev/tty
+    gum filter --height=20 "$@"
 }
 
 tui_radiolist() {
