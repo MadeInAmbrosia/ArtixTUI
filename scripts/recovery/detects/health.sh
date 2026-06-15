@@ -56,7 +56,7 @@ detect_boot_health() {
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
         if ! compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 && \
            ! [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]]; then
-            issues+="no-uki "
+            log_info "UKI enabled but no UKI file found — system will boot via bootloader"
         fi
     fi
 
