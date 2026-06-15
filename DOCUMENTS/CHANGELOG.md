@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.7.0.6 (2026-06-15) — ArtixForge
+
+### Fixed
+- CachyOS: v3/v4 mirrorlist now downloaded before repo sections added to `pacman.conf` — fixes broken config when mirrorlist package fails (oops...)
+
 ## v8.7.0.5 (2026-06-15) — ArtixForge
 
 ### Changed

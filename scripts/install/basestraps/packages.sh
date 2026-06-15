@@ -59,7 +59,15 @@ basestrap_kernel_cachyos() {
         cpu_level=$(/lib/ld-linux-x86-64.so.2 --help 2>/dev/null | grep -oP 'x86-64-v[2-4]' | head -n1 || true)
 
         if [[ "${cpu_level}" == "x86-64-v4" ]]; then
-            cat <<'EOF' >> /etc/pacman.conf
+            local v4_mirrorlist_pkg
+            v4_mirrorlist_pkg=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-v4-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
+            if [[ -n "${v4_mirrorlist_pkg}" ]]; then
+                pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/${v4_mirrorlist_pkg}" || {
+                    log_warn "Failed to install cachyos-v4-mirrorlist — skipping v4 repos"
+                }
+            fi
+            if [[ -f /etc/pacman.d/cachyos-v4-mirrorlist ]]; then
+                cat <<'EOF' >> /etc/pacman.conf
 [cachyos-v4]
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
@@ -70,9 +78,17 @@ Include = /etc/pacman.d/cachyos-v4-mirrorlist
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 EOF
-            pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst" 2>/dev/null || true
+            fi
         elif [[ "${cpu_level}" == "x86-64-v3" ]]; then
-            cat <<'EOF' >> /etc/pacman.conf
+            local v3_mirrorlist_pkg
+            v3_mirrorlist_pkg=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-v3-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
+            if [[ -n "${v3_mirrorlist_pkg}" ]]; then
+                pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/${v3_mirrorlist_pkg}" || {
+                    log_warn "Failed to install cachyos-v3-mirrorlist — skipping v3 repos"
+                }
+            fi
+            if [[ -f /etc/pacman.d/cachyos-v3-mirrorlist ]]; then
+                cat <<'EOF' >> /etc/pacman.conf
 [cachyos-v3]
 Include = /etc/pacman.d/cachyos-v3-mirrorlist
 
@@ -83,7 +99,7 @@ Include = /etc/pacman.d/cachyos-v3-mirrorlist
 Include = /etc/pacman.d/cachyos-v3-mirrorlist
 
 EOF
-            pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst" 2>/dev/null || true
+            fi
         fi
 
         if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
