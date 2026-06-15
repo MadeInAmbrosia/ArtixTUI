@@ -23,7 +23,7 @@ Ideas under consideration, construction or already being worked on with no real 
 
 ## Power User Upgrades
 
-- `anvil-tools` — debloated coreutils in C
+- ~~`anvil-tools` — debloated coreutils in C~~ **Removed - Github Desktop nuked all my unsaved commits and I don't want to do everything again**
 
 ## Community & Ecosystem
 
