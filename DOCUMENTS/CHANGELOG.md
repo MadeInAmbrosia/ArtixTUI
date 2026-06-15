@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.7.0.4 (2026-06-15) — ArtixForge
+
+### Fixed
+- ZFS: preflight now installs `zfs-dkms` instead of prebuilt kernel-specific module — live ISO kernel rarely matches archzfs ABI
+
 ## v8.7.0.3 (2026-06-15) — ArtixForge
 
 ### Fixed

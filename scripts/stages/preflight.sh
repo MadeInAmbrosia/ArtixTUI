@@ -126,18 +126,7 @@ EOF
                 pacman -Sl archzfs >/dev/null 2>&1 || die "archzfs repository unusable"
             fi
 
-            local zfs_pkg=""
-            case "${live_kernel_pkg}" in
-                linux)           zfs_pkg="zfs-linux" ;;
-                linux-lts)       zfs_pkg="zfs-linux-lts" ;;
-                linux-zen)       zfs_pkg="zfs-linux-zen" ;;
-                linux-hardened)  zfs_pkg="zfs-linux-hardened" ;;
-                *)               zfs_pkg="zfs-linux" ;;
-            esac
-
-            if [[ -n "${zfs_pkg}" ]]; then
-                pkgs+=("${zfs_pkg}")
-            fi
+            pkgs+=(zfs-dkms zfs-utils base-devel)
             ;;
     esac
 
