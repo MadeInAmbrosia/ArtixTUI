@@ -5,6 +5,13 @@
 ### Fixed
 - Recovery: `recovery_mount_all()` now detects plain partitions (ext4/btrfs/xfs/f2fs) — no longer requires LUKS or LVM to auto-mount (I FORGOT)
 - Recovery: auto-mount falls back to `lsblk` scan when no LUKS/LVM volumes found
+- Recovery: `detect_uki` syntax error fixed — missing `; then` after grep condition causing exit 127
+- Recovery: UKI missing file no longer flagged as a boot issue — system boots via bootloader
+- TUI: kernel sub-menu case patterns fixed — `"linux-* (standard)"` and `"linux-cachyos-*"` now match menu display
+- TUI: `tui_filter()` no longer redirects stdin to `/dev/tty` — `gum filter` correctly receives piped package list (oops)
+- Extras: `EXTRAS_SAFETY_FILTER` regex fixed — `*` changed to `.*` to silence grep warnings
+- ZFS: preflight now installs ZFS module for live kernel instead of target kernel — fixes install failure when target kernel differs from live ISO
+- ZFS: removed spurious die when live and target kernels differ — target gets its own ZFS package during basestrap
 
 ## v8.7.0.2 (2026-06-15) — ArtixForge
 

@@ -114,10 +114,6 @@ stage_preflight() {
                 die "ZFS is only supported with linux, linux-lts, linux-zen, or linux-hardened kernels."
             fi
 
-            if [[ "${target_kernel}" != "${live_kernel_pkg}" && "${live_kernel_pkg}" != "linux" ]]; then
-                die "Live ISO kernel (${live_kernel_pkg}) does not match target kernel (${target_kernel}) for ZFS installation."
-            fi
-
             if ! grep -q '^\[archzfs\]' /etc/pacman.conf; then
                 pacman-key --recv-keys F75D9D76 --keyserver hkp://keyserver.ubuntu.com
                 pacman-key --lsign-key F75D9D76
@@ -131,11 +127,12 @@ EOF
             fi
 
             local zfs_pkg=""
-            case "${target_kernel}" in
+            case "${live_kernel_pkg}" in
                 linux)           zfs_pkg="zfs-linux" ;;
                 linux-lts)       zfs_pkg="zfs-linux-lts" ;;
                 linux-zen)       zfs_pkg="zfs-linux-zen" ;;
                 linux-hardened)  zfs_pkg="zfs-linux-hardened" ;;
+                *)               zfs_pkg="zfs-linux" ;;
             esac
 
             if [[ -n "${zfs_pkg}" ]]; then
