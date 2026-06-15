@@ -49,7 +49,8 @@ detect_bootloader() {
 detect_uki() {
     if [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]] || \
         compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 || \
-        grep -qE 'default_uki|uki_output' "${ROOT}/etc/mkinitcpio.d/"*.preset 2>/dev/null        state_set GENERATE_UKI yes
+        grep -qE 'default_uki|uki_output' "${ROOT}/etc/mkinitcpio.d/"*.preset 2>/dev/null; then
+        state_set GENERATE_UKI yes
     else
         state_set GENERATE_UKI no
     fi
