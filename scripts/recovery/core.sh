@@ -54,6 +54,15 @@ recovery_mount_all() {
     fi
 
     if [[ -z "${root_candidate}" ]]; then
+        log_info "No LUKS/LVM root found — scanning plain partitions..."
+        root_candidate=$(lsblk -no PATH,FSTYPE 2>/dev/null \
+            | grep -E '(ext[234]|xfs|btrfs|f2fs)' \
+            | grep -v '/dev/loop' \
+            | head -n1 \
+            | awk '{print $1}')
+    fi
+
+    if [[ -z "${root_candidate}" ]]; then
         die "Could not find a root filesystem. Please mount /mnt manually."
     fi
 

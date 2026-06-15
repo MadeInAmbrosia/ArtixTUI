@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.7.0.3 (2026-06-15) — ArtixForge
+
+### Fixed
+- Recovery: `recovery_mount_all()` now detects plain partitions (ext4/btrfs/xfs/f2fs) — no longer requires LUKS or LVM to auto-mount
+- Recovery: auto-mount falls back to `lsblk` scan when no LUKS/LVM volumes found
+
 ## v8.7.0.2 (2026-06-15) — ArtixForge
 
 ### Added
