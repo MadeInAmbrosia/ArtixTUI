@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # SAFETY FILTER!!!
-readonly EXTRAS_SAFETY_FILTER='linux-*|systemd*|plasma*|grub|mkinitcpio|*-openrc|*-runit|*-dinit|*-s6|sddm|lightdm|gdm|xorg-*|xlibre-*|wayland|hyprland|sway|niri|pipewire|pulseaudio|networkmanager|connman|dhcpcd|efibootmgr|filesystem|pacman|bash|coreutils|util-linux'
+readonly EXTRAS_SAFETY_FILTER='linux-.*|systemd.*|plasma.*|grub|mkinitcpio|.*-openrc|.*-runit|.*-dinit|.*-s6|sddm|lightdm|gdm|xorg-.*|xlibre-.*|wayland|hyprland|sway|niri|pipewire|pulseaudio|networkmanager|connman|dhcpcd|efibootmgr|filesystem|pacman|bash|coreutils|util-linux'
 
 tui_search_extras() {
     log_info "Building safe package index..."
