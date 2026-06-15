@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.7.0.4-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.7.0.5-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
@@ -72,7 +72,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Category             | Options                                                                                                                 |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Init system          | OpenRC, runit, dinit, s6, BusyBox init                                                                                  |
-| Filesystem           | ext4, btrfs, xfs, f2fs, bcachefs, exfat, zfs                                                                            |
+| Filesystem | ext4, btrfs, xfs, f2fs, ~~bcachefs~~, exfat, ~~zfs~~ |                                                                  |
 | Storage              | Standard partitions, LVM, LUKS, LVM-on-LUKS                                                                             |
 | Boot method          | UKI, GRUB, rEFInd, EFIStub, Limine                                                                                      |
 | Kernel               | linux, zen, lts, hardened, libre, cachyos-bore, bazzite, xanmod, tkg                                                    |

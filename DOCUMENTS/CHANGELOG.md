@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.7.0.5 (2026-06-15) — ArtixForge
+
+### Changed
+- Filesystems: ZFS temporarily disabled — ZFS max supported kernel is 6.15 (live ISOs ship 6.19 and above!)
+- Filesystems: selecting ZFS now shows an "Unavailable" message and returns to selection
+
 ## v8.7.0.4 (2026-06-15) — ArtixForge
 
 ### Fixed
