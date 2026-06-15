@@ -134,32 +134,10 @@ main_menu() {
                 "Build ISO – create a custom live ISO" \
                 "Back") || return 1
             case "${mode}" in
-                Recovery*)          MODE='recovery'
-                                    tui_msg_quick "Recovery Mode" \
-                                        "Recovery scans an existing installation at /mnt\n" \
-                                        "for boot issues, broken packages, and filesystem corruption.\n\n" \
-                                        "[!] Repairs can modify your system. Back up first."
-                                    ;;
-                Power*)             MODE='power'
-                                    tui_msg_quick "Power User Mode" \
-                                        "Power User mode compiles select packages from source\n" \
-                                        "with custom flags. This can take hours and requires\n" \
-                                        "significant disk space (~20 GB for kernels).\n\n" \
-                                        "[!] A miscompiled glibc will make your system unbootable."
-                                    ;;
-                "System Migration"*) MODE='migrate'
-                                    tui_msg_quick "System Migration" \
-                                        "Migration converts your init system or desktop environment\n" \
-                                        "without reinstalling. Services are automatically mapped.\n\n" \
-                                        "[!] A cold reboot is required after init migration.\n" \
-                                        "[!] Back up your data before proceeding."
-                                    ;;
-                "Build ISO"*)       MODE='iso'
-                                    tui_msg_quick "Build ISO" \
-                                        "Build a custom Artix live ISO from your selected\n" \
-                                        "configuration. Offline mode bundles all packages.\n\n" \
-                                        "[!] Requires artools and ~10 GB free disk space."
-                                    ;;
+                Recovery*)          MODE='recovery' ;;
+                Power*)             MODE='power' ;;
+                "System Migration"*) MODE='migrate' ;;
+                "Build ISO"*)       MODE='iso' ;;
                 *)                  return 1 ;;
             esac
             ;;
