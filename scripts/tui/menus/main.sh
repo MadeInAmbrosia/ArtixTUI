@@ -71,7 +71,7 @@ tui_select_kernel() {
         "linux-libre") || return 1
 
     case "${k}" in
-        "linux (standard)")
+        "linux-* (standard)")
             local variant
             variant=$(tui_menu "Standard Kernel" "Select variant:" \
                 "linux" \
@@ -80,7 +80,7 @@ tui_select_kernel() {
                 "linux-hardened") || return 1
             state_set KERNEL_CHOICE "${variant}"
             ;;
-        "linux-cachyos")
+        "linux-cachyos-*")
             local variant
             variant=$(tui_menu "CachyOS Kernel" "Select variant:" \
                 "linux-cachyos (EEVDF)" \
