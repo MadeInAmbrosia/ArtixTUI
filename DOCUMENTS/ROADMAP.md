@@ -9,11 +9,11 @@ This roadmap is updated regularly based on:
 
 *Version numbers are not strict release targets. Features may ship earlier or later depending on development pace, tester feedback, and available time. This roadmap reflects general direction, not fixed deadlines.*
 
-## v8.6 (current — `v9-merger` branch)
+## v8.7 (current — `v9-merger` branch)
 - # Bug fixing and stabilisation, testing
 ~~There is literally nothing else to do. ^~~
 There is always something to improve.
-
+- CODE_INDENTS.md (A file that explains every weird hack and slash and weird thing avaliable in the code)
 ## v9.0 (planned)
 - Merge `v9-merger` → `main`
 
