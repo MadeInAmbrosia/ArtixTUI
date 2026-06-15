@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.7.0.7 (2026-06-15) — ArtixForge
+
+### Fixed
+- ISO: artix-keyring refreshed before `buildiso` call — prevents "Signature from Artix Buildbot is invalid" error
+
 ## v8.7.0.6 (2026-06-15) — ArtixForge
 
 ### Fixed

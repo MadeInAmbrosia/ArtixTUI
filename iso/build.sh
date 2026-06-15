@@ -66,6 +66,11 @@ PACMAN
     if [[ ${needs_chroot_build} -eq 1 ]]; then
         log_info "Non-repo packages detected. Building chroot first..."
         
+        log_info "Refreshing build keys..."
+        pacman -S --noconfirm --needed artix-keyring
+        pacman-key --populate artix
+        pacman-key --lsign-key 78C9C713EAD7BEC69087447332E21894258C6105
+
         buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -x 2>&1 || die "buildiso -x failed"
 
         local chroot_dir="/var/lib/artools/buildiso/${profile_name}/artix/rootfs"
