@@ -75,7 +75,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Filesystem | ext4, btrfs, xfs, f2fs, ~~bcachefs~~, ~~zfs~~ |                                                                  |
 | Storage              | Standard partitions, LVM, LUKS, LVM-on-LUKS                                                                             |
 | Boot method          | UKI, GRUB, rEFInd, EFIStub, Limine                                                                                      |
-| Kernel               | linux, zen, lts, hardened, libre, cachyos-bore, bazzite, xanmod, tkg                                                    |
+| Kernel               | linux, zen, lts, hardened, libre, cachyos-*, bazzite, xanmod, tkg                                                    |
 | Desktop              | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, vxwm, IceWM, SonicDE, none                        |
 | Network              | NetworkManager, dhcpcd+iwd, ConnMan, none                                                                               |
 | Audio                | PipeWire, PulseAudio, none                                                                                              |
