@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.0.1 (2026-06-16) — ArtixForge
+
+### Fixed
+- CachyOS: `Architecture = x86_64 x86_64_v4` now set globally under `[options]` instead of per-repo — pacman accepts v4 packages
+
 ## v8.8.0.0 (2026-06-16) — ArtixForge
 
 The next few patches will include GUI upgrades.

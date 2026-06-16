@@ -12,17 +12,17 @@ basestrap_target_repo_cachyos() {
         cpu_level=$(/lib/ld-linux-x86-64.so.2 --help 2>/dev/null | grep -oP 'x86-64-v[2-4]' | head -n1 || true)
 
         if [[ "${cpu_level}" == "x86-64-v4" ]]; then
+            if ! grep -q '^Architecture =.*x86_64_v4' /mnt/etc/pacman.conf; then
+                sed -i '/^\[options\]/a Architecture = x86_64 x86_64_v4' /mnt/etc/pacman.conf
+            fi
             cat <<'EOF' >> /mnt/etc/pacman.conf
 [cachyos-v4]
-Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-core-v4]
-Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-extra-v4]
-Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 EOF

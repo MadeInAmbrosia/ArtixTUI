@@ -67,17 +67,17 @@ basestrap_kernel_cachyos() {
                 }
             fi
             if [[ -f /etc/pacman.d/cachyos-v4-mirrorlist ]]; then
+                if ! grep -q '^Architecture =.*x86_64_v4' /etc/pacman.conf; then
+                    sed -i '/^\[options\]/a Architecture = x86_64 x86_64_v4' /etc/pacman.conf
+                fi
                 cat <<'EOF' >> /etc/pacman.conf
 [cachyos-v4]
-Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-core-v4]
-Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-extra-v4]
-Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 EOF
