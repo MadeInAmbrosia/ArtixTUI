@@ -38,9 +38,14 @@ detect_repositories() {
 }
 
 detect_coreutils() {
-    if pacman_root_has busybox && [[ "$(readlink "${ROOT}/usr/bin/ls" 2>/dev/null)" == *"busybox"* ]]; then
-        state_set COREUTILS busybox
-    elif pacman_root_has uutils-coreutils; then
+    if pacman_root_has busybox; then
+        if [[ "$(readlink "${ROOT}/usr/bin/ls" 2>/dev/null)" == *"busybox"* ]] || \
+           [[ "$(readlink "${ROOT}/usr/bin/cp" 2>/dev/null)" == *"busybox"* ]]; then
+            state_set COREUTILS busybox
+            return 0
+        fi
+    fi
+    if pacman_root_has uutils-coreutils; then
         state_set COREUTILS uutils
     elif [[ -f "${ROOT}/etc/artix-poweruser/world.txt" ]] && grep -q 'artix-coreutils' "${ROOT}/etc/artix-poweruser/world.txt" 2>/dev/null; then
         state_set COREUTILS artix

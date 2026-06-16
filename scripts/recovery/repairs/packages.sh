@@ -45,9 +45,10 @@ repair_pacman() {
                     batch+=("${pkg}")
                     ((i++))
                     if [[ ${i} -ge 20 ]]; then
+                        local batch_size=${#batch[@]}
                         log_info "  Batch: ${batch[*]}"
                         if pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm --overwrite '*' "${batch[@]}" 2>/dev/null; then
-                            ((success += i))
+                            ((success += batch_size))
                         else
                             log_warn "  Batch failed — trying individually..."
                             for b in "${batch[@]}"; do
@@ -64,9 +65,10 @@ repair_pacman() {
                 done
 
                 if [[ ${#batch[@]} -gt 0 ]]; then
+                    local batch_size=${#batch[@]}
                     log_info "  Final batch: ${batch[*]}"
                     if pacman --root /mnt --cachedir /mnt/var/cache/pacman/pkg -S --noconfirm --overwrite '*' "${batch[@]}" 2>/dev/null; then
-                        ((success += ${#batch[@]}))
+                        ((success += batch_size))
                     else
                         for b in "${batch[@]}"; do
                             if pacman --root /mnt -S --noconfirm --overwrite '*' "${b}" 2>/dev/null; then

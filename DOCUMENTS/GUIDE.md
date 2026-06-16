@@ -77,7 +77,6 @@ Determines how data is organised on the disk.
 | xfs | Excellent for large files, quick recovery | Cannot be shrunk |
 | f2fs | Optimised for flash storage (SSD, eMMC) | Not suitable for HDDs |
 | bcachefs | Modern, advanced features (compression, tiering) | **Experimental** – tools still under heavy development |
-| exfat | Compatible with Windows | Not suitable for a root filesystem |
 | zfs | Data integrity, snapshots, RAID, encryption | High memory usage; **experimental on Artix** |
 
 If you don’t have a specific reason to choose otherwise, ext4 is a reliable, zero‑maintenance option. btrfs is a great choice if you want snapshots and compression.

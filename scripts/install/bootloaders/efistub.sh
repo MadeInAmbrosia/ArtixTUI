@@ -5,10 +5,13 @@ bootloader_install_efistub() {
     log_info "Configuring EFIStub boot entry..."
     command -v efibootmgr >/dev/null 2>&1 || die 'efibootmgr unavailable'
 
-    local kernel_image initramfs_image microcode_file
-    kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
+    local kernel_choice kernel_image initramfs_image microcode_file
+    kernel_choice="$(state_get KERNEL_CHOICE linux)"
+    kernel_image=$(find_kernel_image "${kernel_choice}")
     [[ -n "${kernel_image}" ]] || die 'failed to locate kernel image'
-    initramfs_image=$(ls /mnt/boot/initramfs-*.img 2>/dev/null | grep -v fallback | head -n1)
+    local kver
+    kver=$(basename "${kernel_image}" | sed 's/^vmlinuz-//')
+    initramfs_image=$(find_initramfs_image "${kver}")
     [[ -n "${initramfs_image}" ]] || die 'failed to locate initramfs image'
     microcode_file="$(state_get MICROCODE_IMAGE)"
 
@@ -26,22 +29,8 @@ bootloader_install_efistub() {
     fi
 
     local loader="\\EFI\\Artix\\${kernel_basename}"
-    local cmdline=""
-    if [[ "${fs_type}" == 'zfs' ]]; then
-        cmdline="root=ZFS=zroot/root rw modules=zfs rootfstype=zfs"
-    else
-        if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-            cmdline+="cryptdevice=UUID=${crypt_uuid}:${mapper_name} "
-        fi
-        if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
-            cmdline+="root=/dev/vg0/root "
-        elif [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-            cmdline+="root=/dev/mapper/${mapper_name} "
-        else
-            cmdline+="root=UUID=${root_uuid} "
-        fi
-        cmdline+="rw"
-    fi
+    local cmdline
+    cmdline=$(generate_root_cmdline "${fs_type}" "${crypt_uuid}" "${mapper_name}" "${root_uuid}" "no")
     [[ -n "${microcode_image_str:-}" ]] && cmdline+=" ${microcode_image_str}"
     cmdline+=" initrd=\\EFI\\Artix\\${initramfs_basename}"
 

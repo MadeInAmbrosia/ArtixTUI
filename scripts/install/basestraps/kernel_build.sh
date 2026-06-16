@@ -19,7 +19,7 @@ basestrap_build_tkg() {
 
     cd "${kernel_src}"
 
-    local kver=$(make kernelversion | cut -d. -f1-2)
+    local kver=$(make kernelrelease 2>/dev/null || make kernelversion | cut -d. -f1-2)
     local patch_dir="${tkg_dir}/linux-tkg-patches/${kver}"
     if [[ -d "${patch_dir}" ]]; then
         log_info "Applying TKG patches for kernel ${kver}..."
@@ -30,23 +30,18 @@ basestrap_build_tkg() {
 
     make defconfig
     make -j$(nproc)
-    make modules_install
-    make install
+    make modules_install INSTALL_MOD_PATH=/mnt
+    make install INSTALL_PATH=/mnt/boot
 
-    local kver_full=$(ls /lib/modules/ | grep -E '^[0-9]' | tail -1)
+    local kver_full=$(ls -1 /mnt/lib/modules/ | grep -E '^[0-9]' | sort -V | tail -1)
     if [[ -n "${kver_full}" ]]; then
-        cp -a /lib/modules/"${kver_full}" /mnt/lib/modules/
-        cp /boot/vmlinuz-* /mnt/boot/ 2>/dev/null || true
-        cp /boot/initramfs-*.img /mnt/boot/ 2>/dev/null || true
-        cp /boot/System.map-* /mnt/boot/ 2>/dev/null || true
-        cp /boot/config-* /mnt/boot/ 2>/dev/null || true
         artix-chroot /mnt mkinitcpio -P
         if [[ -d /mnt/boot/grub ]]; then
             artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
         fi
         log_info "TKG kernel (${kver_full}) installed"
     else
-        die "TKG build failed – no kernel modules found"
+        die "TKG build failed – no kernel modules found in /mnt/lib/modules"
     fi
 
     rm -rf "${tkg_dir}" "${kernel_src}"
@@ -75,11 +70,10 @@ basestrap_build_bazzite() {
         return 1
     }
     local kver
-    kver=$(ls /usr/lib/modules | grep bazzite | head -1)
+    kver=$(ls -1 /usr/lib/modules/ | grep bazzite | sort -V | tail -1)
     if [[ -n "${kver}" && -f "/usr/lib/modules/${kver}/vmlinuz" ]]; then
-        cp "/usr/lib/modules/${kver}/vmlinuz" "/boot/vmlinuz-linux-bazzite"
+        cp "/usr/lib/modules/${kver}/vmlinuz" "/mnt/boot/vmlinuz-linux-bazzite"
         cp -a "/usr/lib/modules/${kver}" /mnt/lib/modules/ 2>/dev/null || true
-        cp "/boot/vmlinuz-linux-bazzite" /mnt/boot/ 2>/dev/null || true
     fi
     rm -rf "${build_dir}"
     log_info "Bazzite kernel installed."

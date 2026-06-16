@@ -39,7 +39,6 @@ mount_filesystems() {
         ext4)  modprobe ext4 2>/dev/null || true ;;
         xfs)   modprobe xfs 2>/dev/null || true ;;
         f2fs)  modprobe f2fs 2>/dev/null || true ;;
-        exfat) modprobe exfat 2>/dev/null || true ;;
         zfs)   modprobe zfs 2>/dev/null || true ;;
     esac
     command -v mount >/dev/null || die 'mount unavailable (util-linux missing)'
@@ -50,11 +49,12 @@ mount_filesystems() {
         die 'FAT/VFAT kernel support unavailable — check kernel config'
     fi
 
-    if mountpoint -q /mnt && mountpoint -q /mnt/boot/efi; then
+    if mountpoint -q /mnt && mountpoint -q "${efi_mount}"; then
         log_info "Filesystems already mounted, skipping remount."
         return 0
     fi
     umount -R /mnt/boot/efi 2>/dev/null || true
+    umount -R /mnt/boot 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     mkdir -p /mnt
 
@@ -98,6 +98,7 @@ mount_filesystems() {
     if [[ "$(state_get USE_LVM no)" != "yes" && "$(state_get USE_LUKS no)" == "yes" ]]; then
         local luks_pass
         luks_pass="$(state_get LUKS_PASS)"
+        cryptsetup close cryptroot 2>/dev/null || true
         log_info "Opening LUKS container..."
         printf '%s' "${luks_pass}" | cryptsetup luksOpen "${root_part}" cryptroot -
         root_part="/dev/mapper/cryptroot"
@@ -157,10 +158,6 @@ mount_filesystems() {
                 mount_opts="${mount_opts},discard"
             fi
             mount -t "${fs_type}" -o "${mount_opts}" "${root_part}" /mnt
-            mountpoint -q /mnt || die 'failed to mount root filesystem'
-            ;;
-        exfat)
-            mount -t exfat "${root_part}" /mnt
             mountpoint -q /mnt || die 'failed to mount root filesystem'
             ;;
         *)

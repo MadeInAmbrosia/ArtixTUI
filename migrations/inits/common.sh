@@ -132,7 +132,7 @@ map_service() {
 }
 
 list_init_packages() {
-    local init_suffix="${1}"  # openrc, runit, dinit, s6, systemd
+    local init_suffix="${1}"
     pacman -Qsq "${init_suffix}" 2>/dev/null || true
 }
 
@@ -146,10 +146,17 @@ cache_target_init_packages() {
         return 0
     fi
 
-    local target_pkgs
-    target_pkgs=$(echo "${init_pkgs}" | sed "s/${source_init}/${target_init}/g")
-    log_info "Caching: ${target_pkgs}"
-    pacman -Sw --noconfirm ${target_pkgs} 2>/dev/null || log_warn "Some packages could not be downloaded"
+    local target_pkgs=""
+    while IFS= read -r pkg; do
+        local new_pkg="${pkg/${source_init}/${target_init}}"
+        target_pkgs+=" ${new_pkg}"
+    done <<< "$init_pkgs"
+    target_pkgs="${target_pkgs# }"
+
+    if [[ -n "$target_pkgs" ]]; then
+        log_info "Caching: ${target_pkgs}"
+        pacman -Sw --noconfirm ${target_pkgs} 2>/dev/null || log_warn "Some packages could not be downloaded"
+    fi
 }
 
 remove_source_init() {
@@ -180,13 +187,22 @@ install_target_init() {
     init_pkgs=$(list_init_packages "${source_init}" 2>/dev/null || true)
 
     if [[ -n "${init_pkgs}" ]]; then
-        local target_pkgs
-        target_pkgs=$(echo "${init_pkgs}" | sed "s/${source_init}/${target_init}/g")
-        log_info "Installing target init packages: ${target_pkgs}"
-        pacman -S --noconfirm ${target_pkgs} 2>/dev/null || {
-            log_warn "Batch install failed — falling back to hardcoded package list"
+        local target_pkgs=""
+        while IFS= read -r pkg; do
+            local new_pkg="${pkg/${source_init}/${target_init}}"
+            target_pkgs+=" ${new_pkg}"
+        done <<< "$init_pkgs"
+        target_pkgs="${target_pkgs# }"
+
+        if [[ -n "$target_pkgs" ]]; then
+            log_info "Installing target init packages: ${target_pkgs}"
+            pacman -S --noconfirm ${target_pkgs} 2>/dev/null || {
+                log_warn "Batch install failed — falling back to hardcoded package list"
+                _install_target_init_fallback "${target_init}"
+            }
+        else
             _install_target_init_fallback "${target_init}"
-        }
+        fi
     else
         log_warn "No ${source_init} packages to migrate — using hardcoded list"
         _install_target_init_fallback "${target_init}"

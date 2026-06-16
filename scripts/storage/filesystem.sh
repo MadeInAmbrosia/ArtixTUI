@@ -36,8 +36,6 @@ create_filesystems() {
 
     [[ -b "${efi_part}" ]] || die "invalid EFI partition: ${efi_part}"
     [[ -b "${root_part}" ]] || die "invalid root partition: ${root_part}"
-    [[ -b "${efi_part}" ]] || die "invalid EFI partition: ${efi_part}"
-    [[ -b "${root_part}" ]] || die "invalid root partition: ${root_part}"
     [[ "/dev/$(lsblk -no PKNAME "${efi_part}" | tail -n1)" == "${disk}" ]] || die "EFI partition does not belong to selected disk"
     if [[ "$(state_get USE_LVM no)" != "yes" && "${fs_type}" != "zfs" ]]; then
         [[ "/dev/$(lsblk -no PKNAME "${root_part}" | tail -n1)" == "${disk}" ]] || die "Root partition does not belong to selected disk"
@@ -68,7 +66,6 @@ create_filesystems() {
             fi
             command -v mkfs.bcachefs >/dev/null || die 'mkfs.bcachefs unavailable'
             modprobe bcachefs 2>/dev/null || true ;;
-        exfat)     pacman -S --needed --noconfirm exfatprogs ; modprobe exfat 2>/dev/null || true ;;
         zfs)
             command -v zpool >/dev/null || die 'zpool command unavailable'
             if ! modprobe zfs 2>/dev/null; then
@@ -227,7 +224,6 @@ create_filesystems() {
                 mkfs.f2fs -f -O extra_attr,compression "${root_lv}"
                 ;;
             bcachefs) mkfs.bcachefs --force --replicas=1 "${root_lv}" ;;
-            exfat)    mkfs.exfat -L "root" "${root_lv}" ;;
             zfs)      die "ZFS on LVM is not supported — use ZFS directly on the partition" ;;
             *)        die "Unsupported filesystem for LVM: ${fs_type}" ;;
         esac
@@ -247,6 +243,7 @@ create_filesystems() {
 
     if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
         log_info "Setting up LUKS on ${fs_target}..."
+        cryptsetup close cryptroot 2>/dev/null || true
         local luks_pass
         luks_pass="$(state_get LUKS_PASS)"
         printf '%s' "${luks_pass}" | cryptsetup luksFormat --type luks2 --pbkdf pbkdf2 "${fs_target}" -
@@ -288,10 +285,6 @@ create_filesystems() {
         bcachefs)
             log_info "Creating Bcachefs filesystem..."
             mkfs.bcachefs --force --replicas=1 "${fs_target}"
-            ;;
-        exfat)
-            log_info "Creating exFAT filesystem..."
-            mkfs.exfat -L "root" "${fs_target}"
             ;;
         *)
             die "Unsupported filesystem: ${fs_type}"

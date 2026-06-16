@@ -7,6 +7,14 @@ SELF_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 BASE_DIR="${SELF_PATH%/*}"
 SCRIPT_DIR="${BASE_DIR}/scripts"
 
+if [[ "${ARTIX_RUNTIME_DIR:-}" != "/tmp/artix-run" && -d /tmp ]]; then
+    mkdir -p /tmp/artix-run
+    cp -a "${BASE_DIR}" /tmp/artix-run/
+    export ARTIX_RUNTIME_DIR=/tmp/artix-run
+    exec "/tmp/artix-run/ArtixForge/install" "$@"
+    exit 0
+fi
+
 _die_early() {
     printf '\n\e[1;31m[!] %s\e[0m\n' "${1:-unknown error}" >&2
     exit 1
@@ -281,7 +289,7 @@ main() {
 
     if [[ "${1:-}" == "--non-interactive" ]]; then
         source "${SCRIPT_DIR}/noninteractive.sh"
-        state_load #I'm a moron, its _ not -
+        state_load
         MODE="$(state_get MODE auto)"
         log_info "Non‑interactive mode: ${MODE}"
         case "${MODE}" in
@@ -376,7 +384,6 @@ main() {
         fi
     fi
 
-    # Fallback to TUI
     clear
     main_menu
 

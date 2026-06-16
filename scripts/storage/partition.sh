@@ -29,7 +29,9 @@ partition_disk() {
     log_info "Wiping existing signatures..."
     wipefs --all --force "${disk}"
     sgdisk --zap-all "${disk}"
-    dd if=/dev/zero of="${disk}" bs=1M count=32 conv=fsync status=none
+    partprobe "${disk}" 2>/dev/null || true
+    udevadm settle
+    sleep 1
     blockdev --rereadpt "${disk}" 2>/dev/null || true
 
     local fs_type
@@ -93,6 +95,14 @@ partition_disk() {
         udevadm settle
 
         local lvm_target="${root_part}"
+        local vg_name="${LVM_VG_NAME:-vg0}"
+
+        if vgdisplay "${vg_name}" &>/dev/null; then
+            local new_vg_name
+            new_vg_name=$(tui_input "LVM" "Volume group '${vg_name}' already exists. Enter new name:" "vg1") || die "LVM cancelled"
+            vg_name="${new_vg_name}"
+        fi
+        state_set LVM_VG_NAME "${vg_name}"
 
         if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
             dmsetup remove cryptlvm 2>/dev/null || true
@@ -110,10 +120,10 @@ partition_disk() {
         fi
 
         xtrace_safe pvcreate -ff "${lvm_target}" || die "pvcreate failed"
-        xtrace_safe vgcreate vg0 "${lvm_target}" || die "vgcreate failed"
-        xtrace_safe lvcreate -L 20G -n root vg0 || die "lvcreate root failed"
-        xtrace_safe lvcreate -L 8G -n home vg0 || true
-        xtrace_safe lvcreate -l 100%FREE -n data vg0 || true
+        xtrace_safe vgcreate "${vg_name}" "${lvm_target}" || die "vgcreate failed"
+        xtrace_safe lvcreate -L 20G -n root "${vg_name}" || die "lvcreate root failed"
+        xtrace_safe lvcreate -L 8G -n home "${vg_name}" || true
+        xtrace_safe lvcreate -l 100%FREE -n data "${vg_name}" || true
     fi
 
     log_info "Partitioning complete."

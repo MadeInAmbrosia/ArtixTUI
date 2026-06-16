@@ -2,15 +2,16 @@
 set -Eeuo pipefail
 
 basestrap_zfs_setup() {
-    local INST_UUID
+    local INST_UUID init
     INST_UUID="$(state_get ZFS_UUID)"
+    init="$(state_get INIT openrc)"
     [[ -n "${INST_UUID}" ]] || die "ZFS UUID not found in state"
 
     log_info "Generating hostid for ZFS..."
     artix-chroot /mnt zgenhostid
 
     log_info "Adding ZFS hook to mkinitcpio..."
-    artix-chroot /mnt sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block keyboard zfs filesystems)/' /etc/mkinitcpio.conf
+    artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/zfs \1/' /etc/mkinitcpio.conf
 
     log_info "Generating ZFS fstab entries..."
     cat > /mnt/etc/fstab <<EOF
@@ -31,16 +32,47 @@ Server = https://mirror.in.themindsmaze.com/archzfs/$repo/$arch
 EOF
     fi
 
-    log_info "Creating zfs-mount init script..."
-    cat > /mnt/etc/init.d/zfs-mount <<'ZFSMOUNT'
+    log_info "Creating zfs-mount service for ${init}..."
+    case "${init}" in
+        openrc)
+            cat > /mnt/etc/init.d/zfs-mount <<'ZFSMOUNT'
 #!/usr/bin/openrc-run
 
 start() {
     /usr/bin/zfs mount -a
 }
 ZFSMOUNT
-    chmod +x /mnt/etc/init.d/zfs-mount
-    enable_service_boot zfs-mount
+            chmod +x /mnt/etc/init.d/zfs-mount
+            ;;
+        runit)
+            mkdir -p /mnt/etc/runit/sv/zfs-mount
+            cat > /mnt/etc/runit/sv/zfs-mount/run <<'ZFSMOUNT'
+#!/bin/sh
+exec /usr/bin/zfs mount -a
+ZFSMOUNT
+            chmod +x /mnt/etc/runit/sv/zfs-mount/run
+            ;;
+        dinit)
+            mkdir -p /mnt/etc/dinit.d
+            cat > /mnt/etc/dinit.d/zfs-mount <<'ZFSMOUNT'
+type = oneshot
+command = /usr/bin/zfs mount -a
+ZFSMOUNT
+            ;;
+        s6)
+            mkdir -p /mnt/etc/s6/sv/zfs-mount
+            cat > /mnt/etc/s6/sv/zfs-mount/run <<'ZFSMOUNT'
+#!/bin/execlineb -P
+/usr/bin/zfs mount -a
+ZFSMOUNT
+            chmod +x /mnt/etc/s6/sv/zfs-mount/run
+            ;;
+    esac
+    artix-chroot /mnt /bin/bash -c "
+        source /usr/local/lib/artix-installer/services.sh
+        export INIT=${init}
+        enable_service_boot zfs-mount
+    "
 
     log_info "Generating ZFS pool cache..."
     artix-chroot /mnt zpool set cachefile=/etc/zfs/zpool.cache "bpool_${INST_UUID}"

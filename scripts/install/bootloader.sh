@@ -8,6 +8,88 @@ source "${BOOTLOADER_DIR}/refind.sh"
 source "${BOOTLOADER_DIR}/efistub.sh"
 source "${BOOTLOADER_DIR}/limine.sh"
 
+generate_root_cmdline() {
+    local fs_type="${1}"
+    local crypt_uuid="${2}"
+    local mapper_name="${3}"
+    local root_uuid="${4}"
+    local include_rootfstype="${5:-no}"
+
+    local cmdline=""
+    if [[ "${fs_type}" == 'zfs' ]]; then
+        cmdline="root=ZFS=zroot/root rw modules=zfs rootfstype=zfs"
+    else
+        if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+            cmdline+="cryptdevice=UUID=${crypt_uuid}:${mapper_name} "
+        fi
+        if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+            cmdline+="root=/dev/vg0/root "
+        elif [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+            cmdline+="root=/dev/mapper/${mapper_name} "
+        else
+            cmdline+="root=UUID=${root_uuid} "
+        fi
+        cmdline+="rw"
+    fi
+
+    if [[ "${include_rootfstype}" == "yes" ]]; then
+        case "${fs_type}" in
+            btrfs) cmdline+=" rootfstype=btrfs" ;;
+            xfs)   cmdline+=" rootfstype=xfs" ;;
+            f2fs)  cmdline+=" rootfstype=f2fs" ;;
+        esac
+    fi
+
+    printf '%s' "${cmdline}"
+}
+
+find_kernel_image() {
+    local kernel_choice="${1:-linux}"
+    local dir="${2:-/mnt/boot}"
+
+    if [[ -f "${dir}/vmlinuz-${kernel_choice}" ]]; then
+        echo "${dir}/vmlinuz-${kernel_choice}"
+        return 0
+    fi
+
+    if [[ "${kernel_choice}" == linux-cachyos* ]]; then
+        local match
+        match=$(ls -1 "${dir}/vmlinuz-linux-cachyos"* 2>/dev/null | head -n1)
+        if [[ -n "${match}" ]]; then
+            echo "${match}"
+            return 0
+        fi
+    fi
+
+    if [[ "${kernel_choice}" == xanmod ]]; then
+        local match
+        match=$(ls -1 "${dir}/vmlinuz-linux-xanmod"* 2>/dev/null | head -n1)
+        if [[ -n "${match}" ]]; then
+            echo "${match}"
+            return 0
+        fi
+    fi
+
+    if [[ -f "${dir}/vmlinuz-linux-custom" ]]; then
+        echo "${dir}/vmlinuz-linux-custom"
+        return 0
+    fi
+
+    ls -1 "${dir}/vmlinuz-"* 2>/dev/null | head -n1 || echo ""
+}
+
+find_initramfs_image() {
+    local kver="${1}"
+    local dir="${2:-/mnt/boot}"
+
+    if [[ -f "${dir}/initramfs-${kver}.img" ]]; then
+        echo "${dir}/initramfs-${kver}.img"
+        return 0
+    fi
+
+    ls -1 "${dir}/initramfs-"*.img 2>/dev/null | grep -v fallback | head -n1 || echo ""
+}
+
 get_luks_raw_uuid() {
     local dev="$1"
     local current="$dev"
@@ -103,32 +185,21 @@ configure_bootloader() {
     esp_part="$(lsblk -no PARTN "${esp_source}" | head -n1)"
     [[ -n "${esp_part}" ]] || die 'failed to detect EFI partition number'
 
+    export fs_type crypt_uuid mapper_name root_uuid root_param root_device
+    export esp_source esp_mount esp_disk esp_part
+
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
         log_info "Configuring UKI generation..."
         local uki_kernel_image uki_kernel_name uki_kver
-        uki_kernel_image=$(ls /mnt/boot/vmlinuz-* 2>/dev/null | head -n1)
-        [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI"
+        uki_kernel_image=$(find_kernel_image "${kernel}")
+        [[ -n "${uki_kernel_image}" ]] || die "No kernel image found for UKI (kernel: ${kernel})"
         uki_kernel_name=$(basename "${uki_kernel_image}")
         uki_kver="${uki_kernel_name#vmlinuz-}"
         local uki_initramfs_name="initramfs-${uki_kver}.img"
-        local uki_output="${esp_mount#/mnt}/EFI/Linux/artix-${uki_kver}.efi"
+        local uki_output="/boot/efi/EFI/Linux/artix-${uki_kver}.efi"
 
-        local uki_cmdline=""
-        if [[ "${fs_type}" == 'zfs' ]]; then
-            uki_cmdline="root=ZFS=zroot/root rw modules=zfs rootfstype=zfs"
-        else
-            if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-                uki_cmdline+="cryptdevice=UUID=${crypt_uuid}:${mapper_name} "
-            fi
-            if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
-                uki_cmdline+="root=/dev/vg0/root "
-            elif [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-                uki_cmdline+="root=/dev/mapper/${mapper_name} "
-            else
-                uki_cmdline+="root=UUID=${root_uuid} "
-            fi
-            uki_cmdline+="rw"
-        fi
+        local uki_cmdline
+        uki_cmdline=$(generate_root_cmdline "${fs_type}" "${crypt_uuid}" "${mapper_name}" "${root_uuid}" "no")
 
         if [[ -x /mnt/usr/bin/ukify ]]; then
             log_info "Generating UKI with ukify..."
@@ -152,7 +223,7 @@ configure_bootloader() {
     esac
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        local uki_file="${esp_mount}/EFI/Linux/artix-${uki_kver}.efi"
+        local uki_file="/mnt/boot/efi/EFI/Linux/artix-${uki_kver}.efi"
         if [[ -f "${uki_file}" ]]; then
             log_info "Creating EFI boot entry for UKI..."
             artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
@@ -167,8 +238,8 @@ configure_bootloader() {
                 sb_cert=$(tui_input "Secure Boot" "Path to DB.crt (on target):" "/etc/secureboot/DB.crt")
                 if [[ -f "/mnt${sb_key}" && -f "/mnt${sb_cert}" ]]; then
                     artix-chroot /mnt sbsign --key "${sb_key}" --cert "${sb_cert}" \
-                        --output "${esp_mount}/EFI/Linux/artix-${uki_kver}-signed.efi" \
-                        "${esp_mount}/EFI/Linux/artix-${uki_kver}.efi" || die "sbsign failed"
+                        --output "/boot/efi/EFI/Linux/artix-${uki_kver}-signed.efi" \
+                        "/boot/efi/EFI/Linux/artix-${uki_kver}.efi" || die "sbsign failed"
                     artix-chroot /mnt efibootmgr --create --disk "${esp_disk}" --part "${esp_part}" \
                         --label 'Artix Linux (UKI Signed)' \
                         --loader "\\EFI\\Linux\\artix-${uki_kver}-signed.efi" \

@@ -2,12 +2,14 @@
 set -Eeuo pipefail
 
 detect_init() {
-    if [[ -d "${ROOT}/etc/runit" ]]; then
+    if [[ -x "${ROOT}/usr/bin/runit" ]]; then
         state_set INIT runit
-    elif [[ -d "${ROOT}/etc/dinit.d" ]]; then
+    elif [[ -x "${ROOT}/usr/bin/dinit" ]]; then
         state_set INIT dinit
-    elif [[ -d "${ROOT}/etc/s6" ]]; then
+    elif [[ -x "${ROOT}/usr/bin/s6-rc" ]]; then
         state_set INIT s6
+    elif [[ -x "${ROOT}/usr/bin/openrc" ]]; then
+        state_set INIT openrc
     else
         state_set INIT openrc
     fi
@@ -62,17 +64,24 @@ detect_kernel() {
         return 0
     fi
 
-    local -a kernel_list=(
-        linux-zen linux-lts linux-hardened linux-libre
+    local -a tier1=(
         linux-cachyos-bmq linux-cachyos-eevdf linux-cachyos-rt-bore
         linux-cachyos-hardened linux-cachyos-lts linux-cachyos-server
         linux-cachyos-deckify linux-cachyos-bore linux-cachyos
-        linux-bazzite-bin
         linux-xanmod-x64v4 linux-xanmod-x64v3 linux-xanmod-x64v2 linux-xanmod
-        linux-tkg linux-tkg-bore linux
+        linux-bazzite-bin
+        linux-tkg linux-tkg-bore
     )
 
-    for k in "${kernel_list[@]}"; do
+    for k in "${tier1[@]}"; do
+        if pacman_root_has "${k}"; then
+            state_set KERNEL_CHOICE "${k#linux-}"
+            return 0
+        fi
+    done
+
+    local -a tier2=(linux-zen linux-lts linux-hardened linux-libre linux)
+    for k in "${tier2[@]}"; do
         if pacman_root_has "${k}"; then
             state_set KERNEL_CHOICE "${k#linux-}"
             return 0
@@ -85,8 +94,9 @@ detect_kernel() {
     fi
 
     local kver
-    kver=$(ls "${ROOT}/boot/vmlinuz-"* 2>/dev/null | head -n1 | sed 's/.*vmlinuz-//')
+    kver=$(ls -1 "${ROOT}/boot/vmlinuz-"* 2>/dev/null | sort -V | head -n1 | sed 's/.*vmlinuz-//')
     case "${kver}" in
+        *cachyos*)  state_set KERNEL_CHOICE linux-cachyos ;;
         *zen*)      state_set KERNEL_CHOICE linux-zen ;;
         *lts*)      state_set KERNEL_CHOICE linux-lts ;;
         *hardened*) state_set KERNEL_CHOICE linux-hardened ;;

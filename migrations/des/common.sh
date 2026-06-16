@@ -213,18 +213,52 @@ prompt_migration_choices() {
 
     dm_choice=$(tui_menu "Display Manager" "Current: $current_dm\nSelect display manager:" \
         "Keep current ($current_dm)" "SDDM" "LightDM" "Sonic Login" "None") || dm_choice="Keep current"
+    dm_choice="${dm_choice,,}"
+    case "$dm_choice" in
+        "sddm") dm_choice="sddm" ;;
+        "lightdm") dm_choice="lightdm" ;;
+        "sonic login") dm_choice="soniclogin" ;;
+        "none") dm_choice="none" ;;
+        "keep current"*) dm_choice="current" ;;
+        *) dm_choice="current" ;;
+    esac
     state_set DE_MIG_DM "${dm_choice}"
 
     x_choice=$(tui_menu "Display Stack" "Current: $current_x\nSelect display stack:" \
         "Keep current ($current_x)" "xlibre" "xorg" "wayland") || x_choice="Keep current"
+    x_choice="${x_choice,,}"
+    case "$x_choice" in
+        "xlibre") x_choice="xlibre" ;;
+        "xorg") x_choice="xorg" ;;
+        "wayland") x_choice="wayland" ;;
+        "keep current"*) x_choice="current" ;;
+        *) x_choice="current" ;;
+    esac
     state_set DE_MIG_X "${x_choice}"
 
     audio_choice=$(tui_menu "Audio Stack" "Current: $current_audio\nSelect audio stack:" \
         "Keep current ($current_audio)" "pipewire" "pulseaudio" "none") || audio_choice="Keep current"
+    audio_choice="${audio_choice,,}"
+    case "$audio_choice" in
+        "pipewire") audio_choice="pipewire" ;;
+        "pulseaudio") audio_choice="pulseaudio" ;;
+        "none") audio_choice="none" ;;
+        "keep current"*) audio_choice="current" ;;
+        *) audio_choice="current" ;;
+    esac
     state_set DE_MIG_AUDIO "${audio_choice}"
 
     network_choice=$(tui_menu "Network Stack" "Current: $current_network\nSelect network stack:" \
         "Keep current ($current_network)" "NetworkManager" "dhcpcd+iwd" "ConnMan" "None") || network_choice="Keep current"
+    network_choice="${network_choice,,}"
+    case "$network_choice" in
+        "networkmanager") network_choice="networkmanager" ;;
+        "dhcpcd+iwd") network_choice="dhcpcd+iwd" ;;
+        "connman") network_choice="connman" ;;
+        "none") network_choice="none" ;;
+        "keep current"*) network_choice="current" ;;
+        *) network_choice="current" ;;
+    esac
     state_set DE_MIG_NETWORK "${network_choice}"
 
     local extras_list=()
@@ -235,50 +269,46 @@ prompt_migration_choices() {
 
 apply_migration_choices() {
     local dm_choice x_choice audio_choice network_choice extras_choice init
-    dm_choice="$(state_get DE_MIG_DM "Keep current")"
-    x_choice="$(state_get DE_MIG_X "Keep current")"
-    audio_choice="$(state_get DE_MIG_AUDIO "Keep current")"
-    network_choice="$(state_get DE_MIG_NETWORK "Keep current")"
+    dm_choice="$(state_get DE_MIG_DM "current")"
+    x_choice="$(state_get DE_MIG_X "current")"
+    audio_choice="$(state_get DE_MIG_AUDIO "current")"
+    network_choice="$(state_get DE_MIG_NETWORK "current")"
     extras_choice="$(state_get DE_MIG_EXTRAS "")"
     init=$(detect_current_init)
 
-    if [[ "$dm_choice" != "Keep current"* ]]; then
-        local dm_pkg="${dm_choice,,}"
-        case "$dm_pkg" in
-            sddm|lightdm|soniclogin)
-                local key="${dm_pkg}-${init}"
-                install_packages "${DM_PACKAGES[$key]:-}"
-                enable_service "${dm_pkg}" 2>/dev/null || log_warn "Could not enable $dm_pkg service"
-                ;;
-            none) remove_packages "sddm sddm-openrc sddm-runit sddm-dinit sddm-s6 lightdm lightdm-gtk-greeter lightdm-openrc lightdm-runit lightdm-dinit lightdm-s6 sonic-login-manager sonic-login-manager-openrc sonic-login-manager-runit sonic-login-manager-dinit sonic-login-manager-s6 gdm" ;;
-        esac
+    if [[ "$dm_choice" != "current" ]]; then
+        if [[ "$dm_choice" != "none" ]]; then
+            local key="${dm_choice}-${init}"
+            install_packages "${DM_PACKAGES[$key]:-}"
+            enable_service "${dm_choice}" 2>/dev/null || log_warn "Could not enable $dm_choice service"
+        else
+            remove_packages "sddm sddm-openrc sddm-runit sddm-dinit sddm-s6 lightdm lightdm-gtk-greeter lightdm-openrc lightdm-runit lightdm-dinit lightdm-s6 sonic-login-manager sonic-login-manager-openrc sonic-login-manager-runit sonic-login-manager-dinit sonic-login-manager-s6 gdm"
+        fi
     fi
 
-    if [[ "$x_choice" != "Keep current"* ]]; then
-        local x_new="${x_choice,,}"
-        if [[ "$x_new" == "xlibre" ]]; then
+    if [[ "$x_choice" != "current" ]]; then
+        if [[ "$x_choice" == "xlibre" ]]; then
             remove_packages "xorg-server xf86-input-libinput xf86-input-evdev"
-        elif [[ "$x_new" == "xorg" ]]; then
+        elif [[ "$x_choice" == "xorg" ]]; then
             remove_packages "xlibre-xserver xlibre-xserver-common xlibre-input-libinput xlibre-input-evdev"
         fi
-        install_packages "${X_PACKAGES[$x_new]:-}"
+        install_packages "${X_PACKAGES[$x_choice]:-}"
     fi
 
-    if [[ "$audio_choice" != "Keep current"* ]]; then
+    if [[ "$audio_choice" != "current" ]]; then
         remove_packages "pipewire pipewire-pulse pipewire-alsa wireplumber pipewire-jack pulseaudio pulseaudio-alsa"
-        install_packages "${AUDIO_PACKAGES[${audio_choice,,}]:-}"
+        install_packages "${AUDIO_PACKAGES[$audio_choice]:-}"
     fi
 
-    if [[ "$network_choice" != "Keep current"* ]]; then
-        local net_new="${network_choice,,}"
+    if [[ "$network_choice" != "current" ]]; then
         remove_packages "networkmanager networkmanager-openrc networkmanager-runit networkmanager-dinit networkmanager-s6"
         remove_packages "dhcpcd iwd dhcpcd-openrc dhcpcd-runit dhcpcd-dinit dhcpcd-s6 iwd-openrc iwd-runit iwd-dinit iwd-s6"
         remove_packages "connman connman-openrc connman-runit connman-dinit connman-s6"
 
-        if [[ "$net_new" != "none" ]]; then
-            local key="${net_new}-${init}"
+        if [[ "$network_choice" != "none" ]]; then
+            local key="${network_choice}-${init}"
             install_packages "${NETWORK_PACKAGES[$key]:-}"
-            case "$net_new" in
+            case "$network_choice" in
                 networkmanager) enable_service NetworkManager ;;
                 dhcpcd+iwd) enable_service dhcpcd; enable_service iwd ;;
                 connman) enable_service connmand ;;
@@ -289,8 +319,12 @@ apply_migration_choices() {
     if [[ -n "$extras_choice" ]]; then
         local pkg_list=""
         for extra in $extras_choice; do
-            pkg_list+=" ${EXTRA_PACKAGES[$extra]:-}"
+            local p="${EXTRA_PACKAGES[$extra]:-}"
+            if [[ -n "$p" ]]; then
+                pkg_list+=" $p"
+            fi
         done
+        pkg_list="${pkg_list# }"
         install_packages "$pkg_list"
     fi
 }
@@ -338,7 +372,12 @@ run_de_migration() {
     if [[ "$source_de" != "none" ]]; then
         log_info "Removing $source_de packages..."
         remove_packages "${DE_PACKAGES[$source_de]:-}"
-        pacman -Qtdq 2>/dev/null | xargs -r pacman -Rns --noconfirm 2>/dev/null || true
+        local orphan
+        orphan=$(pacman -Qtdq 2>/dev/null)
+        if [[ -n "$orphan" ]]; then
+            log_info "Removing orphaned packages..."
+            pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
+        fi
     fi
 
     if [[ "$target_de" != "none" ]]; then

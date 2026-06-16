@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="${BASE_DIR:-$(cd -- "${ISO_DIR}/.." && pwd)}"
+
 build_artix_iso() {
     local profile_name="${1:-Desktop}"
     local init="${2:-openrc}"
@@ -8,12 +11,9 @@ build_artix_iso() {
     local offline="${4:-no}"
     local boot_mode="${5:-live}"
 
-    local ISO_DIR
-    ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-
     local workspace="${HOME}/artools-workspace"
+    local iso_output_dir="${workspace}/iso"
     local iso_profile_dir="${workspace}/iso-profiles/${profile_name}"
-    local output_dir="${HOME}/artixforge-iso"
 
     if ! command -v buildiso >/dev/null; then
         log_info "Installing artools and iso-profiles..."
@@ -21,7 +21,7 @@ build_artix_iso() {
         modprobe loop
     fi
 
-    mkdir -p "${workspace}"/{iso-profiles,chroot}
+    mkdir -p "${workspace}"/{iso-profiles,chroot,iso}
 
     log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode)..."
     source "${ISO_DIR}/common.sh"
@@ -63,23 +63,32 @@ PACMAN
         needs_chroot_build=1
     fi
 
+    log_info "Refreshing build keys..."
+    pacman -S --noconfirm --needed artix-keyring
+    pacman-key --populate artix
+    pacman-key --lsign-key 78C9C713EAD7BEC69087447332E21894258C6105 || log_warn "Buildbot key trust failed – build may still work"
+
     if [[ ${needs_chroot_build} -eq 1 ]]; then
         log_info "Non-repo packages detected. Building chroot first..."
         
-        log_info "Refreshing build keys..."
-        pacman -S --noconfirm --needed artix-keyring
-        pacman-key --populate artix
-        pacman-key --lsign-key 78C9C713EAD7BEC69087447332E21894258C6105
-
         buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -x 2>&1 || die "buildiso -x failed"
 
-        local chroot_dir="/var/lib/artools/buildiso/${profile_name}/artix/rootfs"
-        if [[ ! -d "${chroot_dir}" ]]; then
-            # Fallback: try workspace-based path
-            chroot_dir="${workspace}/buildiso/${profile_name}/artix/rootfs"
+        local chroot_dir=""
+        local search_paths=(
+            "/var/lib/artools/buildiso/${profile_name}/artix/rootfs"
+            "${workspace}/buildiso/${profile_name}/artix/rootfs"
+        )
+        for candidate in "${search_paths[@]}"; do
+            if [[ -d "${candidate}" && -x "${candidate}/bin/sh" ]]; then
+                chroot_dir="${candidate}"
+                break
+            fi
+        done
+        if [[ -z "${chroot_dir}" ]]; then
+            chroot_dir=$(find "${workspace}" -type d -name rootfs -path "*/artix/rootfs" 2>/dev/null | head -n1)
         fi
 
-        if [[ -d "${chroot_dir}" ]]; then
+        if [[ -n "${chroot_dir}" && -d "${chroot_dir}" ]]; then
             log_info "Entering chroot at ${chroot_dir} to build non-repo packages..."
 
             if [[ "${wm_de}" == "mango" ]]; then
@@ -91,7 +100,7 @@ PACMAN
                     chown -R nobody: /tmp/mangowm-git
                     su nobody -c 'cd /tmp/mangowm-git && makepkg -si --noconfirm'
                     rm -rf /tmp/mangowm-git
-                " || log_warn "MangoWM build failed — ISO will still be created"
+                " || die "MangoWM build failed"
             fi
 
             if [[ "${wm_de}" == "vxwm" ]]; then
@@ -103,7 +112,7 @@ PACMAN
                     cd vxwm
                     make clean && make && make install
                     cd .. && rm -rf vxwm
-                " || log_warn "vxwm build failed — ISO will still be created"
+                " || die "vxwm build failed"
             fi
 
             if [[ "${kernel_choice}" == "linux-bazzite-bin" ]]; then
@@ -115,10 +124,10 @@ PACMAN
                     chown -R nobody: /tmp/linux-bazzite-bin
                     su nobody -c 'cd /tmp/linux-bazzite-bin && makepkg -si --noconfirm --skippgpcheck'
                     rm -rf /tmp/linux-bazzite-bin
-                " || log_warn "Bazzite kernel build failed — ISO will still be created"
+                " || die "Bazzite kernel build failed"
             fi
         else
-            log_warn "Chroot directory not found — falling back to first-boot setup script"
+            die "Chroot directory not found – cannot customize ISO. Artools may have changed paths."
         fi
 
         log_info "Squashing chroot and generating ISO..."
@@ -126,22 +135,17 @@ PACMAN
         buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -zc 2>&1 || die "buildiso -zc failed"
     else
         log_info "Building ISO (this may take a while)..."
-        mkdir -p "${output_dir}"
         local iso_log="${workspace}/iso-build-$(date +%Y%m%d-%H%M%S).log"
         buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" 2>&1 | tee "${iso_log}"
         local rc=${PIPESTATUS[0]}
 
         if [[ ${rc} -eq 0 ]]; then
             local iso_file
-            iso_file=$(find "${output_dir}" -name '*.iso' -type f 2>/dev/null | head -n1)
-            if [[ -z "${iso_file}" ]]; then
-                # buildiso may output to workspace/iso/
-                iso_file=$(find "${workspace}/iso" -name '*.iso' -type f 2>/dev/null | head -n1)
-            fi
+            iso_file=$(find "${iso_output_dir}" -name '*.iso' -type f 2>/dev/null | head -n1)
             log_info "ISO created: ${iso_file}"
             log_info "Build log: ${iso_log}"
             cp "${iso_log}" "${ISO_DIR}/" 2>/dev/null || true
-            tui_msg_quick "ISO Ready" "ISO created at:\n${iso_file}\n\nBuild log:\n${iso_log}\n${ISO_DIR}/"
+            tui_msg_quick "ISO Ready" "ISO created at:\n${iso_file}\n\nBuild log:\n${iso_log}"
         else
             log_error "ISO build failed. Check log: ${iso_log}"
             cp "${iso_log}" "${ISO_DIR}/" 2>/dev/null || true
@@ -152,16 +156,13 @@ PACMAN
 
     log_info "Build complete. Locating ISO..."
     local iso_file
-    iso_file=$(find "${output_dir}" -name '*.iso' -type f 2>/dev/null | head -n1)
-    if [[ -z "${iso_file}" ]]; then
-        iso_file=$(find "${workspace}/iso" -name '*.iso' -type f 2>/dev/null | head -n1)
-    fi
+    iso_file=$(find "${iso_output_dir}" -name '*.iso' -type f 2>/dev/null | head -n1)
 
     if [[ -n "${iso_file}" ]]; then
         log_info "ISO created: ${iso_file}"
         tui_msg_quick "ISO Ready" "ISO created at:\n${iso_file}"
     else
-        log_warn "ISO file not found in ${output_dir} or ${workspace}/iso"
+        log_warn "ISO file not found in ${iso_output_dir}"
         log_warn "Check ${workspace} for the output"
     fi
 }

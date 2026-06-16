@@ -36,6 +36,18 @@ EOF
     cat <<EOF > /mnt/etc/vconsole.conf
 KEYMAP=${keymap}
 EOF
+    artix-chroot /mnt localectl set-keymap "${keymap}" 2>/dev/null || log_warn "Failed to set console keymap"
+
+    local wm_de
+    wm_de="$(state_get WM_DE none)"
+    case "${wm_de}" in
+        hyprland|sway|niri|mango)
+            log_info "Wayland compositor detected — skipping X11 keymap (compositor handles layout)"
+            ;;
+        *)
+            artix-chroot /mnt localectl set-x11-keymap "${keymap}" 2>/dev/null || log_warn "Failed to set X11 keymap"
+            ;;
+    esac
 
     log_info "Configuring timezone..."
     [[ -e "/mnt/usr/share/zoneinfo/${timezone}" ]] || die 'invalid timezone path'

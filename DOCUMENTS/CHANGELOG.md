@@ -1,5 +1,57 @@
 # Changelog
 
+## v8.8.0.0 (2026-06-16) — ArtixForge
+
+The next few patches will include GUI upgrades.
+
+### Added
+- ISO: artix-keyring refreshed before `buildiso` call
+
+### Changed
+- System: keyboard layout now applied to X11 sessions via `localectl set-x11-keymap` — non-US layouts work in graphical environments
+- Post-install: package list deduplicated with `sort -u` before `pacman -S`
+- Installer: self-update copies to `/tmp/artix-run` before replacing files
+- Filesystems: exFAT removed as root option — no Unix permissions or symlink support
+- Kernel: `find_kernel_image()` and `find_initramfs_image()` match `KERNEL_CHOICE` explicitly
+- Bootloader: `generate_root_cmdline()` unified across all five bootloaders
+- Bootloader: Secure Boot signing paths use chroot-relative paths
+- Audio: `setup_audio()` detects and removes conflicting stacks, skips already-installed packages
+- Desktop: SonicDE and MangoWM isolated into dedicated functions with trap cleanup
+- Drivers: PCI ID validated as hex, VM detection uses CPUID hypervisor bit, Nouveau fallback cleans DKMS
+- Networking: detects conflicting stacks, skips already-installed packages
+- Recovery: `detect_init` uses binary detection — no more state/runtime mismatch
+- Recovery: kernel detection uses tiered priority
+- Recovery: `detect_coreutils` verifies BusyBox symlinks before assuming implementation
+- Power User: `validate_system()` uses `sort -V` for kernel module directory ordering
+- ZFS: service files support all four init systems, mkinitcpio hook appends instead of replacing
+- Migrations: DM/network normalisation uses explicit case mapping, init package transformation fixed
+- ISO: `BASE_DIR` and installer functions sourced if missing, chroot detection uses multiple fallbacks
+- Partitioning: removed unnecessary `dd` wipe, LVM volume group name configurable
+
+### Fixed
+- CachyOS: `Architecture = x86_64_v4` added to v4 repo sections
+- Recovery: `pacman_root_has` guarded against empty input
+- Recovery: `repair_pacman` batch arithmetic fixed
+- Recovery: filesystem repair unmounts BTRFS recursively, verifies FS before remount
+- Recovery: `/dev/mapper/control` filtered, already-open mappers skipped
+- ZFS: preflight installs `zfs-dkms` from archzfs with repo prefix
+- ZFS: removed unbound `zfs_pkg` variable in modprobe check
+- TKG: `make modules_install INSTALL_MOD_PATH=/mnt` and `make install INSTALL_PATH=/mnt/boot`
+- bcachefs: mkinitcpio hook appends instead of replacing
+- Bootloader: `find_kernel_image` matches `KERNEL_CHOICE` instead of alphabetical `head -n1`
+- Limine: snapshot loop uses `while read` with proper quoting
+- Storage: duplicate block-device validation removed
+- Storage: LUKS reopen cleans up stale mappers
+- Storage: EFIStub mount detection fixed
+- Desktop: dead `elif` in KDE profile logic removed
+- Desktop: MangoWM AUR build uses trap for cleanup
+- Drivers: PCI ID validated, VM detection improved, Nouveau fallback cleans DKMS
+- Networking: service enable failures logged
+- Migrations: orphan removal checks list first, extras loop builds clean list
+- ISO: offline mode skips target configuration for installer ISOs
+- ISO: `cleanup.sh` uses explicit `output_dir` fallback
+- Power User: kernel module sort fixed
+
 ## v8.7.0.8 (2026-06-16) — ArtixForge
 
 ### Fixed

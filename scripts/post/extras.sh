@@ -1,19 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-readonly CURATED_EXTRAS=(
-    git flatpak firewalld bluez zram-tools usb_modeswitch
-    nano vim neovim micro helix
-    firefox chromium qutebrowser
-    ranger lf nnn thunar
-    alacritty kitty foot
-    fastfetch fzf zoxide starship eza tmux
-    btop htop nvtop
-    mpv feh
-    rsvc
-    swaybg swaylock waybar wofi fuzzel hyprpaper
-)
-
 install_extras() {
     local selected=" ${EXTRAS:-} " pkgs=() init="${INIT:-openrc}"
 
@@ -69,14 +56,16 @@ install_extras() {
 
     if [[ ${#pkgs[@]} -eq 0 ]]; then return 0; fi
 
+    local -a deduped
+    mapfile -t deduped < <(printf '%s\n' "${pkgs[@]}" | sort -u)
+
     log_info "Installing extras..."
-    pacman -S --noconfirm --needed "${pkgs[@]}"
+    pacman -S --noconfirm --needed "${deduped[@]}"
 
     [[ "${selected}" == *" firewalld "* ]] && enable_service firewalld
     [[ "${selected}" == *" bluez "* ]] && enable_service bluetooth
     [[ "${selected}" == *" zram-tools "* ]] && enable_service zramd
 
-    # rsvc install
     if [[ "${selected}" == *" rsvc "* && "${init}" == 'runit' ]]; then
         log_info "Installing rsvc..."
         git clone https://github.com/SashexSRB/rsvc /tmp/rsvc || true

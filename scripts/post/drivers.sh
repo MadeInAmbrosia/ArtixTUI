@@ -23,12 +23,23 @@ get_gpu_info() {
 }
 
 get_pci_id() {
-    lspci -n 2>/dev/null | awk '/0300|0302/ {print $3}' | awk -F':' '{print $2}' | head -n1 || true
+    local raw
+    raw=$(lspci -n 2>/dev/null | awk '/0300|0302/ {print $3}' | awk -F':' '{print $2}' | head -n1 || true)
+    if [[ "${raw}" =~ ^[0-9a-fA-F]{4}$ ]]; then
+        printf '%s\n' "${raw}"
+    else
+        printf ''
+    fi
 }
 
 detect_vm() {
     local vm
     vm=$(grep -h -oE 'vmware|qemu|kvm|oracle|virtualbox' /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor 2>/dev/null | head -n1)
+    if [[ -z "${vm}" ]]; then
+        if grep -qE '^flags\b.*\bhypervisor\b' /proc/cpuinfo 2>/dev/null; then
+            vm='kvm'
+        fi
+    fi
     [[ -n "${vm}" ]] && printf '%s\n' "${vm}" || printf 'none\n'
 }
 
@@ -174,6 +185,8 @@ install_drivers() {
         log_error "NVIDIA failed. Trying nouveau fallback..."
         {
             export COLUMNS=80 LINES=24 TERM=dumb
+            modprobe -r nvidia nvidia_modeset nvidia_uvm nvidia_drm 2>/dev/null || true
+            dkms remove nvidia --all 2>/dev/null || true
             if [[ "${x_stack}" == 'xlibre' ]]; then
                 retry_command "nouveau fallback" pacman --color=never --noconfirm --needed -S xlibre-video-nouveau mesa
             else

@@ -21,7 +21,7 @@ tui_select_init() {
 
 tui_select_filesystem() {
     local fs
-    local fs_options=("ext4" "btrfs" "xfs" "zfs" "f2fs" "bcachefs" "exfat")
+    local fs_options=("ext4" "btrfs" "xfs" "zfs" "f2fs" "bcachefs")
 
     local live_kernel_pkg=""
     case "$(uname -r)" in

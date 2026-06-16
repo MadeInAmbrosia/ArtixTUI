@@ -129,6 +129,7 @@ stage_require_storage() {
         && (
             mountpoint -q /mnt/boot \
             || mountpoint -q /mnt/efi \
+            || mountpoint -q /mnt/boot/efi \
             || [[ -f /mnt/etc/fstab ]]
         )
 }

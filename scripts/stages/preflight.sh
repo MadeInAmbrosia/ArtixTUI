@@ -84,7 +84,6 @@ stage_preflight() {
     case "${fs_type}" in
         xfs)      command_exists mkfs.xfs || pkgs+=(xfsprogs) ;;
         f2fs)     command_exists mkfs.f2fs || pkgs+=(f2fs-tools) ;;
-        exfat)    command_exists mkfs.exfat || pkgs+=(exfatprogs) ;;
         bcachefs)
             if ! command_exists mkfs.bcachefs || ! modprobe bcachefs 2>/dev/null; then
                 log_info "Building bcachefs-tools from source..."

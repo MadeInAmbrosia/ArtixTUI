@@ -4,7 +4,6 @@ set -Eeuo pipefail
 tui_show_sanity_warnings() {
     local warnings=()
 
-    [[ "$(state_get FS_TYPE)" == "exfat" ]] && warnings+=("exFAT not recommended for root")
     [[ "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("ZFS is experimental — DKMS rebuilds may be required")
     [[ "$(state_get FS_TYPE)" == "bcachefs" ]] && warnings+=("bcachefs is experimental — tools may be unstable")
     [[ "$(state_get FS_TYPE)" == "zfs" && "$(state_get BOOTLOADER)" != "grub" ]] && warnings+=("ZFS boot without GRUB is untested — consider using GRUB for ZFS systems")
@@ -24,7 +23,6 @@ tui_show_sanity_warnings() {
     [[ "$(state_get USE_LVM)" == "yes" && "$(state_get BOOTLOADER)" == "grub" ]] && warnings+=("LVM + GRUB: ensure lvm2 hook is in initramfs")
     [[ "$(state_get USE_LVM)" == "yes" && "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("LVM + EFIStub: cmdline must reference /dev/mapper paths")
     [[ "$(state_get USE_LVM)" == "yes" && "$(state_get USE_LUKS)" == "yes" ]] && warnings+=("LVM on LUKS: correct crypt device order is critical")
-    [[ "$(state_get USE_LVM)" == "yes" && "$(state_get FS_TYPE)" == "exfat" ]] && warnings+=("LVM + exFAT is unusual — ensure your use case supports this")
 
     [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get BOOTLOADER)" == "refind" ]] && warnings+=("LUKS + rEFInd: may require manual boot config")
     [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("LUKS + ZFS: complex setup, test thoroughly before relying on it")

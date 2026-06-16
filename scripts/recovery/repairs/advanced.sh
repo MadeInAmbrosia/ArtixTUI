@@ -106,8 +106,13 @@ Always back up your data first."
         return 0
     fi
 
-    log_info "Unmounting /mnt for filesystem check..."
-    umount /mnt 2>/dev/null || { log_error "Failed to unmount /mnt — something is using it"; return 1; }
+    if [[ "${fs_type}" == "btrfs" ]]; then
+        log_info "Unmounting BTRFS subvolumes recursively..."
+        umount -R /mnt 2>/dev/null || { log_error "Failed to unmount /mnt recursively — something is using it"; return 1; }
+    else
+        log_info "Unmounting /mnt for filesystem check..."
+        umount /mnt 2>/dev/null || { log_error "Failed to unmount /mnt — something is using it"; return 1; }
+    fi
 
     case "${fs_type}" in
         ext4)
@@ -131,12 +136,16 @@ Always back up your data first."
             fi
             ;;
         xfs)
-            if [[ "${method}" == Safe* ]]; then
-                log_info "Running xfs_repair -n (dry-run) on ${root_part}..."
-                xfs_repair -n "${root_part}" || log_warn "xfs_repair -n found issues"
+            if ! xfs_repair -n "${root_part}" &>/dev/null; then
+                if [[ "${method}" == Safe* ]]; then
+                    log_info "Running xfs_repair -n (dry-run) on ${root_part}..."
+                    xfs_repair -n "${root_part}" || log_warn "xfs_repair -n found issues"
+                else
+                    log_info "Running xfs_repair on ${root_part}..."
+                    xfs_repair "${root_part}" || log_warn "xfs_repair reported errors"
+                fi
             else
-                log_info "Running xfs_repair on ${root_part}..."
-                xfs_repair "${root_part}" || log_warn "xfs_repair reported errors"
+                log_info "xfs_repair -n reports filesystem is clean — nothing to repair"
             fi
             ;;
         *)
@@ -146,8 +155,20 @@ Always back up your data first."
             ;;
     esac
 
+    if ! blkid -o value -s TYPE "${root_part}" &>/dev/null; then
+        log_error "Filesystem signature missing on ${root_part} after repair — refusing to mount"
+        die "Filesystem may be destroyed. Manual recovery required."
+    fi
+
     log_info "Remounting ${root_part} to /mnt..."
-    mount "${root_part}" /mnt || die "Failed to remount after repair"
+    if [[ "${fs_type}" == "btrfs" ]]; then
+        mount "${root_part}" /mnt || die "Failed to remount after repair"
+        if [[ -f /mnt/etc/fstab ]]; then
+            mount -a --fstab /mnt/etc/fstab 2>/dev/null || true
+        fi
+    else
+        mount "${root_part}" /mnt || die "Failed to remount after repair"
+    fi
 
     if tui_yesno "Post-Repair" "Would you like to run standard system repair (fstab, boot, etc.)?"; then
         repair_detected_issues

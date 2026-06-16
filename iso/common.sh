@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Generate the complete package list for an artools profile
 generate_iso_package_list() {
     local init="${1}" kernel="${2}"
+
+    local required_vars=(INIT FS_TYPE BOOTLOADER NETWORK_STACK AUDIO_STACK X_STACK WM_DE)
+    for var in "${required_vars[@]}"; do
+        state_get "${var}" &>/dev/null || {
+            log_warn "State variable ${var} not set; ISO profile may be incomplete"
+        }
+    done
 
     local -a pkg_list=()
 
@@ -17,7 +23,6 @@ generate_iso_package_list() {
     pkg_list+=(intel-ucode amd-ucode)
     pkg_list+=("${kernel}" "${kernel}-headers")
 
-    # Init system
     case "${init}" in
         openrc) pkg_list+=(openrc) ;;
         runit)  pkg_list+=(runit) ;;
@@ -109,7 +114,6 @@ generate_iso_package_list() {
         pkg_list+=(eukify)
     fi
 
-    # User-requested extra packages for the ISO
     local iso_extras
     iso_extras="$(state_get ISO_EXTRA_PACKAGES "")"
     for extra in ${iso_extras}; do
@@ -119,16 +123,13 @@ generate_iso_package_list() {
     printf '%s\n' "${pkg_list[@]}" | sort -u
 }
 
-# Generate the full artools profile directory
 generate_artools_profile() {
     local out_dir="${1}" profile_name="${2}" init="${3}" kernel="${4}" boot_mode="${5:-live}"
 
     mkdir -p "${out_dir}"/{live-overlay,desktop-overlay,airootfs/etc}
 
-    # Write package list
     generate_iso_package_list "${init}" "${kernel}" > "${out_dir}/packages.x86_64"
 
-    # Init-specific live overlays
     case "${init}" in
         openrc)
             mkdir -p "${out_dir}/live-overlay/etc/runlevels/default"
@@ -153,7 +154,6 @@ generate_artools_profile() {
             ;;
     esac
 
-    # Installer ISO: auto-launch ArtixForge on boot
     if [[ "${boot_mode}" == "installer" ]]; then
         log_info "Configuring installer ISO auto‑boot..."
         case "${init}" in
@@ -209,7 +209,6 @@ EOF
 EOF
                 ;;
         esac
-        # Disable display manager in installer mode
         rm -f "${out_dir}/live-overlay/etc/runlevels/default/lightdm" 2>/dev/null || true
         rm -f "${out_dir}/live-overlay/etc/runlevels/default/sddm" 2>/dev/null || true
         rm -f "${out_dir}/live-overlay/etc/dinit.d/boot.d/lightdm" 2>/dev/null || true
@@ -218,7 +217,6 @@ EOF
         rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/sddm" 2>/dev/null || true
     fi
 
-    # Profile configuration for artools
     cat > "${out_dir}/profile.conf" <<EOF
 initsys="${init}"
 kernel="${kernel}"
@@ -228,7 +226,6 @@ dist_release="artixforge-${profile_name,,}"
 dist_branding="${profile_name}"
 EOF
 
-    # Copy the full ArtixForge installer into the ISO
     mkdir -p "${out_dir}/airootfs/root"
     cp -a "${BASE_DIR}" "${out_dir}/airootfs/root/ArtixForge"
     log_info "ArtixForge copied into ISO at /root/ArtixForge"

@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="${BASE_DIR:-$(cd -- "${ISO_DIR}/.." && pwd)}"
 
 start_iso_build() {
     if ! command -v buildiso &>/dev/null; then
@@ -13,7 +14,6 @@ start_iso_build() {
         fi
     fi
 
-    # Ask boot mode FIRST
     local boot_mode
     boot_mode=$(tui_menu "ISO Type" "What kind of ISO do you want to build?" \
         "Live Desktop – full graphical environment, installer available manually" \
@@ -24,7 +24,6 @@ start_iso_build() {
         "Installer"*)    boot_mode="installer" ;;
     esac
 
-    # Configuration – skip DE stuff for installer mode
     if [[ "${boot_mode}" == "live" ]]; then
         local config_method
         config_method=$(tui_menu "ISO Configuration" "How would you like to configure the ISO?" \
@@ -65,7 +64,6 @@ start_iso_build() {
             "linux" "linux-zen" "linux-lts" "linux-hardened") || return 1
         state_set KERNEL_CHOICE "${inst_kernel}"
 
-        # Defaults for installer mode
         state_set WM_DE "none"
         state_set DISPLAY_MANAGER "none"
         state_set X_STACK "none"
@@ -74,7 +72,6 @@ start_iso_build() {
         state_set QUICK_PROFILE "Installer"
     fi
 
-    # Optional extra packages
     if tui_yesno "Additional Packages" "Would you like to add extra packages to the ISO?"; then
         local extra_pkgs
         extra_pkgs=$(tui_checklist "Extra Packages" "Select additional packages to include:" \
@@ -121,8 +118,12 @@ start_iso_build() {
     offline="no"
     if tui_yesno "Offline ISO" "Include all packages for offline installation?"; then
         offline="yes"
-        tui_msg_quick "Offline Configuration" "Now configure the target system.\nThese packages will be bundled for offline installation."
-        tui_collect_install_config
+        if [[ "${boot_mode}" == "live" ]]; then
+            tui_msg_quick "Offline Configuration" "Now configure the target system.\nThese packages will be bundled for offline installation."
+            tui_collect_install_config
+        else
+            log_info "Installer ISO offline mode: using existing package list (no target configuration needed)"
+        fi
     fi
 
     source "${ISO_DIR}/build.sh"

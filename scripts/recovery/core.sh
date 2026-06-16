@@ -15,10 +15,15 @@ recovery_mount_all() {
     if [[ ${#luks_parts[@]} -gt 0 ]]; then
         tui_msg "LUKS Container Found" "Found encrypted partition(s): ${luks_parts[*]}"
         for part in "${luks_parts[@]}"; do
+            local mapper_name="crypt_$(basename "${part}")"
+            if [[ -b "/dev/mapper/${mapper_name}" ]]; then
+                log_info "Mapper ${mapper_name} already open — skipping unlock"
+                continue
+            fi
             if tui_yesno "Unlock LUKS" "Unlock ${part}?"; then
                 local pass=""
                 pass=$(tui_password "LUKS Passphrase" "Enter passphrase for ${part}:") || die "LUKS unlock cancelled"
-                printf '%s' "${pass}" | cryptsetup luksOpen "${part}" "crypt_$(basename "${part}")" - || {
+                printf '%s' "${pass}" | cryptsetup luksOpen "${part}" "${mapper_name}" - || {
                     log_warn "Failed to unlock ${part} – wrong passphrase?"
                     continue
                 }
@@ -44,6 +49,7 @@ recovery_mount_all() {
     if [[ -z "${root_candidate}" ]]; then
         for dev in /dev/mapper/*; do
             [[ -b "${dev}" ]] || continue
+            [[ "$(basename "${dev}")" == "control" ]] && continue
             local fs_type
             fs_type=$(blkid -o value -s TYPE "${dev}" 2>/dev/null || true)
             if [[ "${fs_type}" =~ ^(ext[234]|xfs|btrfs|f2fs)$ ]]; then
@@ -55,11 +61,14 @@ recovery_mount_all() {
 
     if [[ -z "${root_candidate}" ]]; then
         log_info "No LUKS/LVM root found — scanning plain partitions..."
-        root_candidate=$(lsblk -no PATH,FSTYPE 2>/dev/null \
-            | grep -E '(ext[234]|xfs|btrfs|f2fs)' \
-            | grep -v '/dev/loop' \
-            | head -n1 \
-            | awk '{print $1}')
+        while IFS= read -r dev; do
+            local fs_type
+            fs_type=$(blkid -o value -s TYPE "${dev}" 2>/dev/null || true)
+            if [[ "${fs_type}" =~ ^(ext[234]|xfs|btrfs|f2fs)$ ]]; then
+                root_candidate="${dev}"
+                break
+            fi
+        done < <(lsblk -no PATH 2>/dev/null | grep -v '/dev/loop')
     fi
 
     if [[ -z "${root_candidate}" ]]; then
@@ -120,6 +129,7 @@ validate_recovery_root() {
 }
 
 pacman_root_has() {
+    [[ -n "${1:-}" ]] || return 1
     [[ -d "${ROOT}/var/lib/pacman/local" ]] \
         || return 1
 

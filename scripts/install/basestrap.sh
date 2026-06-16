@@ -111,7 +111,6 @@ install_base_system() {
         xfs)       pkgs+=(xfsprogs) ;;
         f2fs)      pkgs+=(f2fs-tools) ;;
         bcachefs)  pkgs+=(bcachefs-tools bcachefs-dkms) ;;
-        exfat)     pkgs+=(exfatprogs) ;;
         zfs)
             log_info "Setting up OpenZFS repository..."
             if ! grep -q '^\[archzfs\]' /etc/pacman.conf; then
@@ -243,7 +242,7 @@ EOF
 
     if [[ "${fs_type}" == 'bcachefs' ]]; then
         log_info "Adding Bcachefs hook to mkinitcpio..."
-        artix-chroot /mnt sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block keyboard bcachefs filesystems)/' /etc/mkinitcpio.conf
+        artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/bcachefs \1/' /etc/mkinitcpio.conf
     fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then

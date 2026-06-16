@@ -19,12 +19,8 @@ bootloader_install_grub() {
 
     if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
         echo 'GRUB_ENABLE_CRYPTODISK=y' >> /mnt/etc/default/grub
-        local grub_cmdline="cryptdevice=UUID=${crypt_uuid}:${mapper_name}"
-        if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
-            grub_cmdline+=" root=/dev/vg0/root"
-        else
-            grub_cmdline+=" root=/dev/mapper/${mapper_name}"
-        fi
+        local grub_cmdline
+        grub_cmdline=$(generate_root_cmdline "${fs_type}" "${crypt_uuid}" "${mapper_name}" "${root_uuid}" "no")
         artix-chroot /mnt sed -i "s|^GRUB_CMDLINE_LINUX=\"\(.*\)\"|GRUB_CMDLINE_LINUX=\"\1 ${grub_cmdline}\"|" /etc/default/grub
     fi
 

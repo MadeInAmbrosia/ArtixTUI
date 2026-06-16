@@ -8,7 +8,7 @@
 
 Power User Mode is ArtixForge's source-based package compilation subsystem.
 
-It brings Gentoo-style control to Artix Linux — build kernels, drivers, init systems, coreutils, and userspace packages from source with custom compilation flags and feature toggles.
+It provides source-based package management and fine-grained build control for Artix Linux — build kernels, drivers, init systems, coreutils, and userspace packages from source with custom compilation flags and feature toggles.
 
 ---
 
@@ -60,41 +60,44 @@ The `anvil` tool is installed to:
 /usr/local/bin/anvil
 ```
 
-Use it to manage your source-built packages.
+Use it to manage recipes, source-built packages, kernel configuration, recovery operations, and community repositories.
 
-### Commands
+---
+
+## Commands
 
 ```bash
 anvil list                 # List installed source packages
-anvil list-recipes         # List all available recipes
+anvil list-recipes         # List available recipes
 anvil info <pkg>           # Show build details
-anvil rebuild <pkg>        # Rebuild package with current flags
+anvil rebuild <pkg>        # Rebuild a specific package
 anvil new <name>           # Create a new recipe
 anvil edit <name>          # Edit recipe
 anvil lint <name>          # Validate recipe
 anvil config               # Edit running kernel config
 anvil menuconfig           # Launch make menuconfig
+anvil fetch-source <pkg>   # Prepare package sources for manual build workflow
+anvil fetch-recipe <name>  # Download a single recipe from the community repo
 anvil fetch-all            # Download all recipe sources for offline builds
-anvil upgrade              # Backup recipes and update from remote
+anvil upgrade              # Backup recipes, update repository, report changes
 anvil cache-clean          # Remove obsolete cached packages
-anvil sync                 # Update recipes from remote
+anvil sync                 # Update recipe index and refresh enabled recipes
 anvil recovery             # Check and repair source-built packages
 anvil checksum <recipe>    # Download sources and print SHA256 checksums
-anvil fetch-recipe <name>  # Download a single recipe from the community repo
-anvil sections             # Manage which recipe sections are enabled
+anvil sections             # Manage enabled recipe sections
 anvil --tui                # Launch interactive TUI
 ```
 
-`anvil` automatically inherits the colour theme you chose during installation. Your theme choice is saved to `/etc/anvil-theme.conf` (legacy: `/etc/gartix-theme.conf` also works) and loaded on every run.
+Theme selection is inherited from installation and stored in `/etc/anvil-theme.conf` (legacy: `/etc/gartix-theme.conf` also supported). It is loaded automatically on startup.
 
 ---
 
 ## Recovery
 
-`anvil recovery` checks all source-built packages for missing files or recipes, and can rebuild them with the current profile and flags.
+`anvil recovery` audits and repairs source-built packages, checking for missing recipes, missing kernel artifacts, and potentially broken installations.
 
 ```bash
-anvil recovery             # Check all packages and prompt for repair
+anvil recovery             # Full system audit and optional repair
 anvil recovery linux       # Rebuild a specific package
 ```
 
@@ -102,9 +105,9 @@ anvil recovery linux       # Rebuild a specific package
 
 ## Recipes
 
-Recipes are simple Bash files stored in the ArtixForge-recipes community repository.
+Recipes are Bash-based build definitions stored in the ArtixForge-recipes repository.
 
-The local `poweruser/recipes/` directory ships with only `template.sh` — all other recipes are fetched from the repository during installation or via `anvil fetch-recipe`.
+The local `poweruser/recipes/` directory ships only `template.sh`. All other recipes are fetched during installation or via `anvil fetch-recipe`.
 
 Each recipe defines:
 
@@ -113,11 +116,30 @@ Each recipe defines:
 * Feature flags
 * Build phases
 
-Use `recipes/template.sh` as a starting point or generate one interactively with:
+New recipes can be created with:
 
 ```bash
 anvil new <name>
 ```
+
+---
+
+## Recipe Sections
+
+Recipes are grouped into sections:
+
+* OFFICIAL/Base — core maintained recipes
+* OFFICIAL/Other — extended tested recipes
+* COMMUNITY/Base — community submissions under review
+* COMMUNITY/Other — experimental community recipes
+
+Manage enabled sections with:
+
+```bash
+anvil sections
+```
+
+Only enabled sections are used by fetch, sync, and source operations.
 
 ---
 
@@ -131,18 +153,18 @@ poweruser/profile/
 
 Built-in profiles:
 
-* `default`
-* `safe`
-* `performance`
-* `hardened`
+* default
+* safe
+* performance
+* hardened
 
-During installation you can tweak flags inline, and custom profiles are saved automatically.
+Profiles can be customized during installation and are persisted automatically.
 
 ---
 
 ## Build Cache
 
-Built packages are cached in:
+Built artifacts are stored in:
 
 ```text
 poweruser/build/artifacts/
@@ -154,7 +176,7 @@ or
 /var/cache/artix-poweruser/artifacts/
 ```
 
-The package database is stored at:
+Package database location:
 
 ```text
 poweruser/db/local.db
@@ -166,14 +188,24 @@ or
 /usr/share/artix-poweruser/db/local.db
 ```
 
-Depending if you're installing or in the installed system.
+depending on installation mode.
 
-This tracks:
+Tracked metadata includes:
 
 * Installed packages
 * Build flags
 * Package versions
-* Build metadata
+* Build history
+
+---
+
+## Offline Builds
+
+```bash
+anvil fetch-all
+```
+
+Downloads all required source archives for enabled recipes, allowing fully offline builds once cached.
 
 ---
 
@@ -181,6 +213,6 @@ This tracks:
 
 * Artix Linux live environment
 * Internet connection for source downloads
-* Sufficient disk space (~5 GB temporary space for kernel builds)
-* `gum` for TUI (installed automatically if missing)
-* The build engine includes automatic retry for failed downloads, mid-build resume for interrupted compilations, and pacman lock recovery
+* ~5 GB temporary disk space for kernel builds
+* `gum` for TUI (auto-installed if missing)
+* Build system supports retries, resume on interruption, and lock recovery
