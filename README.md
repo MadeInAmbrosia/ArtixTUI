@@ -36,7 +36,7 @@ Currently, the following needs testing:
 - Migrations for both DE and INITs need testing
 - Does ISO building pass?
 - Does the GUI render everything properly? (*Note: It doesn't*)
-- ~~Does SonicDE work?~~ Solved - Works as an untrusted installation. Will be revisited in the future or outright removed
+- ~~Does SonicDE work?~~ Solved - **Works as an untrusted installation. Will be revisited in the future or outright removed**
 - Does TKG compile properly?
 - Does offline mode allow proper package bundling from user config?
 - How well does Recovery handle edge cases?
