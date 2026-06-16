@@ -69,12 +69,15 @@ basestrap_kernel_cachyos() {
             if [[ -f /etc/pacman.d/cachyos-v4-mirrorlist ]]; then
                 cat <<'EOF' >> /etc/pacman.conf
 [cachyos-v4]
+Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-core-v4]
+Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-extra-v4]
+Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 EOF

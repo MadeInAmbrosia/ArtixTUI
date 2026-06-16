@@ -14,12 +14,15 @@ basestrap_target_repo_cachyos() {
         if [[ "${cpu_level}" == "x86-64-v4" ]]; then
             cat <<'EOF' >> /mnt/etc/pacman.conf
 [cachyos-v4]
+Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-core-v4]
+Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 [cachyos-extra-v4]
+Architecture = x86_64_v4
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
 
 EOF

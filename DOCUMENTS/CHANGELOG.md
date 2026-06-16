@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.7.0.8 (2026-06-16) — ArtixForge
+
+### Fixed
+- CachyOS: `Architecture = x86_64_v4` added to v4 repo sections — fixes "package architecture is not valid" on v4-capable CPUs
+
 ## v8.7.0.7 (2026-06-15) — ArtixForge
 
 ### Fixed
