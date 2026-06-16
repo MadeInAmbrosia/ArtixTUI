@@ -31,12 +31,12 @@ chmod +x install
 sudo ./install
 ```
 Currently, the following needs testing:
-- Does ZFS Boot properly?
-- LUKS+LVM, LUKS+UKI, LUKS+LVM+UKI, LVM+UKI with any bootloader (*Pref. Grub or Limine*)
+- ~~Does ZFS Boot properly?~~ Solved - **ZFS is locked to Kernel 6.15, Untestable**
+- LUKS+LVM, LUKS+UKI, LUKS+LVM+UKI, LVM+UKI with any bootloader
 - Migrations for both DE and INITs need testing
 - Does ISO building pass?
-- Does the GUI render everything properly?
-- Does SonicDE work?
+- Does the GUI render everything properly? (*Note: It doesn't*)
+- ~~Does SonicDE work?~~ Solved - Works as an untrusted installation. Will be revisited in the future or outright removed
 - Does TKG compile properly?
 - Does offline mode allow proper package bundling from user config?
 - How well does Recovery handle edge cases?
