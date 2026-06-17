@@ -451,6 +451,7 @@ run_de_migration() {
         install_packages "${DE_PACKAGES[$target_de]:-}"
     fi
 
+    log_info "MIG_ROOT=${MIG_ROOT:-empty}"
     apply_migration_choices
 
     if [[ -x "${MIG_ROOT}/usr/bin/mkinitcpio" ]]; then
