@@ -31,7 +31,6 @@ chmod +x install
 sudo ./install
 ```
 Currently, the following needs testing:
-- ZFS Boot                    [LOCKED - Kernel 6.15]
 - LUKS+LVM                    []
 - LUKS+UKI                    []
 - LUKS+LVM+UKI                []
