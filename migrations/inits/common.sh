@@ -255,12 +255,17 @@ _install_target_init_fallback() {
     local pkgs=()
     case "$init" in
         openrc) pkgs=(openrc elogind-openrc) ;;
-        runit)  pkgs=(runit elogind-runit runit-system) ;;
+        runit)  pkgs=(runit elogind-runit) ;;
         dinit)  pkgs=(dinit dinit-base dinit-rc elogind-dinit) ;;
         s6)     pkgs=(s6 s6-rc elogind-s6) ;;
         *) die "Unknown init system: $init" ;;
     esac
     log_info "Installing target init packages (fallback): ${pkgs[*]}"
+    
+    if [[ "$init" == "openrc" ]]; then
+        _pacman -Rdd --noconfirm cryptsetup-scripts 2>/dev/null || true
+    fi
+    
     _pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install ${init}"
 }
 
