@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.8.0.9 (2026-06-17) — ArtixForge
+
+### Changed
+- Migrations: `migrations/des/common.sh` now detects live ISO and routes all system operations through chroot to `/mnt` — migrations work from both live ISO and installed system
+- Migrations: `_chroot()` and `_pacman_Q()` helpers added for transparent root path routing
+- Migrations: `_enable_service()` wrapper runs service enablement inside target chroot with correct `INIT` exported
+- Migrations: `recovery_mount_all()` offered interactively when target not mounted on live ISO
+
 ## v8.8.0.8 (2026-06-17) — ArtixForge
 
 ### Fixed

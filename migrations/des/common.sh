@@ -1,6 +1,36 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+ROOT=""
+if [[ -f /run/artix/sfs/rootfs ]]; then
+    if ! mountpoint -q /mnt; then
+        tui_msg "Live ISO Detected" "Migration from live ISO requires the target system mounted at /mnt."
+        if tui_yesno "Mount Target" "Would you like to mount it now?"; then
+            recovery_mount_all
+        else
+            tui_msg_quick "Migration Cancelled" "Mount the target system at /mnt and retry."
+            exit 1
+        fi
+    fi
+    ROOT="/mnt"
+fi
+
+_chroot() {
+    if [[ -n "${ROOT}" ]]; then
+        artix-chroot "${ROOT}" "$@"
+    else
+        "$@"
+    fi
+}
+
+_pacman_Q() {
+    if [[ -n "${ROOT}" ]]; then
+        pacman --root "${ROOT}" -Q "$@" 2>/dev/null
+    else
+        pacman -Q "$@" 2>/dev/null
+    fi
+}
+
 declare -A DE_PACKAGES
 DE_PACKAGES=(
     ["kde"]="plasma-desktop dolphin konsole kde-applications"
@@ -122,83 +152,100 @@ EXTRA_PACKAGES=(
 )
 
 detect_current_de() {
-    if pacman -Qq sonicde-meta &>/dev/null; then echo "sonicde"
-    elif pacman -Qq plasma-desktop &>/dev/null; then echo "kde"
-    elif pacman -Qq xfce4 &>/dev/null; then echo "xfce"
-    elif pacman -Qq lxqt &>/dev/null; then echo "lxqt"
-    elif pacman -Qq lxde-common &>/dev/null || pacman -Qq lxde &>/dev/null; then echo "lxde"
-    elif pacman -Qq hyprland &>/dev/null; then echo "hyprland"
-    elif pacman -Qq sway &>/dev/null; then echo "sway"
-    elif pacman -Qq niri &>/dev/null; then echo "niri"
-    elif pacman -Qq i3-wm &>/dev/null; then echo "i3wm"
-    elif pacman -Qq dwm &>/dev/null; then echo "dwm"
-    elif pacman -Qq vxwm &>/dev/null; then echo "vxwm"
-    elif pacman -Qq icewm &>/dev/null; then echo "icewm"
-    elif pacman -Qq mangowm &>/dev/null; then echo "mango"
+    if _pacman_Q sonicde-meta &>/dev/null; then echo "sonicde"
+    elif _pacman_Q plasma-desktop &>/dev/null; then echo "kde"
+    elif _pacman_Q xfce4 &>/dev/null; then echo "xfce"
+    elif _pacman_Q lxqt &>/dev/null; then echo "lxqt"
+    elif _pacman_Q lxde-common &>/dev/null || _pacman_Q lxde &>/dev/null; then echo "lxde"
+    elif _pacman_Q hyprland &>/dev/null; then echo "hyprland"
+    elif _pacman_Q sway &>/dev/null; then echo "sway"
+    elif _pacman_Q niri &>/dev/null; then echo "niri"
+    elif _pacman_Q i3-wm &>/dev/null; then echo "i3wm"
+    elif _pacman_Q dwm &>/dev/null; then echo "dwm"
+    elif _pacman_Q vxwm &>/dev/null; then echo "vxwm"
+    elif _pacman_Q icewm &>/dev/null; then echo "icewm"
+    elif _pacman_Q mangowm &>/dev/null; then echo "mango"
     else echo "none"; fi
 }
 
 detect_current_dm() {
-    if pacman -Qq sonic-login-manager &>/dev/null; then echo "soniclogin"
-    elif pacman -Qq sddm &>/dev/null; then echo "sddm"
-    elif pacman -Qq lightdm &>/dev/null; then echo "lightdm"
-    elif pacman -Qq gdm &>/dev/null; then echo "gdm"
+    if _pacman_Q sonic-login-manager &>/dev/null; then echo "soniclogin"
+    elif _pacman_Q sddm &>/dev/null; then echo "sddm"
+    elif _pacman_Q lightdm &>/dev/null; then echo "lightdm"
+    elif _pacman_Q gdm &>/dev/null; then echo "gdm"
     else echo "none"; fi
 }
 
 detect_current_x() {
-    if pacman -Qq xlibre-xserver &>/dev/null; then echo "xlibre"
-    elif pacman -Qq xorg-server &>/dev/null; then echo "xorg"
-    elif [[ -d /usr/share/wayland-sessions ]]; then echo "wayland"
+    if _pacman_Q xlibre-xserver &>/dev/null; then echo "xlibre"
+    elif _pacman_Q xorg-server &>/dev/null; then echo "xorg"
+    elif [[ -d "${ROOT}/usr/share/wayland-sessions" ]]; then echo "wayland"
     else echo "none"; fi
 }
 
 detect_current_audio() {
-    if pacman -Qq pipewire &>/dev/null; then echo "pipewire"
-    elif pacman -Qq pulseaudio &>/dev/null; then echo "pulseaudio"
+    if _pacman_Q pipewire &>/dev/null; then echo "pipewire"
+    elif _pacman_Q pulseaudio &>/dev/null; then echo "pulseaudio"
     else echo "none"; fi
 }
 
 detect_current_network() {
-    if pacman -Qq networkmanager &>/dev/null; then echo "networkmanager"
-    elif pacman -Qq dhcpcd &>/dev/null || pacman -Qq iwd &>/dev/null; then echo "dhcpcd+iwd"
-    elif pacman -Qq connman &>/dev/null; then echo "connman"
+    if _pacman_Q networkmanager &>/dev/null; then echo "networkmanager"
+    elif _pacman_Q dhcpcd &>/dev/null || _pacman_Q iwd &>/dev/null; then echo "dhcpcd+iwd"
+    elif _pacman_Q connman &>/dev/null; then echo "connman"
     else echo "none"; fi
 }
 
 detect_current_init() {
-    if [[ -d /etc/runit ]]; then echo "runit"
-    elif [[ -d /etc/dinit.d ]]; then echo "dinit"
-    elif [[ -d /etc/s6 ]]; then echo "s6"
+    if [[ -d "${ROOT}/etc/runit" ]]; then echo "runit"
+    elif [[ -d "${ROOT}/etc/dinit.d" ]]; then echo "dinit"
+    elif [[ -d "${ROOT}/etc/s6" ]]; then echo "s6"
     else echo "openrc"; fi
 }
 
 backup_de_config() {
-    local backup_dir="/root/de-backup-$(date +%Y%m%d-%H%M%S)"
+    local backup_dir="${ROOT}/root/de-backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$backup_dir"
-    for user_home in /home/*; do
+    for user_home in "${ROOT}"/home/*; do
         local user="${user_home##*/}"
         [[ -d "$user_home" ]] || continue
         cp -a "$user_home/.config" "$backup_dir/$user-config" 2>/dev/null || true
         cp -a "$user_home/.local"  "$backup_dir/$user-local"  2>/dev/null || true
         cp -a "$user_home/.cache"  "$backup_dir/$user-cache"  2>/dev/null || true
     done
-    cp -a /etc/sddm.conf.d    "$backup_dir/sddm.conf.d"    2>/dev/null || true
-    cp -a /etc/lightdm        "$backup_dir/lightdm"        2>/dev/null || true
-    cp -a /etc/X11/xorg.conf.d "$backup_dir/xorg.conf.d"   2>/dev/null || true
+    cp -a "${ROOT}/etc/sddm.conf.d"    "$backup_dir/sddm.conf.d"    2>/dev/null || true
+    cp -a "${ROOT}/etc/lightdm"        "$backup_dir/lightdm"        2>/dev/null || true
+    cp -a "${ROOT}/etc/X11/xorg.conf.d" "$backup_dir/xorg.conf.d"   2>/dev/null || true
     log_info "Configs backed up to $backup_dir"
 }
 
 remove_packages() {
     local pkgs="$1"
     [[ -n "$pkgs" ]] || return 0
-    pacman -Rns --noconfirm $pkgs 2>/dev/null || true
+    if [[ -n "${ROOT}" ]]; then
+        artix-chroot "${ROOT}" pacman -Rns --noconfirm $pkgs 2>/dev/null || true
+    else
+        pacman -Rns --noconfirm $pkgs 2>/dev/null || true
+    fi
 }
 
 install_packages() {
     local pkgs="$1"
     [[ -n "$pkgs" ]] || return 0
-    pacman -S --noconfirm --needed $pkgs 2>/dev/null || log_warn "Failed to install some packages"
+    if [[ -n "${ROOT}" ]]; then
+        artix-chroot "${ROOT}" pacman -S --noconfirm --needed $pkgs 2>/dev/null || log_warn "Failed to install some packages"
+    else
+        pacman -S --noconfirm --needed $pkgs 2>/dev/null || log_warn "Failed to install some packages"
+    fi
+}
+
+_enable_service() {
+    local svc="$1"
+    if [[ -n "${ROOT}" ]]; then
+        artix-chroot "${ROOT}" bash -c "source /usr/local/lib/artix-installer/services.sh 2>/dev/null || source /root/ArtixForge/scripts/install/services.sh; export INIT='${INIT}'; enable_service '${svc}'" 2>/dev/null || log_warn "Could not enable $svc service"
+    else
+        enable_service "$svc" 2>/dev/null || log_warn "Could not enable $svc service"
+    fi
 }
 
 prompt_migration_choices() {
@@ -281,7 +328,7 @@ apply_migration_choices() {
         if [[ "$dm_choice" != "none" ]]; then
             local key="${dm_choice}-${init}"
             install_packages "${DM_PACKAGES[$key]:-}"
-            enable_service "${dm_choice}" 2>/dev/null || log_warn "Could not enable $dm_choice service"
+            _enable_service "${dm_choice}"
         else
             remove_packages "sddm sddm-openrc sddm-runit sddm-dinit sddm-s6 lightdm lightdm-gtk-greeter lightdm-openrc lightdm-runit lightdm-dinit lightdm-s6 sonic-login-manager sonic-login-manager-openrc sonic-login-manager-runit sonic-login-manager-dinit sonic-login-manager-s6 gdm"
         fi
@@ -310,10 +357,9 @@ apply_migration_choices() {
             local key="${network_choice}-${init}"
             install_packages "${NETWORK_PACKAGES[$key]:-}"
             case "$network_choice" in
-                networkmanager) enable_service NetworkManager || log_warn "Failed to enable NetworkManager" ;;
-                dhcpcd+iwd) enable_service dhcpcd || log_warn "Failed to enable dhcpcd"
-                            enable_service iwd || log_warn "Failed to enable iwd" ;;
-                connman) enable_service connmand || log_warn "Failed to enable connmand" ;;
+                networkmanager) _enable_service NetworkManager ;;
+                dhcpcd+iwd) _enable_service dhcpcd; _enable_service iwd ;;
+                connman) _enable_service connmand ;;
             esac
         fi
     fi
@@ -383,11 +429,20 @@ run_de_migration() {
     if [[ "$source_de" != "none" ]]; then
         log_info "Removing $source_de packages..."
         remove_packages "${DE_PACKAGES[$source_de]:-}"
-        local orphan
-        orphan=$(pacman -Qtdq 2>/dev/null)
-        if [[ -n "$orphan" ]]; then
-            log_info "Removing orphaned packages..."
-            pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
+        if [[ -n "${ROOT}" ]]; then
+            local orphan
+            orphan=$(artix-chroot "${ROOT}" pacman -Qtdq 2>/dev/null)
+            if [[ -n "$orphan" ]]; then
+                log_info "Removing orphaned packages..."
+                artix-chroot "${ROOT}" pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
+            fi
+        else
+            local orphan
+            orphan=$(pacman -Qtdq 2>/dev/null)
+            if [[ -n "$orphan" ]]; then
+                log_info "Removing orphaned packages..."
+                pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
+            fi
         fi
     fi
 
@@ -398,8 +453,8 @@ run_de_migration() {
 
     apply_migration_choices
 
-    if [[ -x /usr/bin/mkinitcpio && -d /mnt/boot ]]; then
-        artix-chroot /mnt mkinitcpio -P 2>/dev/null || true
+    if [[ -x "${ROOT}/usr/bin/mkinitcpio" ]]; then
+        _chroot mkinitcpio -P 2>/dev/null || true
     fi
 
     log_info "Desktop migration complete."

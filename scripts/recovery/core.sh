@@ -104,7 +104,7 @@ recovery_mount_all() {
         mount --bind /sys/firmware/efi/efivars /mnt/sys/firmware/efi/efivars 2>/dev/null || true
     fi
 
-    log_info "Recovery environment prepared."
+    log_info "Mounted ${root_candidate} at /mnt with ESP."
 }
 
 recovery_detect_install() {
