@@ -367,7 +367,16 @@ run_de_migration() {
     log_info "Backing up user configs..."
     backup_de_config
 
-    prompt_migration_choices
+    if [[ "$source_de" == "none" ]]; then
+        local default_dm="${DE_DISPLAY_MANAGER[$target_de]:-none}"
+        state_set DE_MIG_DM "$default_dm"
+        state_set DE_MIG_X "$(detect_current_x)"
+        state_set DE_MIG_AUDIO "$(detect_current_audio)"
+        state_set DE_MIG_NETWORK "$(detect_current_network)"
+        state_set DE_MIG_EXTRAS ""
+    else
+        prompt_migration_choices
+    fi
 
     if [[ "$source_de" != "none" ]]; then
         log_info "Removing $source_de packages..."
@@ -417,9 +426,6 @@ tui_de_migration_menu() {
     if [[ -f "$script" ]]; then
         source "$script"
     else
-        log_warn "No direct migration script for $source_de → $target_de"
-        if tui_yesno "Generic Migration" "No direct path exists. Remove all $source_de packages and install $target_de?"; then
-            run_de_migration "$source_de" "$target_de"
-        fi
+        run_de_migration "$source_de" "$target_de"
     fi
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.0.6 (2026-06-17) — ArtixForge
+
+### Fixed
+- Migrations: `run_de_migration` now auto-selects target DE's default display manager when migrating from `none` — e.g. lightdm correctly installed for xfce
+- Migrations: `tui_de_migration_menu` no longer warns on missing pair scripts — generic `run_de_migration` handles all combos silently
+
 ## v8.8.0.5 (2026-06-17) — ArtixForge
 
 ### Fixed

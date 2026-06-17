@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.8.0.5-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.8.0.6-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
@@ -39,8 +39,8 @@ Currently, the following needs testing:
 - LUKS+UKI                    [✓]
 - LUKS+LVM+UKI                [✓]
 - LVM+UKI                     [✓]
-- Cachy kernels work?         []
-- DE migrations               []
+- Cachy kernels work?         [✓]
+- DE migrations               [✓]
 - Init migrations             []
 - ISO building                []
 - GUI rendering               []
