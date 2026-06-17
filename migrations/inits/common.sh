@@ -254,10 +254,10 @@ _install_target_init_fallback() {
     local init="${1}"
     local pkgs=()
     case "$init" in
-        openrc) pkgs=(openrc elogind-openrc openrc-system) ;;
+        openrc) pkgs=(openrc elogind-openrc) ;;
         runit)  pkgs=(runit elogind-runit runit-system) ;;
-        dinit)  pkgs=(dinit dinit-base dinit-rc elogind-dinit dinit-system) ;;
-        s6)     pkgs=(s6 s6-rc elogind-s6 s6-system) ;;
+        dinit)  pkgs=(dinit dinit-base dinit-rc elogind-dinit) ;;
+        s6)     pkgs=(s6 s6-rc elogind-s6) ;;
         *) die "Unknown init system: $init" ;;
     esac
     log_info "Installing target init packages (fallback): ${pkgs[*]}"
