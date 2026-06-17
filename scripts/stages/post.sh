@@ -55,7 +55,6 @@ source ./scripts/post/networking.sh
 source ./scripts/post/desktop.sh
 source ./scripts/post/audio.sh
 source ./scripts/post/extras.sh
-source ./scripts/post/kernel.sh
 
 log_info "Configuring networking..."
 setup_networking
