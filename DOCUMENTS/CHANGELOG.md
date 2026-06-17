@@ -1,12 +1,21 @@
 # Changelog
 
+## v8.8.1.1 (2026-06-17) — ArtixForge
+
+### Added
+- Migrations: `_repair_pacman_db()` runs at start of `run_de_migration` — detects and repairs broken package database entries before detection
+- Migrations: `_cleanup_target_repo()` removes SonicDE repository after migration — `SigLevel = Never` not left permanent ( ͠° ͟ʖ ͡°)
+
+### Fixed
+- Migrations: `ROOT` variable conflict resolved — recovery detection now correctly queries target system packages
+
 ## v8.8.1.0 (2026-06-17) — ArtixForge
 
 ### Changed
 - Migrations: `migrations/inits/common.sh` now supports live ISO via `MIG_ROOT` — all system operations route through chroot
 - Migrations: init detection uses recovery's `detect_init` instead of manual selection
 - Migrations: `_enable_service()` wrapper shared between DE and init migrations
-- Migrations: detection functions in `des/common.sh` replaced with wrappers that call recovery's existing `detect_desktop`, `detect_display_manager`, `detect_xstack`, `detect_audio_stack`, `detect_network_stack`
+- Migrations: detection functions in `des/common.sh` replaced with wrappers that call recovery's existing `detect_desktop`, `detect_display_manager`, `detect_xstack`, `detect_audio_stack`, `detect_network_stack` (That moment when you forget your own codebase)
 
 ## v8.8.0.10 (2026-06-17) — ArtixForge
 

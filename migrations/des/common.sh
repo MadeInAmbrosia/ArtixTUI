@@ -273,6 +273,41 @@ REPO_EOF
     esac
 }
 
+_cleanup_target_repo() {
+    local de="${1}"
+    case "${de}" in
+        sonicde)
+            log_info "Removing SonicDE repository — SigLevel = Never no longer needed"
+            if [[ -n "${MIG_ROOT}" ]]; then
+                artix-chroot "${MIG_ROOT}" sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
+                artix-chroot "${MIG_ROOT}" pacman -Syy --noconfirm 2>/dev/null || true
+            else
+                sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
+                pacman -Syy --noconfirm 2>/dev/null || true
+            fi
+            ;;
+    esac
+}
+
+_repair_pacman_db() {
+    log_info "Checking target pacman database integrity..."
+    
+    detect_pacman_health
+
+    local issues
+    issues=$(state_get PACMAN_ISSUES none)
+    
+    if [[ "${issues}" != "none" ]]; then
+        log_warn "Pacman issues detected: ${issues}"
+        log_warn "This means something got corrupted, usually."
+        if tui_yesno "Pacman Issues" "The target system has pacman database issues. Repair now?"; then
+            repair_pacman
+        fi
+    else
+        log_info "Pacman database is healthy."
+    fi
+}
+
 prompt_migration_choices() {
     local current_dm current_x current_audio current_network current_init
     current_dm=$(detect_current_dm)
@@ -427,6 +462,8 @@ run_de_migration() {
     local source_de="${1}" target_de="${2}"
     [[ "$source_de" != "$target_de" ]] || die "Source and target DE are the same: $source_de"
 
+    _repair_pacman_db
+
     local conflicts
     conflicts=$(detect_de_conflicts "$source_de" "$target_de")
     if [[ -n "$conflicts" ]]; then
@@ -482,6 +519,10 @@ run_de_migration() {
 
     log_info "MIG_ROOT=${MIG_ROOT:-empty}"
     apply_migration_choices
+
+    if [[ "$target_de" == "sonicde" ]]; then
+        _cleanup_target_repo "$target_de"
+    fi
 
     if [[ -x "${MIG_ROOT}/usr/bin/mkinitcpio" ]]; then
         _chroot mkinitcpio -P 2>/dev/null || true
