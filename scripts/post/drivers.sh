@@ -34,15 +34,20 @@ get_pci_id() {
 
 detect_vm() {
     local vm
-    vm=$(grep -h -oE 'vmware|qemu|kvm|oracle|virtualbox' /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor 2>/dev/null | head -n1)
+    vm=$(grep -h -oiE 'vmware|qemu|kvm|oracle|virtualbox|vbox' /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor 2>/dev/null | head -n1)
     if [[ -z "${vm}" ]]; then
         if grep -qE '^flags\b.*\bhypervisor\b' /proc/cpuinfo 2>/dev/null; then
             vm='kvm'
         fi
     fi
-    [[ -n "${vm}" ]] && printf '%s\n' "${vm}" || printf 'none\n'
+    if [[ -n "${vm}" ]]; then
+        vm="${vm,,}"
+        [[ "${vm}" == "vbox" ]] && vm='virtualbox'
+        echo "${vm}"
+    else
+        echo 'none'
+    fi
 }
-
 export -f get_gpu_vendor get_gpu_info get_pci_id detect_vm
 
 install_drivers() {
@@ -172,7 +177,9 @@ install_drivers() {
             fi
         fi
 
-        [[ "${vm_type}" == 'kvm' || "${vm_type}" == 'qemu' ]] && enable_service qemu-guest-agent
+        if [[ "${vm_type}" == 'kvm' || "${vm_type}" == 'qemu' ]]; then
+            enable_service qemu-guest-agent || log_warn "Failed to enable qemu-guest-agent"
+        fi
 
         if [[ ${rc} -eq 0 ]]; then
             log_info "Driver installation complete."

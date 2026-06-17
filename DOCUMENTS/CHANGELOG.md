@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.0.4 (2026-06-17) — ArtixForge
+
+### Fixed
+- Drivers: VM detection now case-insensitive, adds `vbox` pattern — VirtualBox no longer misdetected as KVM
+- Drivers: `enable_service qemu-guest-agent` guarded with `|| log_warn` — no longer fatal when service is missing
+
 ## v8.8.0.3 (2026-06-17) — ArtixForge
 
 ### Fixed
