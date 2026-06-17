@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 MIG_ROOT=""
-if [[ -f /run/artix/sfs/rootfs ]]; then
+if [[ -d /run/artix/sfs/rootfs ]]; then
     if ! mountpoint -q /mnt; then
         tui_msg "Live ISO Detected" "Migration from live ISO requires the target system mounted at /mnt."
         if tui_yesno "Mount Target" "Would you like to mount it now?"; then
