@@ -464,6 +464,19 @@ run_de_migration() {
 
     _repair_pacman_db
 
+    if [[ "$target_de" == "kde" ]]; then
+        local kde_profile
+        kde_profile=$(tui_menu "KDE Profile" "Select KDE Plasma profile:" \
+            "minimal – plasma-desktop, dolphin, konsole" \
+            "desktop – plasma, no extra apps" \
+            "full – plasma + kde-applications") || kde_profile="desktop"
+        case "${kde_profile}" in
+            minimal*)  DE_PACKAGES["kde"]="plasma-desktop dolphin konsole xdg-desktop-portal-kde" ;;
+            desktop*)  DE_PACKAGES["kde"]="plasma xdg-desktop-portal-kde" ;;
+            full*)     DE_PACKAGES["kde"]="plasma kde-applications xdg-desktop-portal-kde" ;;
+        esac
+    fi
+
     local conflicts
     conflicts=$(detect_de_conflicts "$source_de" "$target_de")
     if [[ -n "$conflicts" ]]; then
