@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.0.2 (2026-06-17) — ArtixForge
+
+### Fixed
+- Post-install: removed stale `source ./scripts/post/kernel.sh` — file no longer exists, stage no longer fails
+
 ## v8.8.0.1 (2026-06-16) — ArtixForge
 
 ### Fixed
