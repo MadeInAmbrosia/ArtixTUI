@@ -534,6 +534,22 @@ run_init_migration() {
         cache_target_init_packages "$source_init" "$target_init"
         remove_source_init "$source_init"
         install_target_init "$source_init" "$target_init"
+
+        local enabled_svcs
+        enabled_svcs=$(list_enabled_services "$source_init")
+        local svc_pkgs=""
+        while IFS= read -r svc; do
+            [[ -z "$svc" ]] && continue
+            local mapped
+            mapped=$(map_service "$source_init" "$target_init" "$svc" 2>/dev/null || true)
+            if [[ -n "$mapped" ]]; then
+                svc_pkgs+=" ${mapped}-${target_init}"
+            fi
+        done <<< "$enabled_svcs"
+        if [[ -n "$svc_pkgs" ]]; then
+            log_info "Installing service packages: ${svc_pkgs}"
+            _pacman -S --noconfirm --needed ${svc_pkgs} 2>/dev/null || log_warn "Some service packages could not be installed"
+        fi
     fi
 
     if has_direct_table "$source_init" "$target_init"; then

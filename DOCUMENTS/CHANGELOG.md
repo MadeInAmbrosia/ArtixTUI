@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.8.1.3 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `detect_custom_services()` excludes known system services — NetworkManager, agetty, bootmisc, and other standard services no longer misdetected as custom scripts
+- Migrations: `migrated=$((migrated + 1))` replaces `((migrated++))` — avoids post-increment `set -e` crash in init service migration loop
+- Migrations: service-specific init packages installed before service migration — `NetworkManager-runit`, `dhcpcd-runit`, etc. now present when `enable_service` runs
+
 ## v8.8.1.2 (2026-06-18) — ArtixForge
 
 ### Fixed
