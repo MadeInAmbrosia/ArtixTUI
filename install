@@ -32,7 +32,19 @@ installer_error() {
     clear
     printf '\n[!] Installation failed at line: %s\n' "${line}" >&2
     printf '[!] Exit status: %s\n' "${rc}" >&2
-    printf '[!] The installation was NOT completed.\n' >&2
+    
+    if [[ -f /tmp/artix-installer/install.log ]]; then
+        printf '\n[!] Last 10 lines of install log:\n' >&2
+        tail -10 /tmp/artix-installer/install.log >&2
+    fi
+    
+    if [[ -f /tmp/artix-migration-debug.log ]]; then
+        printf '\n[!] Migration debug log available at: /tmp/artix-migration-debug.log\n' >&2
+        printf '[!] Last 20 lines:\n' >&2
+        tail -20 /tmp/artix-migration-debug.log >&2
+    fi
+    
+    printf '\n[!] The installation was NOT completed.\n' >&2
     exit "${rc}"
 }
 
