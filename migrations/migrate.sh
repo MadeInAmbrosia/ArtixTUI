@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+if [[ "${DEBUG:-false}" == "true" || "${ARTIX_DEBUG:-false}" == "true" ]]; then
+    exec 19> "${BASE_DIR}/artix-migration-debug.log"
+    export BASH_XTRACEFD=19
+    export PS4='+ ${BASH_SOURCE}:${LINENO}:${FUNCNAME[0]}: '
+    set -x
+fi
+
 MIGRATIONS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 tui_migration_menu() {
