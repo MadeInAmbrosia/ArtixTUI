@@ -37,6 +37,7 @@ Currently, the following needs testing:
 - LUKS+LVM+UKI                []
 - LVM+UKI                     []
 - ^ Bootloader combos         []
+- Cachy kernel choice testing []
 - DE migrations               []
 - Init migrations             []
 - ISO building                []
