@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.1.2 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `detect_custom_services()` excludes known system services — NetworkManager no longer misdetected as custom script
+- Migrations: `((migrated++))` and `((skipped++))` replaced with `migrated=$((migrated + 1))` — avoids post-increment `set -e` issues in init service migration loop
+
 ## v8.8.1.1 (2026-06-17) — ArtixForge
 
 ### Added

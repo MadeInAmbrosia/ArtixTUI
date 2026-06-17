@@ -280,9 +280,14 @@ backup_init_config() {
 detect_custom_services() {
     local init="${1}"
     local -a custom=()
+    local -a known_services=(NetworkManager networkmanager dhcpcd iwd sshd cronie dbus elogind seatd acpid alsa bluetoothd connmand firewalld ntpd syslog-ng lvm2 dmcrypt zfs-zed)
     local svc
     while IFS= read -r svc; do
         [[ -z "$svc" ]] && continue
+        # Skip known services that might be misdetected
+        for known in "${known_services[@]}"; do
+            [[ "$svc" == "$known" ]] && continue 2
+        done
         local owned=0
         case "$init" in
             openrc) _pacman -Qo "${MIG_ROOT}/etc/init.d/$svc" &>/dev/null && owned=1 ;;
@@ -335,10 +340,10 @@ _run_single_migration() {
         if [[ -n "$mapped" ]]; then
             log_info "  Migrating: $svc → $mapped"
             _enable_service "$mapped" "$target_init"
-            ((migrated++))
+            migrated=$((migrated + 1))
         else
             log_warn "  No mapping for $svc – skipping"
-            ((skipped++))
+            skipped=$((skipped + 1))
         fi
     done <<< "$enabled_svcs"
     log_info "Step complete: $migrated services migrated, $skipped skipped"
