@@ -32,14 +32,14 @@ sudo ./install
 ```
 
 As of 17th of June 2026, I am back to commited testing after a long haitus. Sorry for the bugs!
+###### Fine. I'll do it myself.
 
 Currently, the following needs testing:
 - LUKS+LVM                    [✓]
-- LUKS+UKI                    []
-- LUKS+LVM+UKI                []
-- LVM+UKI                     []
-- ^ Bootloader combos         []
-- Cachy kernel choice testing []
+- LUKS+UKI                    [✓]
+- LUKS+LVM+UKI                [✓]
+- LVM+UKI                     [✓]
+- Cachy kernels work?         []
 - DE migrations               []
 - Init migrations             []
 - ISO building                []
