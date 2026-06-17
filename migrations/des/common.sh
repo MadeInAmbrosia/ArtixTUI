@@ -152,55 +152,60 @@ EXTRA_PACKAGES=(
 )
 
 detect_current_de() {
-    if _pacman_Q sonicde-meta &>/dev/null; then echo "sonicde"
-    elif _pacman_Q plasma-desktop &>/dev/null; then echo "kde"
-    elif _pacman_Q xfce4 &>/dev/null; then echo "xfce"
-    elif _pacman_Q lxqt &>/dev/null; then echo "lxqt"
-    elif _pacman_Q lxde-common &>/dev/null || _pacman_Q lxde &>/dev/null; then echo "lxde"
-    elif _pacman_Q hyprland &>/dev/null; then echo "hyprland"
-    elif _pacman_Q sway &>/dev/null; then echo "sway"
-    elif _pacman_Q niri &>/dev/null; then echo "niri"
-    elif _pacman_Q i3-wm &>/dev/null; then echo "i3wm"
-    elif _pacman_Q dwm &>/dev/null; then echo "dwm"
-    elif _pacman_Q vxwm &>/dev/null; then echo "vxwm"
-    elif _pacman_Q icewm &>/dev/null; then echo "icewm"
-    elif _pacman_Q mangowm &>/dev/null; then echo "mango"
-    else echo "none"; fi
+    local -A map=(
+        ["sonicde-meta"]="sonicde" ["plasma-desktop"]="kde" ["xfce4"]="xfce"
+        ["lxqt"]="lxqt" ["lxde-common"]="lxde" ["lxde"]="lxde"
+        ["hyprland"]="hyprland" ["sway"]="sway" ["niri"]="niri"
+        ["i3-wm"]="i3wm" ["dwm"]="dwm" ["vxwm"]="vxwm"
+        ["icewm"]="icewm" ["mangowm"]="mango"
+    )
+    for pkg in "${!map[@]}"; do
+        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
+    done
+    echo "none"
 }
 
 detect_current_dm() {
-    if _pacman_Q sonic-login-manager &>/dev/null; then echo "soniclogin"
-    elif _pacman_Q sddm &>/dev/null; then echo "sddm"
-    elif _pacman_Q lightdm &>/dev/null; then echo "lightdm"
-    elif _pacman_Q gdm &>/dev/null; then echo "gdm"
-    else echo "none"; fi
+    local -A map=(
+        ["sonic-login-manager"]="soniclogin" ["sddm"]="sddm"
+        ["lightdm"]="lightdm" ["gdm"]="gdm"
+    )
+    for pkg in "${!map[@]}"; do
+        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
+    done
+    echo "none"
 }
 
 detect_current_x() {
-    if _pacman_Q xlibre-xserver &>/dev/null; then echo "xlibre"
-    elif _pacman_Q xorg-server &>/dev/null; then echo "xorg"
-    elif [[ -d "${MIG_ROOT}/usr/share/wayland-sessions" ]]; then echo "wayland"
-    else echo "none"; fi
+    local -A map=( ["xlibre-xserver"]="xlibre" ["xorg-server"]="xorg" )
+    for pkg in "${!map[@]}"; do
+        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
+    done
+    [[ -d "${MIG_ROOT}/usr/share/wayland-sessions" ]] && { echo "wayland"; return 0; }
+    echo "none"
 }
 
 detect_current_audio() {
-    if _pacman_Q pipewire &>/dev/null; then echo "pipewire"
-    elif _pacman_Q pulseaudio &>/dev/null; then echo "pulseaudio"
-    else echo "none"; fi
+    local -A map=( ["pipewire"]="pipewire" ["pulseaudio"]="pulseaudio" )
+    for pkg in "${!map[@]}"; do
+        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
+    done
+    echo "none"
 }
 
 detect_current_network() {
-    if _pacman_Q networkmanager &>/dev/null; then echo "networkmanager"
-    elif _pacman_Q dhcpcd &>/dev/null || _pacman_Q iwd &>/dev/null; then echo "dhcpcd+iwd"
-    elif _pacman_Q connman &>/dev/null; then echo "connman"
-    else echo "none"; fi
+    _pacman_Q networkmanager &>/dev/null && { echo "networkmanager"; return 0; }
+    { _pacman_Q dhcpcd || _pacman_Q iwd; } &>/dev/null && { echo "dhcpcd+iwd"; return 0; }
+    _pacman_Q connman &>/dev/null && { echo "connman"; return 0; }
+    echo "none"
 }
 
 detect_current_init() {
-    if [[ -d "${MIG_ROOT}/etc/runit" ]]; then echo "runit"
-    elif [[ -d "${MIG_ROOT}/etc/dinit.d" ]]; then echo "dinit"
-    elif [[ -d "${MIG_ROOT}/etc/s6" ]]; then echo "s6"
-    else echo "openrc"; fi
+    local -A map=( ["runit"]="runit" ["dinit"]="dinit" ["s6"]="s6" )
+    for pkg in "${!map[@]}"; do
+        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
+    done
+    echo "openrc"
 }
 
 backup_de_config() {
@@ -246,6 +251,77 @@ _enable_service() {
     else
         enable_service "$svc" 2>/dev/null || log_warn "Could not enable $svc service"
     fi
+}
+
+_prepare_target_repo() {
+    local de="${1}"
+    case "${de}" in
+        sonicde)
+            log_info "Setting up SonicDE repository on target..."
+            if [[ -n "${MIG_ROOT}" ]]; then
+                artix-chroot "${MIG_ROOT}" bash -c "
+                    sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
+                    cat >> /etc/pacman.conf <<'REPO_EOF'
+[sonicde]
+SigLevel = Never
+Server = https://sonicde-artix.github.io/\$arch
+REPO_EOF
+                    curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
+                    pacman-key --add /tmp/sonicde.asc
+                    pacman-key --lsign-key 72AAA51726BC3C29
+                    rm -f /tmp/sonicde.asc
+                    pacman -Syy --noconfirm
+                " || log_warn "SonicDE repo setup failed"
+            else
+                # Running on installed system
+                sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
+                cat >> /etc/pacman.conf <<'REPO_EOF'
+[sonicde]
+SigLevel = Never
+Server = https://sonicde-artix.github.io/$arch
+REPO_EOF
+                curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
+                pacman-key --add /tmp/sonicde.asc
+                pacman-key --lsign-key 72AAA51726BC3C29
+                rm -f /tmp/sonicde.asc
+                pacman -Syy --noconfirm
+            fi
+            ;;
+        mango)
+            log_info "Setting up Chaotic-AUR on target for MangoWM..."
+            if [[ -n "${MIG_ROOT}" ]]; then
+                artix-chroot "${MIG_ROOT}" bash -c "
+                    export GNUPGHOME=/etc/pacman.d/gnupg
+                    mkdir -p \"\${GNUPGHOME}\"
+                    chmod 700 \"\${GNUPGHOME}\"
+                    pacman-key --init
+                    pacman-key --populate artix archlinux
+                    pacman-key --recv-key 3056513887B78AEB --keyserver hkp://keyserver.ubuntu.com
+                    pacman-key --lsign-key 3056513887B78AEB
+                    pacman -U --noconfirm https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst
+                    grep -q '^\[chaotic-aur\]' /etc/pacman.conf || cat >> /etc/pacman.conf <<'REPO_EOF'
+[chaotic-aur]
+Include = /etc/pacman.d/chaotic-mirrorlist
+REPO_EOF
+                    pacman -Sy --noconfirm
+                " || log_warn "Chaotic-AUR setup failed"
+            else
+                export GNUPGHOME="/etc/pacman.d/gnupg"
+                mkdir -p "${GNUPGHOME}"
+                chmod 700 "${GNUPGHOME}"
+                pacman-key --init
+                pacman-key --populate artix archlinux
+                pacman-key --recv-key 3056513887B78AEB --keyserver hkp://keyserver.ubuntu.com
+                pacman-key --lsign-key 3056513887B78AEB
+                pacman -U --noconfirm https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst
+                grep -q '^\[chaotic-aur\]' /etc/pacman.conf || cat >> /etc/pacman.conf <<'REPO_EOF'
+[chaotic-aur]
+Include = /etc/pacman.d/chaotic-mirrorlist
+REPO_EOF
+                pacman -Sy --noconfirm
+            fi
+            ;;
+    esac
 }
 
 prompt_migration_choices() {
@@ -415,6 +491,10 @@ run_de_migration() {
     log_info "Backing up user configs..."
     backup_de_config
 
+    if [[ "$target_de" == "sonicde" || "$target_de" == "mango" ]]; then
+        _prepare_target_repo "$target_de"
+    fi
+
     if [[ "$source_de" == "none" ]]; then
         local default_dm="${DE_DISPLAY_MANAGER[$target_de]:-none}"
         state_set DE_MIG_DM "$default_dm"
@@ -468,7 +548,7 @@ run_de_migration() {
 tui_de_migration_menu() {
     local current_de source_de target_de
     current_de=$(detect_current_de)
-    tui_msg "Current Desktop" "Detected desktop environment: ${current_de}"
+    tui_msg_quick "Current Desktop" "Detected desktop environment: ${current_de}"
 
     source_de=$(tui_menu "Source Desktop" "Select desktop to migrate FROM:" \
         "kde" "sonicde" "xfce" "lxqt" "lxde" "hyprland" "sway" "niri" \

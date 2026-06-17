@@ -1,5 +1,16 @@
 # Changelog
 
+## v8.8.0.10 (2026-06-17) — ArtixForge
+
+### Changed
+- Migrations: all detection functions refactored to use associative arrays with loops — adding new DEs/DMs/inits is one line
+- Migrations: `_prepare_target_repo()` handles external repository setup (SonicDE, Chaotic-AUR) for migrations
+- Migrations: live ISO detection uses `-d` instead of `-f` for `/run/artix/sfs/rootfs` directory check
+
+### Fixed
+- Migrations: pacman -Qtdq orphan check now guarded with || true — no longer fatal when no orphans exist
+- Migrations: tui_de_migration_menu uses tui_msg_quick instead of tui_msg for current DE detection display
+
 ## v8.8.0.9 (2026-06-17) — ArtixForge
 
 ### Changed
