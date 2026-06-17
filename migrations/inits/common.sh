@@ -532,8 +532,6 @@ run_init_migration() {
         fi
 
         cache_target_init_packages "$source_init" "$target_init"
-        remove_source_init "$source_init"
-        install_target_init "$source_init" "$target_init"
 
         local enabled_svcs
         enabled_svcs=$(list_enabled_services "$source_init")
@@ -550,6 +548,9 @@ run_init_migration() {
             log_info "Installing service packages: ${svc_pkgs}"
             _pacman -S --noconfirm --needed ${svc_pkgs} 2>/dev/null || log_warn "Some service packages could not be installed"
         fi
+
+        remove_source_init "$source_init"
+        install_target_init "$source_init" "$target_init"
     fi
 
     if has_direct_table "$source_init" "$target_init"; then
