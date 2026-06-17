@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.8.1.0 (2026-06-17) — ArtixForge
+
+### Changed
+- Migrations: `migrations/inits/common.sh` now supports live ISO via `MIG_ROOT` — all system operations route through chroot
+- Migrations: init detection uses recovery's `detect_init` instead of manual selection
+- Migrations: `_enable_service()` wrapper shared between DE and init migrations
+- Migrations: detection functions in `des/common.sh` replaced with wrappers that call recovery's existing `detect_desktop`, `detect_display_manager`, `detect_xstack`, `detect_audio_stack`, `detect_network_stack`
+
 ## v8.8.0.10 (2026-06-17) — ArtixForge
 
 ### Changed

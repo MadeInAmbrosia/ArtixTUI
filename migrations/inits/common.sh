@@ -1,6 +1,36 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+MIG_ROOT=""
+if [[ -d /run/artix/sfs/rootfs ]]; then
+    if ! mountpoint -q /mnt; then
+        tui_msg "Live ISO Detected" "Init migration from live ISO requires the target system mounted at /mnt."
+        if tui_yesno "Mount Target" "Would you like to mount it now?"; then
+            recovery_mount_all
+        else
+            tui_msg_quick "Migration Cancelled" "Mount the target system at /mnt and retry."
+            exit 1
+        fi
+    fi
+    MIG_ROOT="/mnt"
+fi
+
+_chroot() {
+    if [[ -n "${MIG_ROOT}" ]]; then
+        artix-chroot "${MIG_ROOT}" "$@"
+    else
+        "$@"
+    fi
+}
+
+_pacman() {
+    if [[ -n "${MIG_ROOT}" ]]; then
+        artix-chroot "${MIG_ROOT}" pacman "$@"
+    else
+        pacman "$@"
+    fi
+}
+
 HUB_INIT="openrc"
 
 declare -A OPENRC_TO_DINIT=(
@@ -109,14 +139,25 @@ get_migration_table() {
 
 list_enabled_services() {
     local init="${1:-openrc}"
-    case "$init" in
-        openrc) rc-update show -v 2>/dev/null | awk '/default|boot|nonetwork/ {print $1}' | sort -u ;;
-        runit)  [[ -d /etc/runit/runsvdir/default ]] && ls /etc/runit/runsvdir/default/ 2>/dev/null ;;
-        dinit)  [[ -d /etc/dinit.d/boot.d ]] && ls /etc/dinit.d/boot.d/ 2>/dev/null | sed 's/\.d$//' ;;
-        s6)     s6-rc-db list services 2>/dev/null || true ;;
-        systemd) systemctl list-unit-files --state=enabled 2>/dev/null | awk '/\.service/ {print $1}' ;;
-        *)      return 1 ;;
-    esac
+    if [[ -n "${MIG_ROOT}" ]]; then
+        case "$init" in
+            openrc) artix-chroot "${MIG_ROOT}" rc-update show -v 2>/dev/null | awk '/default|boot|nonetwork/ {print $1}' | sort -u ;;
+            runit)  [[ -d "${MIG_ROOT}/etc/runit/runsvdir/default" ]] && ls "${MIG_ROOT}/etc/runit/runsvdir/default/" 2>/dev/null ;;
+            dinit)  [[ -d "${MIG_ROOT}/etc/dinit.d/boot.d" ]] && ls "${MIG_ROOT}/etc/dinit.d/boot.d/" 2>/dev/null | sed 's/\.d$//' ;;
+            s6)     artix-chroot "${MIG_ROOT}" s6-rc-db list services 2>/dev/null || true ;;
+            systemd) artix-chroot "${MIG_ROOT}" systemctl list-unit-files --state=enabled 2>/dev/null | awk '/\.service/ {print $1}' ;;
+            *)      return 1 ;;
+        esac
+    else
+        case "$init" in
+            openrc) rc-update show -v 2>/dev/null | awk '/default|boot|nonetwork/ {print $1}' | sort -u ;;
+            runit)  [[ -d /etc/runit/runsvdir/default ]] && ls /etc/runit/runsvdir/default/ 2>/dev/null ;;
+            dinit)  [[ -d /etc/dinit.d/boot.d ]] && ls /etc/dinit.d/boot.d/ 2>/dev/null | sed 's/\.d$//' ;;
+            s6)     s6-rc-db list services 2>/dev/null || true ;;
+            systemd) systemctl list-unit-files --state=enabled 2>/dev/null | awk '/\.service/ {print $1}' ;;
+            *)      return 1 ;;
+        esac
+    fi
 }
 
 map_service() {
@@ -133,7 +174,7 @@ map_service() {
 
 list_init_packages() {
     local init_suffix="${1}"
-    pacman -Qsq "${init_suffix}" 2>/dev/null || true
+    _pacman -Qsq "${init_suffix}" 2>/dev/null || true
 }
 
 cache_target_init_packages() {
@@ -155,7 +196,7 @@ cache_target_init_packages() {
 
     if [[ -n "$target_pkgs" ]]; then
         log_info "Caching: ${target_pkgs}"
-        pacman -Sw --noconfirm ${target_pkgs} 2>/dev/null || log_warn "Some packages could not be downloaded"
+        _pacman -Sw --noconfirm ${target_pkgs} 2>/dev/null || log_warn "Some packages could not be downloaded"
     fi
 }
 
@@ -164,16 +205,16 @@ remove_source_init() {
     case "$src" in
         systemd)
             log_info "Removing systemd and related packages..."
-            pacman -Rdd --noconfirm systemd systemd-libs systemd-sysvcompat pacman-mirrorlist dbus 2>/dev/null || true
-            rm -fv /etc/resolv.conf
-            cp -vf /etc/pacman.d/mirrorlist.artix /etc/pacman.d/mirrorlist
+            _pacman -Rdd --noconfirm systemd systemd-libs systemd-sysvcompat pacman-mirrorlist dbus 2>/dev/null || true
+            rm -fv "${MIG_ROOT}/etc/resolv.conf" 2>/dev/null || true
+            cp -vf "${MIG_ROOT}/etc/pacman.d/mirrorlist.artix" "${MIG_ROOT}/etc/pacman.d/mirrorlist" 2>/dev/null || true
             ;;
         *)
             local init_pkgs
             init_pkgs=$(list_init_packages "${src}")
             if [[ -n "${init_pkgs}" ]]; then
                 log_info "Removing ${src} packages: ${init_pkgs}"
-                pacman -Rdd --noconfirm ${init_pkgs} 2>/dev/null || log_warn "Some packages could not be removed"
+                _pacman -Rdd --noconfirm ${init_pkgs} 2>/dev/null || log_warn "Some packages could not be removed"
             else
                 log_warn "No ${src} packages found to remove"
             fi
@@ -196,7 +237,7 @@ install_target_init() {
 
         if [[ -n "$target_pkgs" ]]; then
             log_info "Installing target init packages: ${target_pkgs}"
-            pacman -S --noconfirm ${target_pkgs} 2>/dev/null || {
+            _pacman -S --noconfirm ${target_pkgs} 2>/dev/null || {
                 log_warn "Batch install failed — falling back to hardcoded package list"
                 _install_target_init_fallback "${target_init}"
             }
@@ -220,18 +261,18 @@ _install_target_init_fallback() {
         *) die "Unknown init system: $init" ;;
     esac
     log_info "Installing target init packages (fallback): ${pkgs[*]}"
-    pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install ${init}"
+    _pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install ${init}"
 }
 
 backup_init_config() {
     local init="${1}" backup_dir="${2}"
     mkdir -p "$backup_dir"
     case "$init" in
-        openrc) cp -a /etc/runlevels "$backup_dir/" 2>/dev/null || true ;;
-        runit)  cp -a /etc/runit/runsvdir "$backup_dir/" 2>/dev/null || true ;;
-        dinit)  cp -a /etc/dinit.d "$backup_dir/" 2>/dev/null || true ;;
-        s6)     cp -a /etc/s6 "$backup_dir/" 2>/dev/null || true ;;
-        systemd) cp -a /etc/systemd "$backup_dir/" 2>/dev/null || true ;;
+        openrc) cp -a "${MIG_ROOT}/etc/runlevels" "$backup_dir/" 2>/dev/null || true ;;
+        runit)  cp -a "${MIG_ROOT}/etc/runit/runsvdir" "$backup_dir/" 2>/dev/null || true ;;
+        dinit)  cp -a "${MIG_ROOT}/etc/dinit.d" "$backup_dir/" 2>/dev/null || true ;;
+        s6)     cp -a "${MIG_ROOT}/etc/s6" "$backup_dir/" 2>/dev/null || true ;;
+        systemd) cp -a "${MIG_ROOT}/etc/systemd" "$backup_dir/" 2>/dev/null || true ;;
     esac
     log_info "Init configuration backed up to $backup_dir"
 }
@@ -244,10 +285,10 @@ detect_custom_services() {
         [[ -z "$svc" ]] && continue
         local owned=0
         case "$init" in
-            openrc) pacman -Qo "/etc/init.d/$svc" &>/dev/null && owned=1 ;;
-            runit)  pacman -Qo "/etc/runit/sv/$svc" &>/dev/null && owned=1 ;;
-            dinit)  pacman -Qo "/etc/dinit.d/$svc" &>/dev/null && owned=1 ;;
-            s6)     pacman -Qo "/etc/s6/sv/$svc" &>/dev/null && owned=1 ;;
+            openrc) _pacman -Qo "${MIG_ROOT}/etc/init.d/$svc" &>/dev/null && owned=1 ;;
+            runit)  _pacman -Qo "${MIG_ROOT}/etc/runit/sv/$svc" &>/dev/null && owned=1 ;;
+            dinit)  _pacman -Qo "${MIG_ROOT}/etc/dinit.d/$svc" &>/dev/null && owned=1 ;;
+            s6)     _pacman -Qo "${MIG_ROOT}/etc/s6/sv/$svc" &>/dev/null && owned=1 ;;
         esac
         [[ $owned -eq 0 ]] && custom+=("$svc")
     done < <(list_enabled_services "$init")
@@ -266,6 +307,21 @@ has_direct_table() {
     declare -p "$table_name" &>/dev/null && return 0 || return 1
 }
 
+_enable_service() {
+    local svc="$1" init="${2:-${INIT:-openrc}}"
+    if [[ -n "${MIG_ROOT}" ]]; then
+        artix-chroot "${MIG_ROOT}" bash -c "
+            source /usr/local/lib/artix-installer/services.sh 2>/dev/null || \
+            source /root/ArtixForge/scripts/install/services.sh
+            export INIT='${init}'
+            enable_service '${svc}'
+        " 2>/dev/null || log_warn "Could not enable $svc service"
+    else
+        export INIT="${init}"
+        enable_service "$svc" 2>/dev/null || log_warn "Could not enable $svc service"
+    fi
+}
+
 _run_single_migration() {
     local source_init="${1}" target_init="${2}"
     log_info "Migrating services from $source_init to $target_init..."
@@ -278,7 +334,7 @@ _run_single_migration() {
         mapped=$(map_service "$source_init" "$target_init" "$svc" 2>/dev/null || true)
         if [[ -n "$mapped" ]]; then
             log_info "  Migrating: $svc → $mapped"
-            enable_service "$mapped" 2>/dev/null || { log_warn "  Failed to enable $mapped"; ((skipped++)); continue; }
+            _enable_service "$mapped" "$target_init"
             ((migrated++))
         else
             log_warn "  No mapping for $svc – skipping"
@@ -290,16 +346,16 @@ _run_single_migration() {
 
 prepare_artix_repos() {
     log_info "Replacing pacman.conf and mirrorlist with Artix versions..."
-    mv -vf /etc/pacman.conf /etc/pacman.conf.arch
-    curl -sL https://gitea.artixlinux.org/packages/pacman/raw/branch/master/pacman.conf -o /etc/pacman.conf
-    mv -vf /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist-arch
-    curl -sL https://gitea.artixlinux.org/packages/artix-mirrorlist/raw/branch/master/mirrorlist -o /etc/pacman.d/mirrorlist
-    cp -vf /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.artix
+    mv -vf "${MIG_ROOT}/etc/pacman.conf" "${MIG_ROOT}/etc/pacman.conf.arch" 2>/dev/null || true
+    curl -sL https://gitea.artixlinux.org/packages/pacman/raw/branch/master/pacman.conf -o "${MIG_ROOT}/etc/pacman.conf"
+    mv -vf "${MIG_ROOT}/etc/pacman.d/mirrorlist" "${MIG_ROOT}/etc/pacman.d/mirrorlist-arch" 2>/dev/null || true
+    curl -sL https://gitea.artixlinux.org/packages/artix-mirrorlist/raw/branch/master/mirrorlist -o "${MIG_ROOT}/etc/pacman.d/mirrorlist"
+    cp -vf "${MIG_ROOT}/etc/pacman.d/mirrorlist" "${MIG_ROOT}/etc/pacman.d/mirrorlist.artix" 2>/dev/null || true
 
     if [[ "$(state_get ENABLE_ARCH_REPOS no)" == "yes" ]]; then
         log_info "Enabling Arch repositories in pacman.conf..."
-        if ! grep -q '^\[extra\]' /etc/pacman.conf; then
-            cat >> /etc/pacman.conf <<'EOF'
+        if ! grep -q '^\[extra\]' "${MIG_ROOT}/etc/pacman.conf" 2>/dev/null; then
+            cat >> "${MIG_ROOT}/etc/pacman.conf" <<'EOF'
 [extra]
 Include = /etc/pacman.d/mirrorlist-arch
 
@@ -312,21 +368,21 @@ EOF
 
 clean_pacman_cache() {
     log_info "Cleaning all pacman caches and forcing sync..."
-    pacman -Scc --noconfirm 2>/dev/null || true
-    pacman -Syy --noconfirm
+    _pacman -Scc --noconfirm 2>/dev/null || true
+    _pacman -Syy --noconfirm
 }
 
 install_artix_keyring() {
     log_info "Temporarily lowering pacman security level..."
-    sed -i 's/^SigLevel.*/SigLevel = Never/' /etc/pacman.conf
+    sed -i 's/^SigLevel.*/SigLevel = Never/' "${MIG_ROOT}/etc/pacman.conf"
 
     log_info "Installing Artix PGP keyring..."
-    pacman -S --noconfirm artix-keyring
-    pacman-key --populate artix
-    pacman-key --lsign-key 95AEC5D0C1E294FC9F82B253573A673A53C01BC2
+    _pacman -S --noconfirm artix-keyring
+    _chroot pacman-key --populate artix
+    _chroot pacman-key --lsign-key 95AEC5D0C1E294FC9F82B253573A673A53C01BC2
 
     log_info "Restoring pacman security level..."
-    sed -i 's/^SigLevel = Never/SigLevel = Required DatabaseOptional/' /etc/pacman.conf
+    sed -i 's/^SigLevel = Never/SigLevel = Required DatabaseOptional/' "${MIG_ROOT}/etc/pacman.conf"
 }
 
 cache_artix_packages() {
@@ -340,42 +396,44 @@ cache_artix_packages() {
         dinit)  pkgs+=(dinit elogind-dinit dinit-system) ;;
         s6)     pkgs+=(s6-base elogind-s6 s6-system) ;;
     esac
-    pacman -Sw --noconfirm "${pkgs[@]}" 2>/dev/null || log_warn "Some packages could not be downloaded"
+    _pacman -Sw --noconfirm "${pkgs[@]}" 2>/dev/null || log_warn "Some packages could not be downloaded"
 }
 
 remove_systemd() {
     log_info "Removing systemd and related packages..."
-    pacman -Rdd --noconfirm systemd systemd-libs systemd-sysvcompat pacman-mirrorlist dbus 2>/dev/null || true
-    rm -fv /etc/resolv.conf
-    cp -vf /etc/pacman.d/mirrorlist.artix /etc/pacman.d/mirrorlist
+    _pacman -Rdd --noconfirm systemd systemd-libs systemd-sysvcompat pacman-mirrorlist dbus 2>/dev/null || true
+    rm -fv "${MIG_ROOT}/etc/resolv.conf" 2>/dev/null || true
+    cp -vf "${MIG_ROOT}/etc/pacman.d/mirrorlist.artix" "${MIG_ROOT}/etc/pacman.d/mirrorlist" 2>/dev/null || true
 }
 
 reinstall_artix_packages() {
     log_info "Reinstalling all packages from Artix repositories..."
     export LC_ALL=C
-    pacman -Sl system | grep installed | cut -d" " -f2 | pacman -S --noconfirm -
-    pacman -Sl world  | grep installed | cut -d" " -f2 | pacman -S --noconfirm -
-    pacman -Sl galaxy | grep installed | cut -d" " -f2 | pacman -S --noconfirm -
+    _pacman -Sl system | grep installed | cut -d" " -f2 | _pacman -S --noconfirm -
+    _pacman -Sl world  | grep installed | cut -d" " -f2 | _pacman -S --noconfirm -
+    _pacman -Sl galaxy | grep installed | cut -d" " -f2 | _pacman -S --noconfirm -
     if [[ "$(state_get ENABLE_ARCH_REPOS no)" == "yes" ]]; then
-        pacman -Sl lib32 | grep installed | cut -d" " -f2 | pacman -S --noconfirm - 2>/dev/null || true
+        _pacman -Sl lib32 | grep installed | cut -d" " -f2 | _pacman -S --noconfirm - 2>/dev/null || true
     fi
 }
 
 enable_lvm_services() {
-    if [[ -f /etc/lvm/lvm.conf ]] || pacman -Q lvm2 &>/dev/null; then
+    if [[ -f "${MIG_ROOT}/etc/lvm/lvm.conf" ]] || _pacman -Q lvm2 &>/dev/null; then
         log_info "Enabling LVM services..."
-        case "$(state_get INIT openrc)" in
+        local init
+        init=$(detect_init 2>/dev/null || state_get INIT openrc)
+        case "$init" in
             openrc)
-                enable_service lvm boot
-                enable_service device-mapper boot
+                _enable_service lvm boot "$init"
+                _enable_service device-mapper boot "$init"
                 ;;
             runit)
-                enable_service lvm2
-                enable_service device-mapper
+                _enable_service lvm2 "$init"
+                _enable_service device-mapper "$init"
                 ;;
             dinit)
-                enable_service lvm2
-                enable_service dmeventd
+                _enable_service lvm2 "$init"
+                _enable_service dmeventd "$init"
                 ;;
             s6)
                 ;;
@@ -386,30 +444,30 @@ enable_lvm_services() {
 cleanup_systemd_junk() {
     log_info "Removing systemd junk accounts and directories..."
     for user in journal journal-gateway timesync network bus-proxy journal-remote journal-upload resolve coredump; do
-        userdel "systemd-$user" 2>/dev/null || true
+        _chroot userdel "systemd-$user" 2>/dev/null || true
     done
-    rm -vfr /{etc,var/lib}/systemd 2>/dev/null || true
+    rm -vfr "${MIG_ROOT}/"{etc,var/lib}/systemd 2>/dev/null || true
 }
 
 update_bootloader() {
     log_info "Recreating initramfs and updating bootloader..."
-    if [[ -x /usr/bin/mkinitcpio ]]; then
-        mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
+    if [[ -x "${MIG_ROOT}/usr/bin/mkinitcpio" ]]; then
+        _chroot mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
     fi
-    if command -v grub-mkconfig &>/dev/null; then
-        grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || log_warn "grub-mkconfig failed"
-    elif command -v update-grub &>/dev/null; then
-        update-grub 2>/dev/null || log_warn "update-grub failed"
+    if _chroot command -v grub-mkconfig &>/dev/null; then
+        _chroot grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || log_warn "grub-mkconfig failed"
+    elif _chroot command -v update-grub &>/dev/null; then
+        _chroot update-grub 2>/dev/null || log_warn "update-grub failed"
     fi
-    if [[ -d /boot/efi ]]; then
+    if [[ -d "${MIG_ROOT}/boot/efi" ]]; then
         log_info "Reinstalling GRUB for UEFI..."
-        grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB 2>/dev/null || log_warn "grub-install failed"
+        _chroot grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB 2>/dev/null || log_warn "grub-install failed"
     else
         log_info "Reinstalling GRUB for BIOS..."
         local disk
-        disk="$(lsblk -no PKNAME "$(findmnt -no SOURCE /)" 2>/dev/null | head -n1)"
+        disk="$(lsblk -no PKNAME "$(findmnt -no SOURCE "${MIG_ROOT}/" 2>/dev/null)" 2>/dev/null | head -n1)"
         if [[ -n "$disk" ]]; then
-            grub-install "/dev/$disk" 2>/dev/null || log_warn "grub-install failed"
+            _chroot grub-install "/dev/$disk" 2>/dev/null || log_warn "grub-install failed"
         fi
     fi
 }
@@ -417,7 +475,7 @@ update_bootloader() {
 cold_reboot() {
     log_info "Init has been swapped — performing cold reboot via SysRq..."
     sync
-    mount / -o remount,ro 2>/dev/null || true
+    mount "${MIG_ROOT}/" -o remount,ro 2>/dev/null || true
     echo s >| /proc/sysrq-trigger 2>/dev/null || true
     echo u >| /proc/sysrq-trigger 2>/dev/null || true
     echo b >| /proc/sysrq-trigger 2>/dev/null || true
@@ -429,6 +487,9 @@ run_init_migration() {
     validate_migration "$source_init" "$target_init"
 
     if [[ "$source_init" == "systemd" ]]; then
+        if [[ -n "${MIG_ROOT}" ]]; then
+            die "Systemd→Artix migration must be run from the installed system, not the live ISO."
+        fi
         log_info "Starting migration from Arch/systemd to Artix/${target_init}..."
         if ! tui_yesno "Full Migration" "This will replace your entire system with Artix.\n\nProceed?"; then
             log_info "Migration cancelled."
@@ -442,11 +503,11 @@ run_init_migration() {
         remove_systemd
         install_target_init "$source_init" "$target_init"
         log_info "Installing base Artix packages..."
-        pacman -S --noconfirm base base-devel grub linux linux-headers mkinitcpio \
+        _pacman -S --noconfirm base base-devel grub linux linux-headers mkinitcpio \
             rsync lsb-release esysusers etmpfiles artix-branding-base
         reinstall_artix_packages
     else
-        local backup_dir="/root/init-backup-${source_init}-$(date +%Y%m%d-%H%M%S)"
+        local backup_dir="${MIG_ROOT}/root/init-backup-${source_init}-$(date +%Y%m%d-%H%M%S)"
         backup_init_config "$source_init" "$backup_dir"
 
         local -a custom_services
@@ -456,10 +517,10 @@ run_init_migration() {
             mkdir -p "$backup_dir/custom"
             for svc in "${custom_services[@]}"; do
                 case "$source_init" in
-                    openrc) cp -a "/etc/init.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
-                    runit)  cp -a "/etc/runit/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
-                    dinit)  cp -a "/etc/dinit.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
-                    s6)     cp -a "/etc/s6/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                    openrc) cp -a "${MIG_ROOT}/etc/init.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                    runit)  cp -a "${MIG_ROOT}/etc/runit/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                    dinit)  cp -a "${MIG_ROOT}/etc/dinit.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                    s6)     cp -a "${MIG_ROOT}/etc/s6/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
                 esac
             done
             log_info "Custom services saved to $backup_dir/custom/"
@@ -504,6 +565,11 @@ run_init_migration() {
 }
 
 tui_init_migration_menu() {
+    detect_init >/dev/null 2>&1 || true
+    local current_init
+    current_init=$(state_get INIT openrc)
+    tui_msg_quick "Current Init" "Detected init system: ${current_init}"
+
     local source_init target_init
     source_init=$(tui_menu "Source Init" "Select current init system:" \
         "openrc" "runit" "dinit" "s6" "systemd") || return 1

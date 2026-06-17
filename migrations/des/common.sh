@@ -151,62 +151,12 @@ EXTRA_PACKAGES=(
     ["feh"]="feh"
 )
 
-detect_current_de() {
-    local -A map=(
-        ["sonicde-meta"]="sonicde" ["plasma-desktop"]="kde" ["xfce4"]="xfce"
-        ["lxqt"]="lxqt" ["lxde-common"]="lxde" ["lxde"]="lxde"
-        ["hyprland"]="hyprland" ["sway"]="sway" ["niri"]="niri"
-        ["i3-wm"]="i3wm" ["dwm"]="dwm" ["vxwm"]="vxwm"
-        ["icewm"]="icewm" ["mangowm"]="mango"
-    )
-    for pkg in "${!map[@]}"; do
-        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
-    done
-    echo "none"
-}
-
-detect_current_dm() {
-    local -A map=(
-        ["sonic-login-manager"]="soniclogin" ["sddm"]="sddm"
-        ["lightdm"]="lightdm" ["gdm"]="gdm"
-    )
-    for pkg in "${!map[@]}"; do
-        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
-    done
-    echo "none"
-}
-
-detect_current_x() {
-    local -A map=( ["xlibre-xserver"]="xlibre" ["xorg-server"]="xorg" )
-    for pkg in "${!map[@]}"; do
-        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
-    done
-    [[ -d "${MIG_ROOT}/usr/share/wayland-sessions" ]] && { echo "wayland"; return 0; }
-    echo "none"
-}
-
-detect_current_audio() {
-    local -A map=( ["pipewire"]="pipewire" ["pulseaudio"]="pulseaudio" )
-    for pkg in "${!map[@]}"; do
-        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
-    done
-    echo "none"
-}
-
-detect_current_network() {
-    _pacman_Q networkmanager &>/dev/null && { echo "networkmanager"; return 0; }
-    { _pacman_Q dhcpcd || _pacman_Q iwd; } &>/dev/null && { echo "dhcpcd+iwd"; return 0; }
-    _pacman_Q connman &>/dev/null && { echo "connman"; return 0; }
-    echo "none"
-}
-
-detect_current_init() {
-    local -A map=( ["runit"]="runit" ["dinit"]="dinit" ["s6"]="s6" )
-    for pkg in "${!map[@]}"; do
-        _pacman_Q "${pkg}" &>/dev/null && { echo "${map[$pkg]}"; return 0; }
-    done
-    echo "openrc"
-}
+detect_current_de()   { detect_desktop >/dev/null 2>&1; state_get WM_DE none; }
+detect_current_dm()   { detect_display_manager >/dev/null 2>&1; state_get DISPLAY_MANAGER none; }
+detect_current_x()    { detect_xstack >/dev/null 2>&1; state_get X_STACK none; }
+detect_current_audio(){ detect_audio_stack >/dev/null 2>&1; state_get AUDIO_STACK none; }
+detect_current_network(){ detect_network_stack >/dev/null 2>&1; state_get NETWORK_STACK none; }
+detect_current_init() { detect_init >/dev/null 2>&1; state_get INIT openrc; }
 
 backup_de_config() {
     local backup_dir="${MIG_ROOT}/root/de-backup-$(date +%Y%m%d-%H%M%S)"
@@ -273,7 +223,6 @@ REPO_EOF
                     pacman -Syy --noconfirm
                 " || log_warn "SonicDE repo setup failed"
             else
-                # Running on installed system
                 sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
                 cat >> /etc/pacman.conf <<'REPO_EOF'
 [sonicde]
