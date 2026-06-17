@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.0.3 (2026-06-17) — ArtixForge
+
+### Fixed
+- Drivers: CachyOS kernel header detection fixed — `linux-cachy*` pattern now matches all variants
+
 ## v8.8.0.2 (2026-06-17) — ArtixForge
 
 ### Fixed

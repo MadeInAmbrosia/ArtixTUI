@@ -66,7 +66,7 @@ install_drivers() {
         linux-lts)               pkgs+=(linux-lts-headers) ;;
         linux-hardened)          pkgs+=(linux-hardened-headers) ;;
         linux-zen)               pkgs+=(linux-zen-headers) ;;
-        linux-cachy|linux-cachyos)
+        linux-cachy*|linux-cachyos*)
             pacman -Si linux-cachyos-headers >/dev/null 2>&1 && pkgs+=(linux-cachyos-headers) \
                 || pacman -Si linux-cachy-headers >/dev/null 2>&1 && pkgs+=(linux-cachy-headers) ;;
         linux-bazzite-bin|bazzite) initramfs_tool='dracut' ;;
