@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.0.7 (2026-06-17) — ArtixForge
+
+### Fixed
+- Migrations: `enable_service` calls in `apply_migration_choices` now guarded with `|| log_warn` — no longer fatal when service is missing or something else happens for any reason
+
 ## v8.8.0.6 (2026-06-17) — ArtixForge
 
 ### Fixed

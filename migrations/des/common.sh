@@ -309,9 +309,10 @@ apply_migration_choices() {
             local key="${network_choice}-${init}"
             install_packages "${NETWORK_PACKAGES[$key]:-}"
             case "$network_choice" in
-                networkmanager) enable_service NetworkManager ;;
-                dhcpcd+iwd) enable_service dhcpcd; enable_service iwd ;;
-                connman) enable_service connmand ;;
+                networkmanager) enable_service NetworkManager || log_warn "Failed to enable NetworkManager" ;;
+                dhcpcd+iwd) enable_service dhcpcd || log_warn "Failed to enable dhcpcd"
+                            enable_service iwd || log_warn "Failed to enable iwd" ;;
+                connman) enable_service connmand || log_warn "Failed to enable connmand" ;;
             esac
         fi
     fi

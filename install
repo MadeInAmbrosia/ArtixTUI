@@ -224,41 +224,64 @@ Attempt recovery and continue installation?"; then
         clear; tui_msg_quick "Recovery Cancelled" "Recovery cancelled by user."; exit 0
     fi
     log_info "Entering recovery mode..."
-    local recovery_choice
-    recovery_choice=$(tui_menu "Recovery Options" "What would you like to do?" \
-        "View system status" \
-        "Repair detected issues" \
-        "Fix everything (kernel, initramfs, GRUB, fstab)" \
-        "Repair filesystem corruption (safe or destructive)" \
-        "Scan for rootkits" \
-        "Untrusted Recovery (rootkit hunt + malware scan)" \
-        "Full reinstall (run installer)" \
-        "Abort") || exit 1
 
-    case "${recovery_choice}" in
-        "View system status")
-            tui_msg "System Status" "$(recovery_get_status)"
-            ;;
-        "Repair detected issues")
-            repair_detected_issues
-            ;;
-        "Fix everything"*)
-            repair_system
-            ;;
-        "Repair filesystem"*)
-            repair_filesystem
-            ;;
-        "Scan for rootkits")
-            detect_rootkits
-            ;;
-        "Untrusted Recovery"*)
-            untrusted_recovery
-            ;;
-        "Full reinstall"*)
-            run_install_pipeline
-            ;;
-        *) exit 0 ;;
-    esac
+    while true; do
+        local recovery_choice
+        recovery_choice=$(tui_menu "Recovery Options" "What would you like to do?" \
+            "View system status" \
+            "Repair detected issues" \
+            "Fix everything (kernel, initramfs, GRUB, fstab)" \
+            "Repair filesystem corruption (safe or destructive)" \
+            "Scan for rootkits" \
+            "Untrusted Recovery (rootkit hunt + malware scan)" \
+            "Full reinstall (run installer)" \
+            "Return to main menu" \
+            "Exit") || exit 1
+
+        case "${recovery_choice}" in
+            "View system status")
+                tui_msg "System Status" "$(recovery_get_status)"
+                ;;
+            "Repair detected issues")
+                repair_detected_issues
+                tui_msg "Repair Complete" "Detected issues have been repaired.\n\nRun 'View system status' to verify."
+                ;;
+            "Fix everything"*)
+                repair_system
+                tui_msg "Repair Complete" "Full system repair completed.\n\nRun 'View system status' to verify."
+                ;;
+            "Repair filesystem"*)
+                repair_filesystem
+                ;;
+            "Scan for rootkits")
+                detect_rootkits
+                tui_msg "Scan Complete" "Rootkit scan finished. Check /tmp/rkhunter.log"
+                ;;
+            "Untrusted Recovery"*)
+                untrusted_recovery
+                ;;
+            "Full reinstall"*)
+                if tui_yesno "Full Reinstall" "This will wipe recovery state and start a fresh installation. Continue?"; then
+                    rm -f /tmp/artix-installer/state.conf
+                    rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
+                    umount -R /mnt 2>/dev/null || true
+                    MODE='auto'
+                    start_auto_install
+                    return
+                fi
+                ;;
+            "Return to main menu")
+                clear
+                main_menu
+                return
+                ;;
+            "Exit")
+                clear
+                tui_msg_quick "Recovery" "Recovery mode exited. System remains at /mnt."
+                exit 0
+                ;;
+        esac
+    done
 }
 
 start_system_migration() {

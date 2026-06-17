@@ -177,6 +177,11 @@ detect_migration_health() {
 
 detect_iso_health() {
     local issues=""
+
+    if [[ ! -f /root/ArtixForge/install && ! -f /run/artix/sfs/rootfs ]]; then
+        state_set ISO_ISSUES "none"
+        return 0
+    fi
     
     if ! command -v pacman &>/dev/null; then
         issues+="no-pacman "
