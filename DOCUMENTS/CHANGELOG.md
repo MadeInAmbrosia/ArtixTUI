@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.1.5 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `known_services` exclusion list expanded with `logind`, `lightdm`, and all standard openrc boot services — no more false custom service detection
+
 ## v8.8.1.4 (2026-06-18) — ArtixForge
 
 ### Fixed

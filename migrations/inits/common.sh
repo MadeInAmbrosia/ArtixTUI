@@ -297,7 +297,7 @@ backup_init_config() {
 detect_custom_services() {
     local init="${1}"
     local -a custom=()
-    local -a known_services=(NetworkManager networkmanager dhcpcd iwd sshd cronie dbus elogind seatd acpid alsa bluetoothd connmand firewalld ntpd syslog-ng lvm2 dmcrypt zfs-zed)
+    local -a known_services=(NetworkManager networkmanager dhcpcd iwd sshd cronie dbus elogind logind seatd acpid alsa bluetoothd connmand firewalld ntpd syslog-ng lvm2 dmcrypt zfs-zed lightdm agetty bootmisc binfmt esysusers etmpfiles fsck hostname hwclock keymaps localmount loopback modules mtab netmount procfs root save-keymaps save-termencoding seedrng swap sysctl termencoding)
     local svc
     while IFS= read -r svc; do
         [[ -z "$svc" ]] && continue
