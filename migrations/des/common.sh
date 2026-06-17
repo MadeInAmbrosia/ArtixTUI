@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT=""
+MIG_ROOT=""
 if [[ -f /run/artix/sfs/rootfs ]]; then
     if ! mountpoint -q /mnt; then
         tui_msg "Live ISO Detected" "Migration from live ISO requires the target system mounted at /mnt."
@@ -12,20 +12,20 @@ if [[ -f /run/artix/sfs/rootfs ]]; then
             exit 1
         fi
     fi
-    ROOT="/mnt"
+    MIG_ROOT="/mnt"
 fi
 
 _chroot() {
-    if [[ -n "${ROOT}" ]]; then
-        artix-chroot "${ROOT}" "$@"
+    if [[ -n "${MIG_ROOT}" ]]; then
+        artix-chroot "${MIG_ROOT}" "$@"
     else
         "$@"
     fi
 }
 
 _pacman_Q() {
-    if [[ -n "${ROOT}" ]]; then
-        pacman --root "${ROOT}" -Q "$@" 2>/dev/null
+    if [[ -n "${MIG_ROOT}" ]]; then
+        pacman --root "${MIG_ROOT}" -Q "$@" 2>/dev/null
     else
         pacman -Q "$@" 2>/dev/null
     fi
@@ -179,7 +179,7 @@ detect_current_dm() {
 detect_current_x() {
     if _pacman_Q xlibre-xserver &>/dev/null; then echo "xlibre"
     elif _pacman_Q xorg-server &>/dev/null; then echo "xorg"
-    elif [[ -d "${ROOT}/usr/share/wayland-sessions" ]]; then echo "wayland"
+    elif [[ -d "${MIG_ROOT}/usr/share/wayland-sessions" ]]; then echo "wayland"
     else echo "none"; fi
 }
 
@@ -197,33 +197,33 @@ detect_current_network() {
 }
 
 detect_current_init() {
-    if [[ -d "${ROOT}/etc/runit" ]]; then echo "runit"
-    elif [[ -d "${ROOT}/etc/dinit.d" ]]; then echo "dinit"
-    elif [[ -d "${ROOT}/etc/s6" ]]; then echo "s6"
+    if [[ -d "${MIG_ROOT}/etc/runit" ]]; then echo "runit"
+    elif [[ -d "${MIG_ROOT}/etc/dinit.d" ]]; then echo "dinit"
+    elif [[ -d "${MIG_ROOT}/etc/s6" ]]; then echo "s6"
     else echo "openrc"; fi
 }
 
 backup_de_config() {
-    local backup_dir="${ROOT}/root/de-backup-$(date +%Y%m%d-%H%M%S)"
+    local backup_dir="${MIG_ROOT}/root/de-backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$backup_dir"
-    for user_home in "${ROOT}"/home/*; do
+    for user_home in "${MIG_ROOT}"/home/*; do
         local user="${user_home##*/}"
         [[ -d "$user_home" ]] || continue
         cp -a "$user_home/.config" "$backup_dir/$user-config" 2>/dev/null || true
         cp -a "$user_home/.local"  "$backup_dir/$user-local"  2>/dev/null || true
         cp -a "$user_home/.cache"  "$backup_dir/$user-cache"  2>/dev/null || true
     done
-    cp -a "${ROOT}/etc/sddm.conf.d"    "$backup_dir/sddm.conf.d"    2>/dev/null || true
-    cp -a "${ROOT}/etc/lightdm"        "$backup_dir/lightdm"        2>/dev/null || true
-    cp -a "${ROOT}/etc/X11/xorg.conf.d" "$backup_dir/xorg.conf.d"   2>/dev/null || true
+    cp -a "${MIG_ROOT}/etc/sddm.conf.d"    "$backup_dir/sddm.conf.d"    2>/dev/null || true
+    cp -a "${MIG_ROOT}/etc/lightdm"        "$backup_dir/lightdm"        2>/dev/null || true
+    cp -a "${MIG_ROOT}/etc/X11/xorg.conf.d" "$backup_dir/xorg.conf.d"   2>/dev/null || true
     log_info "Configs backed up to $backup_dir"
 }
 
 remove_packages() {
     local pkgs="$1"
     [[ -n "$pkgs" ]] || return 0
-    if [[ -n "${ROOT}" ]]; then
-        artix-chroot "${ROOT}" pacman -Rns --noconfirm $pkgs 2>/dev/null || true
+    if [[ -n "${MIG_ROOT}" ]]; then
+        artix-chroot "${MIG_ROOT}" pacman -Rns --noconfirm $pkgs 2>/dev/null || true
     else
         pacman -Rns --noconfirm $pkgs 2>/dev/null || true
     fi
@@ -232,8 +232,8 @@ remove_packages() {
 install_packages() {
     local pkgs="$1"
     [[ -n "$pkgs" ]] || return 0
-    if [[ -n "${ROOT}" ]]; then
-        artix-chroot "${ROOT}" pacman -S --noconfirm --needed $pkgs 2>/dev/null || log_warn "Failed to install some packages"
+    if [[ -n "${MIG_ROOT}" ]]; then
+        artix-chroot "${MIG_ROOT}" pacman -S --noconfirm --needed $pkgs 2>/dev/null || log_warn "Failed to install some packages"
     else
         pacman -S --noconfirm --needed $pkgs 2>/dev/null || log_warn "Failed to install some packages"
     fi
@@ -241,8 +241,8 @@ install_packages() {
 
 _enable_service() {
     local svc="$1"
-    if [[ -n "${ROOT}" ]]; then
-        artix-chroot "${ROOT}" bash -c "source /usr/local/lib/artix-installer/services.sh 2>/dev/null || source /root/ArtixForge/scripts/install/services.sh; export INIT='${INIT}'; enable_service '${svc}'" 2>/dev/null || log_warn "Could not enable $svc service"
+    if [[ -n "${MIG_ROOT}" ]]; then
+        artix-chroot "${MIG_ROOT}" bash -c "source /usr/local/lib/artix-installer/services.sh 2>/dev/null || source /root/ArtixForge/scripts/install/services.sh; export INIT='${INIT}'; enable_service '${svc}'" 2>/dev/null || log_warn "Could not enable $svc service"
     else
         enable_service "$svc" 2>/dev/null || log_warn "Could not enable $svc service"
     fi
@@ -429,12 +429,12 @@ run_de_migration() {
     if [[ "$source_de" != "none" ]]; then
         log_info "Removing $source_de packages..."
         remove_packages "${DE_PACKAGES[$source_de]:-}"
-        if [[ -n "${ROOT}" ]]; then
+        if [[ -n "${MIG_ROOT}" ]]; then
             local orphan
-            orphan=$(artix-chroot "${ROOT}" pacman -Qtdq 2>/dev/null)
+            orphan=$(artix-chroot "${MIG_ROOT}" pacman -Qtdq 2>/dev/null)
             if [[ -n "$orphan" ]]; then
                 log_info "Removing orphaned packages..."
-                artix-chroot "${ROOT}" pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
+                artix-chroot "${MIG_ROOT}" pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
             fi
         else
             local orphan
@@ -453,7 +453,7 @@ run_de_migration() {
 
     apply_migration_choices
 
-    if [[ -x "${ROOT}/usr/bin/mkinitcpio" ]]; then
+    if [[ -x "${MIG_ROOT}/usr/bin/mkinitcpio" ]]; then
         _chroot mkinitcpio -P 2>/dev/null || true
     fi
 
