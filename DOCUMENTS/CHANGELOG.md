@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.8.0.8 (2026-06-17) — ArtixForge
+
+### Fixed
+- Migrations: `apply_migration_choices` now exports `INIT` before calling `enable_service` — services enabled for correct init system
+- Migrations: `mkinitcpio` now runs inside `artix-chroot /mnt` — no longer rebuilds live ISO kernel (FUCK)
+- Recovery: `detect_iso_health` skips when not running from live ISO — no more false `missing-artixforge`
+- Recovery: menu loop allows multiple repairs, added "Return to main menu" and "Exit" options
+
 ## v8.8.0.7 (2026-06-17) — ArtixForge
 
 ### Fixed

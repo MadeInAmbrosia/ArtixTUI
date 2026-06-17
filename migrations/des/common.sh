@@ -275,6 +275,7 @@ apply_migration_choices() {
     network_choice="$(state_get DE_MIG_NETWORK "current")"
     extras_choice="$(state_get DE_MIG_EXTRAS "")"
     init=$(detect_current_init)
+    export INIT="${init}"
 
     if [[ "$dm_choice" != "current" ]]; then
         if [[ "$dm_choice" != "none" ]]; then
@@ -397,8 +398,8 @@ run_de_migration() {
 
     apply_migration_choices
 
-    if [[ -x /usr/bin/mkinitcpio ]]; then
-        mkinitcpio -P 2>/dev/null || true
+    if [[ -x /usr/bin/mkinitcpio && -d /mnt/boot ]]; then
+        artix-chroot /mnt mkinitcpio -P 2>/dev/null || true
     fi
 
     log_info "Desktop migration complete."
