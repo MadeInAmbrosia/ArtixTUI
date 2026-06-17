@@ -73,7 +73,6 @@ install_drivers() {
         linux-zen)               pkgs+=(linux-zen-headers) ;;
         linux-cachy*|linux-cachyos*)
             pacman -Si linux-cachyos-headers >/dev/null 2>&1 && pkgs+=(linux-cachyos-headers) \
-                || pacman -Si linux-cachy-headers >/dev/null 2>&1 && pkgs+=(linux-cachy-headers) ;;
         linux-bazzite-bin|bazzite) initramfs_tool='dracut' ;;
         xanmod)
             local cpu_level kernel_headers
