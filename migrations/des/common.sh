@@ -431,14 +431,14 @@ run_de_migration() {
         remove_packages "${DE_PACKAGES[$source_de]:-}"
         if [[ -n "${MIG_ROOT}" ]]; then
             local orphan
-            orphan=$(artix-chroot "${MIG_ROOT}" pacman -Qtdq 2>/dev/null)
+            orphan=$(artix-chroot "${MIG_ROOT}" pacman -Qtdq 2>/dev/null || true)
             if [[ -n "$orphan" ]]; then
                 log_info "Removing orphaned packages..."
                 artix-chroot "${MIG_ROOT}" pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
             fi
         else
             local orphan
-            orphan=$(pacman -Qtdq 2>/dev/null)
+            orphan=$(pacman -Qtdq 2>/dev/null || true)
             if [[ -n "$orphan" ]]; then
                 log_info "Removing orphaned packages..."
                 pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
