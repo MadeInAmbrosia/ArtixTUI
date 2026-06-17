@@ -141,21 +141,33 @@ list_enabled_services() {
     local init="${1:-openrc}"
     if [[ -n "${MIG_ROOT}" ]]; then
         case "$init" in
-            openrc) artix-chroot "${MIG_ROOT}" rc-update show -v 2>/dev/null | awk '/default|boot|nonetwork/ {print $1}' | sort -u ;;
-            runit)  [[ -d "${MIG_ROOT}/etc/runit/runsvdir/default" ]] && ls "${MIG_ROOT}/etc/runit/runsvdir/default/" 2>/dev/null ;;
-            dinit)  [[ -d "${MIG_ROOT}/etc/dinit.d/boot.d" ]] && ls "${MIG_ROOT}/etc/dinit.d/boot.d/" 2>/dev/null | sed 's/\.d$//' ;;
-            s6)     artix-chroot "${MIG_ROOT}" s6-rc-db list services 2>/dev/null || true ;;
-            systemd) artix-chroot "${MIG_ROOT}" systemctl list-unit-files --state=enabled 2>/dev/null | awk '/\.service/ {print $1}' ;;
-            *)      return 1 ;;
+            openrc) 
+                if ! artix-chroot "${MIG_ROOT}" command -v rc-update &>/dev/null; then
+                    echo ""
+                    return 0
+                fi
+                artix-chroot "${MIG_ROOT}" rc-update show -v 2>/dev/null | awk '/default|boot|nonetwork/ {print $1}' | sort -u
+                ;;
+            runit)  [[ -d "${MIG_ROOT}/etc/runit/runsvdir/default" ]] && ls "${MIG_ROOT}/etc/runit/runsvdir/default/" 2>/dev/null || echo "" ;;
+            dinit)  [[ -d "${MIG_ROOT}/etc/dinit.d/boot.d" ]] && ls "${MIG_ROOT}/etc/dinit.d/boot.d/" 2>/dev/null | sed 's/\.d$//' || echo "" ;;
+            s6)     artix-chroot "${MIG_ROOT}" s6-rc-db list services 2>/dev/null || echo "" ;;
+            systemd) artix-chroot "${MIG_ROOT}" systemctl list-unit-files --state=enabled 2>/dev/null | awk '/\.service/ {print $1}' || echo "" ;;
+            *)      echo "" ;;
         esac
     else
         case "$init" in
-            openrc) rc-update show -v 2>/dev/null | awk '/default|boot|nonetwork/ {print $1}' | sort -u ;;
-            runit)  [[ -d /etc/runit/runsvdir/default ]] && ls /etc/runit/runsvdir/default/ 2>/dev/null ;;
-            dinit)  [[ -d /etc/dinit.d/boot.d ]] && ls /etc/dinit.d/boot.d/ 2>/dev/null | sed 's/\.d$//' ;;
-            s6)     s6-rc-db list services 2>/dev/null || true ;;
-            systemd) systemctl list-unit-files --state=enabled 2>/dev/null | awk '/\.service/ {print $1}' ;;
-            *)      return 1 ;;
+            openrc)
+                if ! command -v rc-update &>/dev/null; then
+                    echo ""
+                    return 0
+                fi
+                rc-update show -v 2>/dev/null | awk '/default|boot|nonetwork/ {print $1}' | sort -u
+                ;;
+            runit)  [[ -d /etc/runit/runsvdir/default ]] && ls /etc/runit/runsvdir/default/ 2>/dev/null || echo "" ;;
+            dinit)  [[ -d /etc/dinit.d/boot.d ]] && ls /etc/dinit.d/boot.d/ 2>/dev/null | sed 's/\.d$//' || echo "" ;;
+            s6)     s6-rc-db list services 2>/dev/null || echo "" ;;
+            systemd) systemctl list-unit-files --state=enabled 2>/dev/null | awk '/\.service/ {print $1}' || echo "" ;;
+            *)      echo "" ;;
         esac
     fi
 }

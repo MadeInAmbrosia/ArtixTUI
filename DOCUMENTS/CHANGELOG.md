@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.8.1.4 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `list_enabled_services()` returns empty string when init not installed — no more ANSI escape codes crashing service enumeration
+- Migrations: `_install_target_init_fallback()` removes conflicting `cryptsetup-scripts` before installing openrc
+- Installer: `installer_error()` now displays last 10 lines of install log and migration debug log — users see actual errors instead of line numbers
+
 ## v8.8.1.3 (2026-06-18) — ArtixForge
 
 ### Fixed
