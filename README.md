@@ -30,8 +30,11 @@ cd ArtixForge
 chmod +x install
 sudo ./install
 ```
+
+As of 17th of June 2026, I am back to commited testing after a long haitus. Sorry for the bugs!
+
 Currently, the following needs testing:
-- LUKS+LVM                    []
+- LUKS+LVM                    [✓]
 - LUKS+UKI                    []
 - LUKS+LVM+UKI                []
 - LVM+UKI                     []
