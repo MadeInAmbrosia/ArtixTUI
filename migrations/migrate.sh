@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 if [[ "${DEBUG:-false}" == "true" || "${ARTIX_DEBUG:-false}" == "true" ]]; then
-    exec 19> "${BASE_DIR}/artix-migration-debug.log"
+    exec 19> "/tmp/artix-migration-debug.log"
     export BASH_XTRACEFD=19
     export PS4='+ ${BASH_SOURCE}:${LINENO}:${FUNCNAME[0]}: '
     set -x
