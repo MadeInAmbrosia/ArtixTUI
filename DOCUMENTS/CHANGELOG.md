@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.2.2 (2026-06-18) — ArtixForge
+
+### Fixed
+- Bootloader: `generate_root_cmdline()` now includes `rootflags=subvol=@` for btrfs — fixes "init does not exist" on btrfs installs with Limine
+- TKG: failed patches now restore ALL files they touched, not just files with `.rej` — fixes `debug.c`/`sched.h` mismatch from partial PRJC patch application
+
 ## v8.8.2.1 (2026-06-18) — ArtixForge
 
 ### Changed

@@ -31,17 +31,20 @@ basestrap_build_tkg() {
         if [[ -d \"\${patch_dir}\" ]]; then
             for patch in \"\${patch_dir}\"/*.patch; do
                 patch_name=\$(basename \"\$patch\")
+                
+                affected_files=\$(grep '^+++' \"\$patch\" 2>/dev/null | sed 's|^+++ [^/]*/||' || true)
+                
                 if patch -Np1 < \"\$patch\" 2>/dev/null; then
                     continue
                 fi
                 
                 echo \"\${patch_name}\" >> \"\${failed_patches_file}\"
-                echo \"Patch \${patch_name} failed — restoring affected files\"
+                echo \"Patch \${patch_name} failed — restoring ALL affected files\"
                 
-                for rej in \$(find . -name '*.rej' 2>/dev/null); do
-                    original=\"\${rej%.rej}\"
-                    echo \"  Restoring \${original}\"
-                    git checkout \"\${original}\" 2>/dev/null || rm -f \"\${original}\"
+                for file in \${affected_files}; do
+                    [[ -n \"\${file}\" ]] || continue
+                    echo \"  Restoring \${file}\"
+                    git checkout \"\${file}\" 2>/dev/null || rm -f \"\${file}\"
                 done
             done
         fi

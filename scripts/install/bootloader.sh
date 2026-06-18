@@ -32,6 +32,15 @@ generate_root_cmdline() {
         cmdline+="rw"
     fi
 
+    if [[ "${fs_type}" == "btrfs" ]]; then
+        local btrfs_layout
+        btrfs_layout="$(state_get BTRFS_LAYOUT standard)"
+        cmdline+=" rootflags=subvol=@"
+        if [[ "${btrfs_layout}" == "flat" ]]; then
+            cmdline="root=UUID=${root_uuid} rw"
+        fi
+    fi
+
     if [[ "${include_rootfstype}" == "yes" ]]; then
         case "${fs_type}" in
             btrfs) cmdline+=" rootfstype=btrfs" ;;

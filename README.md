@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.8.2.1-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.8.2.2-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
@@ -40,6 +40,7 @@ Currently, the following needs testing:
 - ISO building                [?]
 - GUI rendering               [?]
 - TKG compile                 [TESTING...]
+- Cachy-* + Limine + BTRFS    [?]
 - Offline mode                [?]
 - Recovery edge cases         [>W.I.P<]
 
