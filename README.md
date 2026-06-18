@@ -23,6 +23,7 @@
 
 # **TESTING BRANCH BABOONERY**
 ###### We're going to milky way [galaxy] edition!
+### Scroll down to see what ArtixForge is about!
 ### AKA *Here's how to test v9-merger:*
 ```bash
 git clone --branch v9-merger --recursive https://github.com/realvolk/ArtixForge.git ArtixForge
