@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.2.1 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: build dependencies now installed on live ISO during preflight — `make`, `gcc`, and kernel build tools available before compilation
+
 ## v8.8.2.0 (2026-06-18) — ArtixForge
 
 ### Added

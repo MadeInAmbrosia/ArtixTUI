@@ -74,6 +74,14 @@ stage_preflight() {
         done
     fi
     
+    if [[ "$(state_get KERNEL_CHOICE linux)" == "tkg" ]]; then
+        log_info "Preparing TKG kernel build dependencies..."
+        for tool in make gcc ld bc cpio flex bison pahole git; do
+            command -v "${tool}" &>/dev/null || pkgs+=(base-devel bc cpio flex libelf pahole git dkms)
+            break
+        done
+    fi
+
     case "$(uname -r)" in
         *lts*)       live_kernel_pkg="linux-lts" ;;
         *zen*)       live_kernel_pkg="linux-zen" ;;
