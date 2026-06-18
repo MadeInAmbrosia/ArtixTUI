@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <strong>THIS IS A TESTING BRANCH FOR v9. EXPECT BUGS.</strong><br>
+  <strong>This is the official branch for v9.</strong><br>
   Any bugs found and reported are welcome.
 </p>
 
