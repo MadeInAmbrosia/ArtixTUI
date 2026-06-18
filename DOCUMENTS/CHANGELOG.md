@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.2.3 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: mkinitcpio preset now created after kernel build — `mkinitcpio -P` finds the preset and generates initramfs
+
 ## v8.8.2.2 (2026-06-18) — ArtixForge
 
 ### Fixed

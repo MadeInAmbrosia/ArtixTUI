@@ -54,6 +54,15 @@ basestrap_build_tkg() {
         make modules_install
         make install
         
+        kver_full=\$(ls -1 /lib/modules/ | sort -V | tail -1)
+        cat > /etc/mkinitcpio.d/linux-custom.preset <<PRESETEOF
+ALL_config=\"/etc/mkinitcpio.conf\"
+ALL_kver=\"/boot/vmlinuz-\${kver_full}\"
+PRESETS=('default')
+default_config=\"/etc/mkinitcpio.conf\"
+default_image=\"/boot/initramfs-linux-custom.img\"
+PRESETEOF
+        
         mkinitcpio -P
         
         if [[ -d /boot/grub ]]; then
