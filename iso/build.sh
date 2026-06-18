@@ -31,7 +31,20 @@ build_artix_iso() {
     if [[ "${offline}" == "yes" ]]; then
         source "${ISO_DIR}/offline.sh"
         log_info "Building offline package repository..."
-        build_offline_repo "${iso_profile_dir}/airootfs/mnt/repo" "${iso_profile_dir}/packages.x86_64"
+        
+        local offline_pkg_list="${iso_profile_dir}/packages.x86_64"
+        if [[ -f /tmp/artix-installer/target-state.conf ]]; then
+            log_info "Generating target system package list from saved target state..."
+            cp /tmp/artix-installer/state.conf /tmp/artix-installer/live-state.conf 2>/dev/null || true
+            cp /tmp/artix-installer/target-state.conf /tmp/artix-installer/state.conf
+            source "${SCRIPT_DIR}/state.sh" 2>/dev/null || source "${BASE_DIR}/scripts/state.sh"
+            generate_iso_package_list "$(state_get INIT openrc)" "$(state_get KERNEL_CHOICE linux)" > "${iso_profile_dir}/packages-target.x86_64"
+            offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
+            cp /tmp/artix-installer/live-state.conf /tmp/artix-installer/state.conf
+            rm -f /tmp/artix-installer/live-state.conf /tmp/artix-installer/target-state.conf
+        fi
+        
+        build_offline_repo "${iso_profile_dir}/airootfs/mnt/repo" "${offline_pkg_list}"
         mkdir -p "${iso_profile_dir}/airootfs/etc"
         cat > "${iso_profile_dir}/airootfs/etc/pacman.conf" <<'PACMAN'
 [options]

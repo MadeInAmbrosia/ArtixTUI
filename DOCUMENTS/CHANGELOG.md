@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.8.3.2 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: live ISO state and offline target system state now separated — target config no longer overwrites live environment's kernel/DE selection
+- ISO: offline package bundle generated from target system config while live ISO uses its own lightweight config
+- ISO: live ISO kernel selection locked to standard Artix kernels (linux, zen, lts, hardened) — no AUR/external kernel builds in the live environment
+
 ## v8.8.3.1 (2026-06-18) — ArtixForge
 
 ### Fixed
