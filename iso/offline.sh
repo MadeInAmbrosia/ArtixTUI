@@ -16,7 +16,8 @@ build_offline_repo() {
         log_warn "Failed to sync package databases"
         return 1
     }
-    pacman -Syw --cachedir "${repo_dir}" --noconfirm $(cat "${pkg_list_file}") 2>/dev/null || {
+    
+    pacman -Syw --cachedir "${repo_dir}" --noconfirm --ask=4 $(cat "${pkg_list_file}") 2>/dev/null || {
         log_warn "Some packages could not be downloaded – continuing with what we have"
     }
 

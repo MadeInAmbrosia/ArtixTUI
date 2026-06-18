@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.8.3.3 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: live ISO and offline target system now use completely separate state files — target config no longer pollutes live environment's kernel/DE selection
+- ISO: offline package download now uses `--ask=4` to auto-resolve group selections and provider choices — no more interactive prompts blocking the download
+- ISO: Quick Profiles removed from ISO configuration — designed for system installation, not live ISO building
+- ISO: buildbot signing key now fetched from keyserver before local signing — eliminates spurious key trust warning
+
 ## v8.8.3.2 (2026-06-18) — ArtixForge
 
 ### Fixed

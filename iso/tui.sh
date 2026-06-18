@@ -87,14 +87,10 @@ start_iso_build() {
     if [[ "${boot_mode}" == "live" ]]; then
         local config_method
         config_method=$(tui_menu "ISO Configuration" "How would you like to configure the ISO?" \
-            "Quick Profile – use a preset" \
             "Full Customization – choose every option" \
             "Load Profile – from saved configuration file") || return 1
 
         case "${config_method}" in
-            "Quick Profile"*)
-                tui_quick_install || die "Profile selection cancelled"
-                ;;
             "Full Customization"*)
                 tui_iso_live_config
                 ;;
@@ -183,13 +179,12 @@ start_iso_build() {
     if tui_yesno "Offline ISO" "Include all packages for offline installation?"; then
         offline="yes"
         if [[ "${boot_mode}" == "live" ]]; then
-            cp /tmp/artix-installer/state.conf /tmp/artix-installer/iso-state.conf 2>/dev/null || true
+            export STATE_FILE="/tmp/artix-installer/target-state.conf"
+            state_save
             
             tui_iso_target_config
             
-            cp /tmp/artix-installer/state.conf /tmp/artix-installer/target-state.conf 2>/dev/null || true
-            cp /tmp/artix-installer/iso-state.conf /tmp/artix-installer/state.conf
-            rm -f /tmp/artix-installer/iso-state.conf
+            export STATE_FILE="/tmp/artix-installer/state.conf"
         else
             log_info "Installer ISO offline mode: using existing package list (no target configuration needed)"
         fi
