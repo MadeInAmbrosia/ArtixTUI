@@ -206,7 +206,7 @@ create_filesystems() {
             xfs)
                 local xfs_config="/usr/share/xfsprogs/mkfs/lts_6.6.conf"
                 if [[ -f "${xfs_config}" ]]; then
-                    mkfs.xfs -f -c "options=${xfs_config}" -m bigtime=0 "${root_lv}"
+                    mkfs.xfs -f -c "${xfs_config}" -m bigtime=0 "${root_lv}"
                 else
                     mkfs.xfs -f -m bigtime=0 "${root_lv}"
                     log_warn "XFS LTS config not found — using upstream defaults."
