@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.2.6 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: `CONFIG_DM_CRYPT` and `CONFIG_DM_INTEGRITY` enabled after `make defconfig` — LUKS-encrypted root now unlocks correctly with TKG-custom kernels
+- mkinitcpio: `lvm2`, `encrypt`, `bcachefs`, and `zfs` hooks now check for existing entry before appending — no more duplicate hook accumulation on resume or re-run
+
 ## v8.8.2.5 (2026-06-18) — ArtixForge
 
 ### Fixed

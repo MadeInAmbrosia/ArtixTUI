@@ -50,6 +50,8 @@ basestrap_build_tkg() {
         fi
         
         make defconfig
+        scripts/config --enable DM_CRYPT
+        scripts/config --enable DM_INTEGRITY
         make -j\$(nproc)
         make modules_install
         make install
