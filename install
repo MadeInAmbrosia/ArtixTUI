@@ -135,6 +135,8 @@ main_menu() {
         DEBUG='false'
     fi
     tui_msg_quick "Mode Selected" "Mode: ${MODE}   Debug: ${DEBUG}"
+    tui_msg_quick "Deprecated Version" "ArtixForge v8 is currently deprecated."
+    tui_msg_quick "Deprecated Version" "It is *suggested* to try v9-merger instead."
 }
 
 run_install_pipeline() {
