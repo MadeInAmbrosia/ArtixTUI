@@ -199,8 +199,19 @@ EOF
         done; then
         recoverable_error "basestrap failed – the installer can update itself and retry"
     fi
+
     [[ -x /mnt/bin/bash ]] || die "/mnt/bin/bash missing after basestrap"
     [[ -f /mnt/etc/os-release ]] || die "target root invalid after basestrap"
+
+    if [[ ! -e /mnt/sbin/init ]]; then
+        log_warn "/sbin/init not found — creating init symlink"
+        local init_bin
+        init_bin="$(state_get INIT openrc)"
+        artix-chroot /mnt ln -sf "/usr/bin/${init_bin}" /sbin/init 2>/dev/null || {
+            log_error "Failed to create /sbin/init symlink for ${init_bin}"
+            die "Init symlink missing — system will not boot"
+        }
+    fi
 
     if ! grep -q '^Architecture' /mnt/etc/pacman.conf 2>/dev/null; then
         sed -i '1s/^/[options]\nArchitecture = auto\n\n/' /mnt/etc/pacman.conf

@@ -54,6 +54,16 @@ repair_boot() {
         fi
     fi
 
+    if [[ "${issues}" =~ no-init ]]; then
+        log_warn "/sbin/init missing."
+        local init
+        init=$(detect_init 2>/dev/null || state_get INIT openrc)
+        if tui_yesno "Repair init" "Create /sbin/init symlink to ${init}?"; then
+            artix-chroot /mnt ln -sf "/usr/bin/${init}" /sbin/init
+            log_info "Init symlink created."
+        fi
+    fi
+
     if [[ "${issues}" =~ no-initramfs ]]; then
         log_warn "Initramfs missing."
         if tui_yesno "Regenerate initramfs" "Run mkinitcpio?"; then

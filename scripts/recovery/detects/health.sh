@@ -53,6 +53,10 @@ detect_boot_health() {
         issues+="no-boot-dir "
     fi
 
+    if [[ ! -e "${ROOT}/sbin/init" ]]; then
+        issues+="no-init "
+    fi
+
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
         if ! compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 && \
            ! [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]]; then

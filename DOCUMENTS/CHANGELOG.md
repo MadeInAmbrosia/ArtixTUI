@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.8.1.8 (2026-06-18) — ArtixForge
+
+### Fixed
+- Basestrap: `/sbin/init` symlink verified after installation — kernel panic from missing init no longer possible
+- Recovery: `detect_boot_health` now checks for `/sbin/init` — missing init symlink detected and repairable
+- Recovery: `repair_boot` can recreate `/sbin/init` symlink from detected init system
+
 ## v8.8.1.7 (2026-06-18) — ArtixForge
 
 ### Fixed
