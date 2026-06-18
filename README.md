@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <strong>Want to use the latest bug fixes and features?<strong><br>
+  <strong>As of June 18th, this branch is depricated.<strong><br>
   Check out the v9-merger branch!
 </p>
 
