@@ -2,50 +2,54 @@
 set -Eeuo pipefail
 
 basestrap_build_tkg() {
-    log_info "Building TKG kernel (using TKG patches, AF's poweruser process)..."
+    log_info "Building TKG kernel inside target chroot..."
 
-    local tkg_dir="/tmp/linux-tkg"
-    local kernel_src="/tmp/linux-custom"
-    rm -rf "${tkg_dir}" "${kernel_src}"
-
-    git clone --depth 1 https://github.com/Frogging-Family/linux-tkg.git "${tkg_dir}"
-
-    local artix_kver=$(pacman -Si linux 2>/dev/null | grep Version | awk '{print $3}' | cut -d- -f1)
-    [[ -z "${artix_kver}" ]] && artix_kver=$(uname -r | cut -d- -f1)
-
-    git clone --depth 1 --branch "v${artix_kver}" \
-        https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "${kernel_src}" 2>/dev/null || \
-    git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "${kernel_src}"
-
-    cd "${kernel_src}"
-
-    local kver=$(make kernelrelease 2>/dev/null || make kernelversion | cut -d. -f1-2)
-    local patch_dir="${tkg_dir}/linux-tkg-patches/${kver}"
-    if [[ -d "${patch_dir}" ]]; then
-        log_info "Applying TKG patches for kernel ${kver}..."
-        for patch in "${patch_dir}"/*.patch; do
-            patch -Np1 < "$patch" || log_warn "Patch ${patch} failed – continuing"
-        done
-    fi
-
-    make defconfig
-    make -j$(nproc)
-    make modules_install INSTALL_MOD_PATH=/mnt
-    make install INSTALL_PATH=/mnt/boot
-
-    local kver_full=$(ls -1 /mnt/lib/modules/ | grep -E '^[0-9]' | sort -V | tail -1)
-    if [[ -n "${kver_full}" ]]; then
-        artix-chroot /mnt mkinitcpio -P
-        if [[ -d /mnt/boot/grub ]]; then
-            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+    artix-chroot /mnt bash -c "
+        pacman -S --noconfirm --needed base-devel git bc cpio flex libelf pahole dkms
+        
+        cd /tmp
+        rm -rf linux-tkg linux-custom
+        
+        git clone --depth 1 https://github.com/Frogging-Family/linux-tkg.git
+        
+        local artix_kver=\$(pacman -Si linux 2>/dev/null | grep Version | awk '{print \$3}' | cut -d- -f1)
+        [[ -z \"\${artix_kver}\" ]] && artix_kver=\$(uname -r | cut -d- -f1)
+        
+        git clone --depth 1 --branch \"v\${artix_kver}\" \
+            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git linux-custom 2>/dev/null || \
+        git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git linux-custom
+        
+        cd linux-custom
+        
+        local kver=\$(make kernelrelease 2>/dev/null || make kernelversion | grep -oP '\d+\.\d+')
+        local patch_dir=\"/tmp/linux-tkg/linux-tkg-patches/\${kver}\"
+        
+        if [[ -d \"\${patch_dir}\" ]]; then
+            for patch in \"\${patch_dir}\"/*.patch; do
+                patch -Np1 < \"\$patch\" || echo \"Patch \${patch} failed – continuing\"
+            done
         fi
-        log_info "TKG kernel (${kver_full}) installed"
+        
+        make defconfig
+        make -j\$(nproc)
+        make modules_install
+        make install
+        
+        mkinitcpio -P
+        
+        if [[ -d /boot/grub ]]; then
+            grub-mkconfig -o /boot/grub/grub.cfg
+        fi
+    "
+    
+    if [[ -f /mnt/boot/vmlinuz-* ]]; then
+        log_info "TKG kernel built and installed successfully."
     else
-        die "TKG build failed – no kernel modules found in /mnt/lib/modules"
+        log_error "TKG kernel build failed."
+        return 1
     fi
-
-    rm -rf "${tkg_dir}" "${kernel_src}"
-    log_info "TKG build complete."
+    
+    rm -rf /tmp/linux-tkg /tmp/linux-custom
 }
 
 basestrap_build_bazzite() {
