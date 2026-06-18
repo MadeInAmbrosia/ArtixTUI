@@ -11,7 +11,9 @@ basestrap_zfs_setup() {
     artix-chroot /mnt zgenhostid
 
     log_info "Adding ZFS hook to mkinitcpio..."
-    artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/zfs \1/' /etc/mkinitcpio.conf
+    if ! artix-chroot /mnt grep -q 'zfs' /etc/mkinitcpio.conf; then
+        artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/zfs \1/' /etc/mkinitcpio.conf
+    fi
 
     log_info "Generating ZFS fstab entries..."
     cat > /mnt/etc/fstab <<EOF

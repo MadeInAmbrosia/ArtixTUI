@@ -261,19 +261,25 @@ EOF
 
     if [[ "${fs_type}" == 'bcachefs' ]]; then
         log_info "Adding Bcachefs hook to mkinitcpio..."
-        artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/bcachefs \1/' /etc/mkinitcpio.conf
+        if ! artix-chroot /mnt grep -q 'bcachefs' /etc/mkinitcpio.conf; then
+            artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/bcachefs \1/' /etc/mkinitcpio.conf
+        fi
     fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Adding LVM hook to mkinitcpio..."
-        artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
+        if ! artix-chroot /mnt grep -q 'lvm2' /etc/mkinitcpio.conf; then
+            artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
+        fi
         log_info "Enabling LVM boot service..."
         enable_service_boot lvm
     fi
 
     if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
         log_info "Adding encrypt hook to mkinitcpio..."
-        artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+        if ! artix-chroot /mnt grep -q 'encrypt' /etc/mkinitcpio.conf; then
+            artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+        fi
         log_info "Enabling LUKS boot services..."
         enable_service_boot dmcrypt
         enable_service_boot device-mapper

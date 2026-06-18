@@ -19,7 +19,8 @@ bootloader_install_limine() {
     local limine_root_cmdline
     limine_root_cmdline=$(generate_root_cmdline "${fs_type}" "${crypt_uuid}" "${mapper_name}" "${root_uuid}" "yes")
 
-    cp /mnt/boot/vmlinuz-* "${esp_mount}/" 2>/dev/null || true
+    shopt -s nullglob
+    cp /mnt/boot/vmlinuz* "${esp_mount}/" 2>/dev/null || true
     cp /mnt/boot/initramfs-*.img "${esp_mount}/" 2>/dev/null || true
     if [[ -f /mnt/boot/amd-ucode.img ]]; then
         cp /mnt/boot/amd-ucode.img "${esp_mount}/" 2>/dev/null || true
@@ -36,12 +37,14 @@ LIMINE_EOF
 
     local found_kernel=0
     local limine_kernel
-    for limine_kernel in /mnt/boot/vmlinuz-*; do
+    for limine_kernel in /mnt/boot/vmlinuz*; do
         [[ -f "${limine_kernel}" ]] || continue
         found_kernel=1
         local limine_kernel_name limine_initramfs limine_initramfs_name
         limine_kernel_name="$(basename "${limine_kernel}")"
         local kver="${limine_kernel_name#vmlinuz-}"
+        # If kernel doesn't have the vmlinuz- prefix (e.g. vmlinuz.old or bare vmlinuz), use the full name
+        [[ "${kver}" == "${limine_kernel_name}" ]] && kver="${limine_kernel_name#vmlinuz}"
 
         limine_initramfs=$(find_initramfs_image "${kver}")
         [[ -n "${limine_initramfs}" ]] && limine_initramfs_name="$(basename "${limine_initramfs}")"

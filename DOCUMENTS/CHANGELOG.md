@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.8.2.5 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: kernel renamed using modification-time detection — newest `vmlinuz*` always becomes `vmlinuz-artixforge-tkg`, eliminating `vmlinuz.old` edge case
+- Limine: kernel glob widened from `vmlinuz-*` to `vmlinuz*` with `nullglob` — no longer dies on non-standard kernel names
+- mkinitcpio: `lvm2`, `encrypt`, `bcachefs`, and `zfs` hooks now check for existing entry before appending — no more duplicate hook accumulation on resume or re-run
+
 ## v8.8.2.4 (2026-06-18) — ArtixForge
 
 ### Fixed

@@ -54,9 +54,19 @@ basestrap_build_tkg() {
         make modules_install
         make install
         
-        kernel_image=\$(ls -1 /boot/vmlinuz* 2>/dev/null | tail -1)
-        [[ -z \"\${kernel_image}\" ]] && kernel_image=\"/boot/vmlinuz\"
-        
+        newest_kernel=\$(find /boot -maxdepth 1 -name 'vmlinuz*' ! -name '*.old' -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2-)
+        if [[ -n \"\${newest_kernel}\" && ! -f /boot/vmlinuz-artixforge-tkg ]]; then
+            mv \"\${newest_kernel}\" /boot/vmlinuz-artixforge-tkg
+            cp /boot/System.map /boot/System.map-artixforge-tkg 2>/dev/null || true
+            kernel_image=/boot/vmlinuz-artixforge-tkg
+        elif [[ -f /boot/vmlinuz-artixforge-tkg ]]; then
+            kernel_image=/boot/vmlinuz-artixforge-tkg
+        else
+            # Fallback: pick any vmlinuz* file (desperate, but better than nothing)
+            kernel_image=\$(ls -1 /boot/vmlinuz* 2>/dev/null | tail -1)
+        fi
+        [[ -z \"\${kernel_image}\" ]] && { echo \"ERROR: No kernel image found after build\"; exit 1; }
+
         cat > /etc/mkinitcpio.d/linux-custom.preset <<PRESETEOF
 ALL_config=\"/etc/mkinitcpio.conf\"
 ALL_kver=\"\${kernel_image}\"
