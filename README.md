@@ -47,7 +47,7 @@ Currently, I have tested the following:
 - Limine and GRUB in several cases
 - Various combinations of LUKS+LVM, LUKS+UKI, LVM+UKI, etc.
 - Cachy kernels with Limine and BTRFS + LXQt
-- A lot of stuff honestly.. see (the Changelog.)[DOCUMENTS/CHANGELOG.md]
+- A lot of stuff honestly.. see [the Changelog.](DOCUMENTS/CHANGELOG.md)
 
 ### **FOUND A BUG? SOMETHING NOT WORKING?**
 
