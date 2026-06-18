@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.3.5 (2026-06-18) — ArtixForge
+
+### Added
+- ISO: offline bundles now build non-repo kernels (bazzite, cachyos, xanmod) in chroot and include them — true offline support for exotic kernels
+- ISO: `build_nonrepo_for_offline()` — extensible function for building any kernel that needs compilation for offline mode
+
 ## v8.8.3.4 (2026-06-18) — ArtixForge
 
 ### Fixed

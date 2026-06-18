@@ -4,6 +4,80 @@ set -Eeuo pipefail
 ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="${BASE_DIR:-$(cd -- "${ISO_DIR}/.." && pwd)}"
 
+build_nonrepo_for_offline() {
+    local kernel_name="${1}" chroot_dir="${2}" repo_dir="${3}"
+    
+    log_info "Building ${kernel_name} for offline bundle..."
+    
+    case "${kernel_name}" in
+        linux-bazzite-bin)
+            artix-chroot "${chroot_dir}" bash -c "
+                pacman -S --noconfirm --needed base-devel git
+                cd /tmp
+                rm -rf linux-bazzite-bin
+                git clone https://aur.archlinux.org/linux-bazzite-bin.git
+                chown -R nobody: /tmp/linux-bazzite-bin
+                su nobody -c 'cd /tmp/linux-bazzite-bin && makepkg -s --noconfirm --needed --skippgpcheck'
+            " || die "${kernel_name} build for offline bundle failed"
+            cp "${chroot_dir}/tmp/linux-bazzite-bin/"*.pkg.tar.* "${repo_dir}/" 2>/dev/null || true
+            echo "linux-bazzite-bin" >> "${repo_dir}/../packages-target.x86_64"
+            echo "linux-bazzite-bin-headers" >> "${repo_dir}/../packages-target.x86_64"
+            ;;
+        linux-cachyos*)
+            artix-chroot "${chroot_dir}" bash -c "
+                pacman -S --noconfirm --needed base-devel curl
+                pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+                pacman-key --lsign-key F3B607488DB35A47
+                local cachyos_keyring cachyos_mirrorlist
+                cachyos_keyring=\$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-keyring-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
+                cachyos_mirrorlist=\$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
+                [[ -z \"\${cachyos_keyring}\" ]] && cachyos_keyring='cachyos-keyring-20250101-1-any.pkg.tar.zst'
+                [[ -z \"\${cachyos_mirrorlist}\" ]] && cachyos_mirrorlist='cachyos-mirrorlist-20250101-1-any.pkg.tar.zst'
+                pacman -U --noconfirm \"https://mirror.cachyos.org/repo/x86_64/cachyos/\${cachyos_keyring}\" \"https://mirror.cachyos.org/repo/x86_64/cachyos/\${cachyos_mirrorlist}\"
+                grep -q '^\[cachyos\]' /etc/pacman.conf || cat >> /etc/pacman.conf <<'REPO_EOF'
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+REPO_EOF
+                pacman -Sy --noconfirm
+                mkdir -p /tmp/offline-kernel
+                pacman -Sw --noconfirm --cachedir /tmp/offline-kernel '${kernel_name}' '${kernel_name}-headers'
+            " || die "CachyOS kernel download for offline bundle failed"
+            cp "${chroot_dir}/tmp/offline-kernel/"*.pkg.tar.* "${repo_dir}/" 2>/dev/null || true
+            echo "${kernel_name}" >> "${repo_dir}/../packages-target.x86_64"
+            echo "${kernel_name}-headers" >> "${repo_dir}/../packages-target.x86_64"
+            ;;
+        xanmod)
+            artix-chroot "${chroot_dir}" bash -c "
+                pacman -S --noconfirm --needed base-devel
+                export GNUPGHOME=/etc/pacman.d/gnupg
+                mkdir -p \"\${GNUPGHOME}\"
+                chmod 700 \"\${GNUPGHOME}\"
+                pacman-key --init
+                pacman-key --populate artix
+                pacman-key --recv-keys 3056513887B78AEB --keyserver hkp://keyserver.ubuntu.com
+                pacman-key --lsign-key 3056513887B78AEB
+                pacman -U --noconfirm https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst
+                grep -q '^\[chaotic-aur\]' /etc/pacman.conf || cat >> /etc/pacman.conf <<'REPO_EOF'
+[chaotic-aur]
+Include = /etc/pacman.d/chaotic-mirrorlist
+REPO_EOF
+                pacman -Sy --noconfirm
+                mkdir -p /tmp/offline-kernel
+                pacman -Sw --noconfirm --cachedir /tmp/offline-kernel linux-xanmod linux-xanmod-headers
+            " || die "XanMod kernel download for offline bundle failed"
+            cp "${chroot_dir}/tmp/offline-kernel/"*.pkg.tar.* "${repo_dir}/" 2>/dev/null || true
+            echo "linux-xanmod" >> "${repo_dir}/../packages-target.x86_64"
+            echo "linux-xanmod-headers" >> "${repo_dir}/../packages-target.x86_64"
+            ;;
+        *)
+            log_warn "Non-repo kernel '${kernel_name}' not supported for offline builds — substituting linux"
+            return 1
+            ;;
+    esac
+    
+    return 0
+}
+
 build_artix_iso() {
     local profile_name="${1:-Desktop}"
     local init="${2:-openrc}"
@@ -33,11 +107,51 @@ build_artix_iso() {
         log_info "Building offline package repository..."
         
         local offline_pkg_list="${iso_profile_dir}/packages.x86_64"
+        
         if [[ -f /tmp/artix-installer/iso-target-state.conf ]]; then
             log_info "Generating target system package list from target state..."
             source /tmp/artix-installer/iso-target-state.conf
-            generate_iso_package_list "${INIT:-openrc}" "${KERNEL_CHOICE:-linux}" > "${iso_profile_dir}/packages-target.x86_64"
-            offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
+            local target_kernel="${KERNEL_CHOICE:-linux}"
+            
+            case "${target_kernel}" in
+                linux|linux-zen|linux-lts|linux-hardened|linux-libre)
+                    generate_iso_package_list "${INIT:-openrc}" "${target_kernel}" > "${iso_profile_dir}/packages-target.x86_64"
+                    offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
+                    ;;
+                *)
+                    log_info "Non-repo kernel '${target_kernel}' — building for offline bundle..."
+                    generate_iso_package_list "${INIT:-openrc}" "linux" > "${iso_profile_dir}/packages-target.x86_64"
+                    offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
+                    
+                    buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -x 2>&1 || die "buildiso -x failed for offline kernel build"
+                    
+                    local chroot_dir=""
+                    local search_paths=(
+                        "/var/lib/artools/buildiso/${profile_name}/artix/rootfs"
+                        "${workspace}/buildiso/${profile_name}/artix/rootfs"
+                    )
+                    for candidate in "${search_paths[@]}"; do
+                        if [[ -d "${candidate}" && -x "${candidate}/bin/sh" ]]; then
+                            chroot_dir="${candidate}"
+                            break
+                        fi
+                    done
+                    [[ -z "${chroot_dir}" ]] && chroot_dir=$(find "${workspace}" -type d -name rootfs -path "*/artix/rootfs" 2>/dev/null | head -n1)
+                    
+                    if [[ -n "${chroot_dir}" && -d "${chroot_dir}" ]]; then
+                        mkdir -p "${iso_profile_dir}/airootfs/mnt/repo"
+                        if ! build_nonrepo_for_offline "${target_kernel}" "${chroot_dir}" "${iso_profile_dir}/airootfs/mnt/repo"; then
+                            log_warn "Falling back to linux for offline bundle"
+                            generate_iso_package_list "${INIT:-openrc}" "linux" > "${iso_profile_dir}/packages-target.x86_64"
+                            offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
+                        fi
+                    else
+                        log_warn "Could not create chroot for kernel build — falling back to linux"
+                        generate_iso_package_list "${INIT:-openrc}" "linux" > "${iso_profile_dir}/packages-target.x86_64"
+                        offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
+                    fi
+                    ;;
+            esac
         fi
         
         build_offline_repo "${iso_profile_dir}/airootfs/mnt/repo" "${offline_pkg_list}"
