@@ -12,6 +12,16 @@ basestrap_target_repo_cachyos() {
         cpu_level=$(/lib/ld-linux-x86-64.so.2 --help 2>/dev/null | grep -oP 'x86-64-v[2-4]' | head -n1 || true)
 
         if [[ "${cpu_level}" == "x86-64-v4" ]]; then
+            local cpu_model vendor
+            cpu_model=$(grep -m1 'model' /proc/cpuinfo | awk '{print $3}')
+            vendor=$(grep -m1 'vendor_id' /proc/cpuinfo | awk '{print $3}')
+            if [[ "${vendor}" == "GenuineIntel" && "${cpu_model}" -ge 151 ]]; then
+                log_warn "Intel 12th gen+ detected — AVX-512 is fused off, using v3 instead of v4"
+                cpu_level="x86-64-v3"
+            fi
+        fi
+
+        if [[ "${cpu_level}" == "x86-64-v4" ]]; then
             if ! grep -q '^Architecture =.*x86_64_v4' /mnt/etc/pacman.conf; then
                 sed -i '/^\[options\]/a Architecture = x86_64 x86_64_v4' /mnt/etc/pacman.conf
             fi

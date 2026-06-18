@@ -59,6 +59,16 @@ basestrap_kernel_cachyos() {
         cpu_level=$(/lib/ld-linux-x86-64.so.2 --help 2>/dev/null | grep -oP 'x86-64-v[2-4]' | head -n1 || true)
 
         if [[ "${cpu_level}" == "x86-64-v4" ]]; then
+            local cpu_model vendor
+            cpu_model=$(grep -m1 'model' /proc/cpuinfo | awk '{print $3}')
+            vendor=$(grep -m1 'vendor_id' /proc/cpuinfo | awk '{print $3}')
+            if [[ "${vendor}" == "GenuineIntel" && "${cpu_model}" -ge 151 ]]; then
+                log_warn "Intel 12th gen+ detected — AVX-512 is fused off, using v3 instead of v4"
+                cpu_level="x86-64-v3"
+            fi
+        fi
+
+        if [[ "${cpu_level}" == "x86-64-v4" ]]; then
             local v4_mirrorlist_pkg
             v4_mirrorlist_pkg=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-v4-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
             if [[ -n "${v4_mirrorlist_pkg}" ]]; then

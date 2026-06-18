@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.2.7 (2026-06-18) — ArtixForge
+
+### Fixed
+- CachyOS: Intel 12th gen+ CPUs (Alder Lake and newer) now correctly downgraded from v4 to v3 — AVX-512 is fused off on these chips despite being reported as supported (Special thanks to https://github.com/HappyAmper for pointing it out)
+
 ## v8.8.2.6 (2026-06-18) — ArtixForge
 
 ### Fixed
