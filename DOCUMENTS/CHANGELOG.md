@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.2.4 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: mkinitcpio preset uses actual kernel path from `make install` — matches `vmlinuz` without version suffix
+- TKG: success check matches `vmlinuz*` without requiring version suffix
+
 ## v8.8.2.3 (2026-06-18) — ArtixForge
 
 ### Fixed

@@ -54,10 +54,12 @@ basestrap_build_tkg() {
         make modules_install
         make install
         
-        kver_full=\$(ls -1 /lib/modules/ | sort -V | tail -1)
+        kernel_image=\$(ls -1 /boot/vmlinuz* 2>/dev/null | tail -1)
+        [[ -z \"\${kernel_image}\" ]] && kernel_image=\"/boot/vmlinuz\"
+        
         cat > /etc/mkinitcpio.d/linux-custom.preset <<PRESETEOF
 ALL_config=\"/etc/mkinitcpio.conf\"
-ALL_kver=\"/boot/vmlinuz-\${kver_full}\"
+ALL_kver=\"\${kernel_image}\"
 PRESETS=('default')
 default_config=\"/etc/mkinitcpio.conf\"
 default_image=\"/boot/initramfs-linux-custom.img\"
@@ -77,7 +79,7 @@ PRESETEOF
         rm -f /mnt/tmp/tkg-failed-patches.txt
     fi
     
-    if ls /mnt/boot/vmlinuz-* &>/dev/null; then
+    if ls /mnt/boot/vmlinuz* &>/dev/null; then
         log_info "TKG kernel built and installed successfully."
         if [[ -n "${failed_patches}" ]]; then
             log_warn "The following TKG patches could not be applied: ${failed_patches}"
