@@ -12,7 +12,7 @@ basestrap_build_tkg() {
         
         git clone --depth 1 https://github.com/Frogging-Family/linux-tkg.git
         
-        local artix_kver=\$(pacman -Si linux 2>/dev/null | grep Version | awk '{print \$3}' | cut -d- -f1)
+        artix_kver=\$(pacman -Si linux 2>/dev/null | grep Version | awk '{print \$3}' | cut -d- -f1)
         [[ -z \"\${artix_kver}\" ]] && artix_kver=\$(uname -r | cut -d- -f1)
         
         git clone --depth 1 --branch \"v\${artix_kver}\" \
@@ -21,8 +21,8 @@ basestrap_build_tkg() {
         
         cd linux-custom
         
-        local kver=\$(make kernelrelease 2>/dev/null || make kernelversion | grep -oP '\d+\.\d+')
-        local patch_dir=\"/tmp/linux-tkg/linux-tkg-patches/\${kver}\"
+        kver=\$(make kernelrelease 2>/dev/null || make kernelversion | grep -oP '\d+\.\d+')
+        patch_dir=\"/tmp/linux-tkg/linux-tkg-patches/\${kver}\"
         
         if [[ -d \"\${patch_dir}\" ]]; then
             for patch in \"\${patch_dir}\"/*.patch; do
@@ -42,7 +42,7 @@ basestrap_build_tkg() {
         fi
     "
     
-    if [[ -f /mnt/boot/vmlinuz-* ]]; then
+    if ls /mnt/boot/vmlinuz-* &>/dev/null; then
         log_info "TKG kernel built and installed successfully."
     else
         log_error "TKG kernel build failed."
