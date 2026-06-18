@@ -4,13 +4,6 @@ set -Eeuo pipefail
 generate_iso_package_list() {
     local init="${1}" kernel="${2}"
 
-    local required_vars=(INIT FS_TYPE BOOTLOADER NETWORK_STACK AUDIO_STACK X_STACK WM_DE)
-    for var in "${required_vars[@]}"; do
-        state_get "${var}" &>/dev/null || {
-            log_warn "State variable ${var} not set; ISO profile may be incomplete"
-        }
-    done
-
     local -a pkg_list=()
 
     pkg_list+=(
@@ -89,30 +82,11 @@ generate_iso_package_list() {
         xorg)   pkg_list+=(xorg-server xorg-xinit xf86-input-libinput xf86-input-evdev) ;;
     esac
 
-    local fs_type
-    fs_type="$(state_get FS_TYPE ext4)"
-    case "${fs_type}" in
-        bcachefs) pkg_list+=(bcachefs-tools) ;;
-        zfs)      pkg_list+=(zfs-dkms zfs-utils) ;;
-    esac
-
-    local bootloader
-    bootloader="$(state_get BOOTLOADER grub)"
-    case "${bootloader}" in
-        grub)   pkg_list+=(grub os-prober) ;;
-        refind) pkg_list+=(refind) ;;
-        limine) pkg_list+=(limine) ;;
-    esac
-
     local extras
     extras="$(state_get EXTRAS "")"
     for extra in ${extras}; do
         pkg_list+=("${extra}")
     done
-
-    if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        pkg_list+=(eukify)
-    fi
 
     local iso_extras
     iso_extras="$(state_get ISO_EXTRA_PACKAGES "")"

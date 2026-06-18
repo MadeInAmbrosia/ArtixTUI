@@ -4,6 +4,63 @@ set -Eeuo pipefail
 ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="${BASE_DIR:-$(cd -- "${ISO_DIR}/.." && pwd)}"
 
+tui_iso_live_config() {
+    tui_select_desktop
+    tui_select_display_manager
+    tui_select_xstack
+    tui_select_init
+    tui_select_kernel
+    tui_select_network_stack
+    tui_select_audio_stack
+    tui_select_extras
+    state_set DISK ""
+    state_set FS_TYPE "ext4"
+    state_set BOOTLOADER ""
+    state_set USE_LUKS "no"
+    state_set USE_LVM "no"
+    state_set GENERATE_UKI "no"
+    state_set HOSTNAME "artixforge"
+    state_set TIMEZONE "UTC"
+    state_set LOCALE "en_US.UTF-8"
+    state_set KEYMAP "us"
+    state_set USER_NAME "artix"
+    state_set USER_PASS ""
+    state_set ROOT_PASS ""
+    state_set USER_SHELL "bash"
+    state_set PRIV_ESCALATION "sudo"
+    state_set QUICK_PROFILE "Custom"
+}
+
+tui_iso_target_config() {
+    tui_msg_quick "Offline Configuration" "Configure the system you will later install.\nThese packages will be bundled for offline installation."
+    tui_select_init
+    tui_select_filesystem
+    tui_select_btrfs_layout
+    tui_select_bootloader
+    tui_select_uki
+    tui_select_kernel
+    tui_select_microcode
+    tui_select_desktop
+    tui_select_display_manager
+    tui_select_xstack
+    tui_select_network_stack
+    tui_select_audio_stack
+    tui_select_shell
+    tui_select_priv_escalation
+    tui_select_extras
+    tui_select_luks
+    tui_select_arch_repos
+    tui_select_hostname
+    tui_select_timezone
+    tui_select_locale
+    tui_select_keyboard_layout
+    tui_select_username
+    tui_select_user_password
+    tui_select_root_password
+    tui_show_sanity_warnings
+    state_set DISK ""
+}
+
 start_iso_build() {
     if ! command -v buildiso &>/dev/null; then
         if tui_yesno "Missing Tools" "artools is not installed. Install now?"; then
@@ -36,7 +93,7 @@ start_iso_build() {
                 tui_quick_install || die "Profile selection cancelled"
                 ;;
             "Full Customization"*)
-                tui_collect_install_config
+                tui_iso_live_config
                 ;;
             "Load Profile"*)
                 local profile_file
@@ -54,7 +111,6 @@ start_iso_build() {
                 ;;
         esac
     else
-        # Installer mode: minimal config – just init, kernel, and offline preference
         local inst_init inst_kernel
         inst_init=$(tui_menu "Init System" "Select init system for the installer ISO:" \
             "openrc" "runit" "dinit" "s6") || return 1
@@ -110,6 +166,11 @@ start_iso_build() {
         fi
     fi
 
+    local iso_output_dir
+    iso_output_dir=$(tui_input "Output Directory" "Where should the ISO be saved?" "${HOME}/ArtixForge-ISO") || return 1
+    mkdir -p "${iso_output_dir}"
+    state_set ISO_OUTPUT_DIR "${iso_output_dir}"
+
     local profile_name init kernel offline
     profile_name="$(state_get QUICK_PROFILE "Custom")"
     init="$(state_get INIT "openrc")"
@@ -119,13 +180,12 @@ start_iso_build() {
     if tui_yesno "Offline ISO" "Include all packages for offline installation?"; then
         offline="yes"
         if [[ "${boot_mode}" == "live" ]]; then
-            tui_msg_quick "Offline Configuration" "Now configure the target system.\nThese packages will be bundled for offline installation."
-            tui_collect_install_config
+            tui_iso_target_config
         else
             log_info "Installer ISO offline mode: using existing package list (no target configuration needed)"
         fi
     fi
 
     source "${ISO_DIR}/build.sh"
-    build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
+    build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}" "${iso_output_dir}"
 }

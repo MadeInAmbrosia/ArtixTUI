@@ -10,6 +10,7 @@ build_artix_iso() {
     local kernel="${3:-linux}"
     local offline="${4:-no}"
     local boot_mode="${5:-live}"
+    local user_output_dir="${6:-${HOME}/ArtixForge-ISO}"
 
     local workspace="${HOME}/artools-workspace"
     local iso_output_dir="${workspace}/iso"
@@ -142,10 +143,17 @@ PACMAN
         if [[ ${rc} -eq 0 ]]; then
             local iso_file
             iso_file=$(find "${iso_output_dir}" -name '*.iso' -type f 2>/dev/null | head -n1)
-            log_info "ISO created: ${iso_file}"
-            log_info "Build log: ${iso_log}"
-            cp "${iso_log}" "${ISO_DIR}/" 2>/dev/null || true
-            tui_msg_quick "ISO Ready" "ISO created at:\n${iso_file}\n\nBuild log:\n${iso_log}"
+            if [[ -n "${iso_file}" ]]; then
+                mkdir -p "${user_output_dir}"
+                cp "${iso_file}" "${user_output_dir}/"
+                log_info "ISO created: ${user_output_dir}/${iso_file##*/}"
+                log_info "Build log: ${iso_log}"
+                cp "${iso_log}" "${user_output_dir}/" 2>/dev/null || true
+                tui_msg_quick "ISO Ready" "ISO created at:\n${user_output_dir}/${iso_file##*/}\n\nBuild log:\n${user_output_dir}/iso-build-*.log"
+            else
+                log_error "ISO file not found in ${iso_output_dir}"
+                die "buildiso completed but no ISO was produced"
+            fi
         else
             log_error "ISO build failed. Check log: ${iso_log}"
             cp "${iso_log}" "${ISO_DIR}/" 2>/dev/null || true
@@ -159,8 +167,10 @@ PACMAN
     iso_file=$(find "${iso_output_dir}" -name '*.iso' -type f 2>/dev/null | head -n1)
 
     if [[ -n "${iso_file}" ]]; then
-        log_info "ISO created: ${iso_file}"
-        tui_msg_quick "ISO Ready" "ISO created at:\n${iso_file}"
+        mkdir -p "${user_output_dir}"
+        cp "${iso_file}" "${user_output_dir}/"
+        log_info "ISO created: ${user_output_dir}/${iso_file##*/}"
+        tui_msg_quick "ISO Ready" "ISO created at:\n${user_output_dir}/${iso_file##*/}"
     else
         log_warn "ISO file not found in ${iso_output_dir}"
         log_warn "Check ${workspace} for the output"

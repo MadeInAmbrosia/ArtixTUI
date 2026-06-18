@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.8.3.0 (2026-06-18) — ArtixForge
+
+### Changed
+- ISO: builder no longer asks for disk, partitions, users, or passwords — live ISO configuration is now lightweight (DE, init, kernel, network, audio, extras only)
+- ISO: bootloader, filesystem-specific, and UKI packages removed from live ISO — leaner image, faster builds
+- ISO: user can now choose output directory for the final ISO
+- ISO: offline mode target system configuration separated from live ISO config — asks for system packages without disk selection
+
 ## v8.8.2.7 (2026-06-18) — ArtixForge
 
 ### Fixed
