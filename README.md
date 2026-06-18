@@ -38,10 +38,16 @@ Currently, the following needs testing:
 - *Removed what's already tested and proven as functional*
 - ISO building                [?]
 - GUI rendering               [?]
-- TKG compile                 [✓]
-- Cachy-* + Limine + BTRFS    [?]
+- Cachy-* + Limine + BTRFS    [✓]
 - Offline mode                [?]
 - Recovery edge cases         [>W.I.P<]
+
+Currently, I have tested the following:
+- TKG (Compilation and booting)
+- Limine and GRUB in several cases
+- Various combinations of LUKS+LVM, LUKS+UKI, LVM+UKI, etc.
+- Cachy kernels with Limine and BTRFS + LXQt
+- A lot of stuff honestly.. see (the Changelog.)[DOCUMENTS/CHANGELOG.md]
 
 ### **FOUND A BUG? SOMETHING NOT WORKING?**
 
