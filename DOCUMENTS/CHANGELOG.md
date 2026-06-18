@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.1.7 (2026-06-18) — ArtixForge
+
+### Fixed
+- Basestrap: gnupg permissions corrected on target system — `pacman-key --init` no longer required after installing CachyOS/XanMod kernels
+
 ## v8.8.1.6 (2026-06-18) — ArtixForge
 
 ### Fixed

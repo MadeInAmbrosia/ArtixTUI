@@ -206,6 +206,14 @@ EOF
         sed -i '1s/^/[options]\nArchitecture = auto\n\n/' /mnt/etc/pacman.conf
     fi
 
+    if [[ -d /mnt/etc/pacman.d/gnupg ]]; then
+        artix-chroot /mnt chown -R root:root /etc/pacman.d/gnupg/ 2>/dev/null || true
+        artix-chroot /mnt chmod 755 /etc/pacman.d/gnupg/ 2>/dev/null || true
+        [[ -f /mnt/etc/pacman.d/gnupg/pubring.gpg ]] && artix-chroot /mnt chmod 644 /etc/pacman.d/gnupg/pubring.gpg 2>/dev/null || true
+        [[ -f /mnt/etc/pacman.d/gnupg/trustdb.gpg ]] && artix-chroot /mnt chmod 644 /etc/pacman.d/gnupg/trustdb.gpg 2>/dev/null || true
+        [[ -d /mnt/etc/pacman.d/gnupg/private-keys-v1.d ]] && artix-chroot /mnt chmod 700 /etc/pacman.d/gnupg/private-keys-v1.d/ 2>/dev/null || true
+    fi
+
     case "${kernel}" in
         linux-cachyos*)
             basestrap_target_repo_cachyos
