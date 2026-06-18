@@ -5,6 +5,10 @@
 ### Changed
 - TKG: kernel now compiled inside target chroot instead of live ISO (Another oopsie)
 
+### Fixed
+- TKG: failed scheduler patches now restore corrupted files and continue build — kernel compiles with remaining patches
+- TKG: user warned which patches failed to apply after successful build
+
 ## v8.8.2.0 (2026-06-18) — ArtixForge
 
 ### Added

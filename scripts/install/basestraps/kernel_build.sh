@@ -4,6 +4,8 @@ set -Eeuo pipefail
 basestrap_build_tkg() {
     log_info "Building TKG kernel inside target chroot..."
 
+    local failed_patches=""
+    
     artix-chroot /mnt bash -c "
         pacman -S --noconfirm --needed base-devel git bc cpio flex libelf pahole dkms
         
@@ -23,10 +25,24 @@ basestrap_build_tkg() {
         
         kver=\$(make kernelrelease 2>/dev/null || make kernelversion | grep -oP '\d+\.\d+')
         patch_dir=\"/tmp/linux-tkg/linux-tkg-patches/\${kver}\"
+        failed_patches_file=\"/tmp/tkg-failed-patches.txt\"
+        : > \"\${failed_patches_file}\"
         
         if [[ -d \"\${patch_dir}\" ]]; then
             for patch in \"\${patch_dir}\"/*.patch; do
-                patch -Np1 < \"\$patch\" || echo \"Patch \${patch} failed – continuing\"
+                patch_name=\$(basename \"\$patch\")
+                if patch -Np1 < \"\$patch\" 2>/dev/null; then
+                    continue
+                fi
+                
+                echo \"\${patch_name}\" >> \"\${failed_patches_file}\"
+                echo \"Patch \${patch_name} failed — restoring affected files\"
+                
+                for rej in \$(find . -name '*.rej' 2>/dev/null); do
+                    original=\"\${rej%.rej}\"
+                    echo \"  Restoring \${original}\"
+                    git checkout \"\${original}\" 2>/dev/null || rm -f \"\${original}\"
+                done
             done
         fi
         
@@ -40,10 +56,21 @@ basestrap_build_tkg() {
         if [[ -d /boot/grub ]]; then
             grub-mkconfig -o /boot/grub/grub.cfg
         fi
+        
+        cp \"\${failed_patches_file}\" /tmp/tkg-failed-patches.txt 2>/dev/null || true
     "
+
+    if [[ -f /mnt/tmp/tkg-failed-patches.txt ]]; then
+        failed_patches=$(tr '\n' ' ' < /mnt/tmp/tkg-failed-patches.txt)
+        rm -f /mnt/tmp/tkg-failed-patches.txt
+    fi
     
     if ls /mnt/boot/vmlinuz-* &>/dev/null; then
         log_info "TKG kernel built and installed successfully."
+        if [[ -n "${failed_patches}" ]]; then
+            log_warn "The following TKG patches could not be applied: ${failed_patches}"
+            log_warn "This is normal for newer kernels — the default kernel configuration was used for these components."
+        fi
     else
         log_error "TKG kernel build failed."
         return 1
