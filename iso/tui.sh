@@ -4,6 +4,35 @@ set -Eeuo pipefail
 ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="${BASE_DIR:-$(cd -- "${ISO_DIR}/.." && pwd)}"
 
+ISO_TARGET_STATE_FILE="/tmp/artix-installer/iso-target-state.conf"
+
+iso_target_state_get() {
+    local key="${1}" default="${2:-}"
+    if [[ -f "${ISO_TARGET_STATE_FILE}" ]]; then
+        source "${ISO_TARGET_STATE_FILE}" 2>/dev/null || true
+    fi
+    printf '%s\n' "${!key:-${default}}"
+}
+
+iso_target_state_set() {
+    local key="${1}" value="${2}"
+    local tmpfile="${ISO_TARGET_STATE_FILE}.tmp.$$"
+    if [[ -f "${ISO_TARGET_STATE_FILE}" ]]; then
+        while IFS= read -r line; do
+            [[ "${line}" =~ ^${key}= ]] || printf '%s\n' "${line}" >> "${tmpfile}"
+        done < "${ISO_TARGET_STATE_FILE}"
+    else
+        mkdir -p "$(dirname "${ISO_TARGET_STATE_FILE}")"
+    fi
+    printf '%s=%q\n' "${key}" "${value}" >> "${tmpfile}"
+    mv "${tmpfile}" "${ISO_TARGET_STATE_FILE}"
+}
+
+iso_target_state_init() {
+    mkdir -p "$(dirname "${ISO_TARGET_STATE_FILE}")"
+    : > "${ISO_TARGET_STATE_FILE}"
+}
+
 tui_iso_live_config() {
     tui_select_desktop
     tui_select_display_manager
@@ -36,6 +65,11 @@ tui_iso_live_config() {
 
 tui_iso_target_config() {
     tui_msg_quick "Offline Configuration" "Configure the system you will later install.\nThese packages will be bundled for offline installation."
+    
+    # Save live ISO state
+    cp /tmp/artix-installer/state.conf /tmp/artix-installer/live-state-temp.conf 2>/dev/null || true
+    
+    # Run target config — writes to regular state
     tui_select_init
     tui_select_filesystem
     tui_select_btrfs_layout
@@ -62,6 +96,11 @@ tui_iso_target_config() {
     tui_select_root_password
     tui_show_sanity_warnings
     state_set DISK ""
+    
+    cp /tmp/artix-installer/state.conf /tmp/artix-installer/iso-target-state.conf
+    
+    cp /tmp/artix-installer/live-state-temp.conf /tmp/artix-installer/state.conf
+    rm -f /tmp/artix-installer/live-state-temp.conf
 }
 
 start_iso_build() {
@@ -179,12 +218,8 @@ start_iso_build() {
     if tui_yesno "Offline ISO" "Include all packages for offline installation?"; then
         offline="yes"
         if [[ "${boot_mode}" == "live" ]]; then
-            export STATE_FILE="/tmp/artix-installer/target-state.conf"
-            state_save
-            
+            iso_target_state_init
             tui_iso_target_config
-            
-            export STATE_FILE="/tmp/artix-installer/state.conf"
         else
             log_info "Installer ISO offline mode: using existing package list (no target configuration needed)"
         fi

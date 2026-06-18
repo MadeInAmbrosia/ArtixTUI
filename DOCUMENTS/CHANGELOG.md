@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.3.4 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: target system configuration now correctly saved to separate state file — offline package bundle reflects actual target system choices, not live ISO defaults
+
 ## v8.8.3.3 (2026-06-18) — ArtixForge
 
 ### Fixed

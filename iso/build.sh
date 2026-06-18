@@ -33,13 +33,11 @@ build_artix_iso() {
         log_info "Building offline package repository..."
         
         local offline_pkg_list="${iso_profile_dir}/packages.x86_64"
-        if [[ -f /tmp/artix-installer/target-state.conf ]]; then
+        if [[ -f /tmp/artix-installer/iso-target-state.conf ]]; then
             log_info "Generating target system package list from target state..."
-            export STATE_FILE="/tmp/artix-installer/target-state.conf"
-            state_load
-            generate_iso_package_list "$(state_get INIT openrc)" "$(state_get KERNEL_CHOICE linux)" > "${iso_profile_dir}/packages-target.x86_64"
+            source /tmp/artix-installer/iso-target-state.conf
+            generate_iso_package_list "${INIT:-openrc}" "${KERNEL_CHOICE:-linux}" > "${iso_profile_dir}/packages-target.x86_64"
             offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
-            export STATE_FILE="/tmp/artix-installer/state.conf"  # restore live ISO state
         fi
         
         build_offline_repo "${iso_profile_dir}/airootfs/mnt/repo" "${offline_pkg_list}"
