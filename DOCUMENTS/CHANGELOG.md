@@ -1,5 +1,23 @@
 # Changelog
 
+## v8.8.2.0 (2026-06-18) — ArtixForge
+
+### Added
+- GUI: non‑interactive backend now supports Recovery, Migration, ISO, and Power User modes — GUI config flows drive the full pipeline
+- GUI: password confirmation enforced — mismatched passwords block navigation with warning dialog
+
+### Changed
+- GUI: filesystem list updated — exFAT and ZFS removed to match TUI
+- GUI: `save_state()` no longer uses `sudo` — installer already runs as root
+- Non‑interactive: `tui_password_confirm` reads passwords from state — GUI‑saved credentials used correctly
+- Non‑interactive: `tui_password` handles LUKS prompts from saved state
+
+### Fixed
+- Non‑interactive: recovery mode reads `RECOVERY_ACTION` from state and executes the correct repair
+- Non‑interactive: migration mode reads `MIGRATION_SRC`/`MIGRATION_TGT` from state and runs the correct migration
+- Non‑interactive: ISO mode reads profile/init/kernel from state and builds with `build_artix_iso`
+- Power User: interactive `tui_poweruser_config` skipped when `GUI_MODE=yes` — GUI config used instead
+
 ## v8.8.1.8 (2026-06-18) — ArtixForge
 
 ### Fixed

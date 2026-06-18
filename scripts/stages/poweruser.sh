@@ -10,6 +10,13 @@ stage_poweruser() {
         return 0
     }
 
+    if [[ "$(state_get GUI_MODE no)" != "yes" ]]; then
+        POWERUSER_DIR="${BASE_DIR}/poweruser"
+        source "${POWERUSER_DIR}/lib/common.sh"
+        source "${POWERUSER_DIR}/tui/menu_poweruser.sh"
+        tui_poweruser_config
+    fi
+
     POWERUSER_DIR="${BASE_DIR}/poweruser"
     source "${POWERUSER_DIR}/lib/common.sh"
     source "${POWERUSER_DIR}/lib/flags.bash"

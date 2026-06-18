@@ -328,18 +328,8 @@ main() {
         MODE="$(state_get MODE auto)"
         log_info "Non‑interactive mode: ${MODE}"
         case "${MODE}" in
-            auto)
-                stage_preflight || die 'preflight stage failed'
-                stage_storage   || die 'storage stage failed'
-                stage_base      || die 'base stage failed'
-                [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || true
-                stage_chroot    || die 'chroot stage failed'
-                stage_init      || die 'init configuration stage failed'
-                stage_post      || die 'post-install stage failed'
-                stage_finalize  || die 'finalization stage failed'
-                ;;
-            manual)
-                state_set INSTALL_MODE manual
+            auto|manual)
+                state_set INSTALL_MODE "${MODE}"
                 stage_preflight || die 'preflight stage failed'
                 stage_storage   || die 'storage stage failed'
                 stage_base      || die 'base stage failed'
@@ -353,7 +343,32 @@ main() {
                 resume_install
                 ;;
             recovery)
-                start_recovery_install
+                local action
+                action="$(state_get RECOVERY_ACTION 'View system status')"
+                log_info "Recovery action: ${action}"
+                if ! recovery_detect_install; then
+                    recovery_mount_all || die "Failed to mount target"
+                fi
+                recovery_import_state
+                case "${action}" in
+                    "Repair detected issues") repair_detected_issues ;;
+                    "Fix everything"*)       repair_system ;;
+                    "Repair filesystem"*)    repair_filesystem ;;
+                    "Scan for rootkits")     detect_rootkits ;;
+                    "Untrusted Recovery"*)   untrusted_recovery ;;
+                    "Full reinstall"*)
+                        rm -f /tmp/artix-installer/state.conf
+                        rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
+                        umount -R /mnt 2>/dev/null || true
+                        MODE='auto'
+                        start_auto_install
+                        return
+                        ;;
+                    *)
+                        tui_msg "System Status" "$(recovery_get_status)"
+                        ;;
+                esac
+                log_info "Recovery action completed."
                 ;;
             power)
                 state_set POWER_USER "yes"
@@ -367,10 +382,32 @@ main() {
                 stage_finalize  || die 'finalization stage failed'
                 ;;
             iso)
-                start_iso_build
+                source "${BASE_DIR}/iso/tui.sh"
+                # Non‑interactive ISO build – use state saved by GUI
+                local profile_name init kernel offline boot_mode
+                profile_name="$(state_get QUICK_PROFILE 'Desktop')"
+                init="$(state_get INIT 'openrc')"
+                kernel="$(state_get KERNEL_CHOICE 'linux')"
+                offline="$(state_get ALLOW_OFFLINE 'no')"
+                boot_mode="live"
+                source "${BASE_DIR}/iso/build.sh"
+                build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
                 ;;
             migrate)
-                start_system_migration
+                local mig_type mig_src mig_tgt
+                mig_type="$(state_get MIGRATION_TYPE '')"
+                mig_src="$(state_get MIGRATION_SRC '')"
+                mig_tgt="$(state_get MIGRATION_TGT '')"
+                if [[ -z "${mig_type}" || -z "${mig_src}" || -z "${mig_tgt}" ]]; then
+                    die "Migration state incomplete – run GUI configuration first"
+                fi
+                if [[ "${mig_type}" == "init" ]]; then
+                    source "${BASE_DIR}/migrations/inits/common.sh"
+                    run_init_migration "${mig_src}" "${mig_tgt}"
+                else
+                    source "${BASE_DIR}/migrations/des/common.sh"
+                    run_de_migration "${mig_src}" "${mig_tgt}"
+                fi
                 ;;
             *)
                 log_error "Unknown mode: ${MODE}"
