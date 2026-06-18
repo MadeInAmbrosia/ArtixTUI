@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.1.6 (2026-06-18) — ArtixForge
+
+### Fixed
+- Extras: `zram-tools` installs `zramen`/`zramen-${init}`, services use `zramen` and `bluetoothd` — correct Artix package names
+- Limine: kernel and initramfs copied to ESP — `boot():/` paths now resolve correctly, fixes kernel panic on boot
+
 ## v8.8.1.5 (2026-06-18) — ArtixForge
 
 ### Fixed

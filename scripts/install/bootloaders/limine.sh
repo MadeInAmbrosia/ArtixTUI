@@ -19,6 +19,15 @@ bootloader_install_limine() {
     local limine_root_cmdline
     limine_root_cmdline=$(generate_root_cmdline "${fs_type}" "${crypt_uuid}" "${mapper_name}" "${root_uuid}" "yes")
 
+    cp /mnt/boot/vmlinuz-* "${esp_mount}/" 2>/dev/null || true
+    cp /mnt/boot/initramfs-*.img "${esp_mount}/" 2>/dev/null || true
+    if [[ -f /mnt/boot/amd-ucode.img ]]; then
+        cp /mnt/boot/amd-ucode.img "${esp_mount}/" 2>/dev/null || true
+    fi
+    if [[ -f /mnt/boot/intel-ucode.img ]]; then
+        cp /mnt/boot/intel-ucode.img "${esp_mount}/" 2>/dev/null || true
+    fi
+
     log_info "Writing ${esp_mount}/limine.conf..."
     cat > "${esp_mount}/limine.conf" <<LIMINE_EOF
 timeout: 5

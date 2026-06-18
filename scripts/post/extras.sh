@@ -23,7 +23,7 @@ install_extras() {
     [[ "${selected}" == *" flatpak "* ]] && pkgs+=(flatpak)
     [[ "${selected}" == *" firewalld "* ]] && pkgs+=(firewalld "firewalld-${init}")
     [[ "${selected}" == *" bluez "* ]] && pkgs+=(bluez bluez-utils "bluez-${init}")
-    [[ "${selected}" == *" zram-tools "* ]] && pkgs+=(zram-tools "zram-tools-${init}")
+    [[ "${selected}" == *" zram-tools "* ]] && pkgs+=(zramen "zramen-${init}")
     [[ "${selected}" == *" usb_modeswitch "* ]] && pkgs+=(usb_modeswitch)
 
     local -a SIMPLE=(
@@ -63,8 +63,8 @@ install_extras() {
     pacman -S --noconfirm --needed "${deduped[@]}"
 
     [[ "${selected}" == *" firewalld "* ]] && enable_service firewalld
-    [[ "${selected}" == *" bluez "* ]] && enable_service bluetooth
-    [[ "${selected}" == *" zram-tools "* ]] && enable_service zramd
+    [[ "${selected}" == *" bluez "* ]] && enable_service bluetoothd
+    [[ "${selected}" == *" zram-tools "* ]] && enable_service zramen
 
     if [[ "${selected}" == *" rsvc "* && "${init}" == 'runit' ]]; then
         log_info "Installing rsvc..."
