@@ -19,7 +19,9 @@
 
 ---
 
+
 #### The `v9-merger` branch can be found [here](https://github.com/realvolk/ArtixForge/tree/v9-merger).
+#### `v9-merger` will be eventually merged into `main`. 
 
 ---
 # What is ArtixForge?
