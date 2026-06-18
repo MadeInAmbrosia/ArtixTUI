@@ -67,7 +67,8 @@ PACMAN
     log_info "Refreshing build keys..."
     pacman -S --noconfirm --needed artix-keyring
     pacman-key --populate artix
-    pacman-key --lsign-key 78C9C713EAD7BEC69087447332E21894258C6105 || log_warn "Buildbot key trust failed – build may still work"
+    pacman-key --recv-keys 78C9C713EAD7BEC69087447332E21894258C6105 --keyserver hkp://keyserver.ubuntu.com 2>/dev/null || true
+    pacman-key --lsign-key 78C9C713EAD7BEC69087447332E21894258C6105 2>/dev/null || log_warn "Buildbot key trust failed – build may still work"
 
     if [[ ${needs_chroot_build} -eq 1 ]]; then
         log_info "Non-repo packages detected. Building chroot first..."

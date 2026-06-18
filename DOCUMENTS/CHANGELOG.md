@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.3.1 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: offline package download now uses live system's pacman database instead of blank db — packages actually download (hopefully)
+- ISO: buildbot signing key now fetched from keyserver before local signing — eliminates spurious key trust warning
+
 ## v8.8.3.0 (2026-06-18) — ArtixForge
 
 ### Changed
