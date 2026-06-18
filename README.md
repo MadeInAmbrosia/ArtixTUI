@@ -37,11 +37,11 @@ As of 17th of June 2026, I am back to commited testing after a long haitus. Sorr
 Currently, the following needs testing:
 - *Removed what's already tested and proven as functional*
 - Init migrations             [✓]
-- ISO building                []
-- GUI rendering               []
-- TKG compile                 []
-- Offline mode                []
-- Recovery edge cases         []
+- ISO building                [?]
+- GUI rendering               [?]
+- TKG compile                 [?]
+- Offline mode                [?]
+- Recovery edge cases         [>W.I.P<]
 
 ### **FOUND A BUG? SOMETHING NOT WORKING?**
 
