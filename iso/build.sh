@@ -86,7 +86,12 @@ build_artix_iso() {
     local boot_mode="${5:-live}"
     local user_output_dir="${6:-${HOME}/ArtixForge-ISO}"
 
-    local workspace="${HOME}/artools-workspace"
+    local workspace
+    if [[ -d /run/artix/sfs/rootfs ]]; then
+        workspace="/root/artools-workspace"
+    else
+        workspace="${HOME}/artools-workspace"
+    fi
     local iso_output_dir="${workspace}/iso"
     local iso_profile_dir="${workspace}/iso-profiles/${profile_name}"
 
