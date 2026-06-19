@@ -26,7 +26,7 @@ packages-base:
   - efibootmgr
   - e2fsprogs
   - ecryptfs-utils
-  - exfat-utils
+  - exfatprogs
   - f2fs-tools
   - grub
   - artix-grub-theme
