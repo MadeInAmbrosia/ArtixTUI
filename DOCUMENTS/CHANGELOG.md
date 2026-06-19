@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.4.1 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: redirect artools chroot directory via `CHROOTS_DIR` env var — bypasses overlayfs nesting limitation when building ISOs from a live environment without mounting tmpfs on system directories
+
 ## v8.8.4.0 (2026-06-19) — ArtixForge
 
 ### Added
