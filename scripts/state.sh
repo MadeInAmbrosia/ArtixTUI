@@ -55,6 +55,7 @@ state_save() {
         printf 'POWERUSER_PACKAGES=%q\n'    "${POWERUSER_PACKAGES:-}"
         printf 'POWERUSER_PROFILE=%q\n'     "${POWERUSER_PROFILE:-default}"
         printf 'GUI_MODE=%q\n'               "${GUI_MODE:-no}"
+        printf 'ENABLE_AURIS=%q\n'          "${ENABLE_AURIS:-no}"
     } > "${STATE_FILE}"
     chmod 600 "${STATE_FILE}"
 }

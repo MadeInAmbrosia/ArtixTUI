@@ -18,6 +18,14 @@ tui_select_luks() {
     fi
 }
 
+tui_select_auris() {
+    if tui_yesno "AURIS" "Enable the Artix User Repository of Init Scripts (AURIS)?\n\nAURIS provides community-submitted init scripts for all\nsupported init systems."; then
+        state_set ENABLE_AURIS "yes"
+    else
+        state_set ENABLE_AURIS "no"
+    fi
+}
+
 tui_select_arch_repos() {
     local kernel fs_type wm_de required='no' reasons=()
     kernel="$(state_get KERNEL_CHOICE linux)"

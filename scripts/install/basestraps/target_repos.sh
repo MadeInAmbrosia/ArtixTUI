@@ -81,3 +81,16 @@ Include = /etc/pacman.d/chaotic-mirrorlist
 EOF
     fi
 }
+
+basestrap_target_repo_auris() {
+    if [[ "$(state_get ENABLE_AURIS no)" != "yes" ]]; then
+        return 0
+    fi
+    if ! grep -q '^\[auris\]' /mnt/etc/pacman.conf 2>/dev/null; then
+        cat <<'EOF' >> /mnt/etc/pacman.conf
+[auris]
+SigLevel = Required
+Server = https://auris.artixlinux.org/api/packages/auris/arch/$repo/$arch
+EOF
+    fi
+}

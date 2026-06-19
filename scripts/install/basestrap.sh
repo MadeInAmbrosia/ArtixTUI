@@ -189,6 +189,8 @@ EOF
         pacman -S --noconfirm --needed archlinux-keyring
     fi
 
+    basestrap_repo_auris
+
     log_info "Starting basestrap..."
     printf '%s\n' "${pkgs[@]}" >> "${debug_log}"
     clean_pacman_lock /mnt/var/lib/pacman/db.lck
@@ -236,6 +238,7 @@ EOF
             basestrap_target_repo_xanmod
             ;;
     esac
+    basestrap_target_repo_auris
 
     log_info "Configuring locale..."
     artix-chroot /mnt /bin/bash -c "

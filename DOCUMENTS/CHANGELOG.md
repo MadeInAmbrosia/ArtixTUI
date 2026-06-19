@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.4.3 (2026-06-19) — ArtixForge
+
+### Added
+- AURIS: Artix User Repository of Init Scripts now supported — users can enable community-submitted init scripts during installation
+
 ## v8.8.4.2 (2026-06-19) — ArtixForge
 
 ### Changed

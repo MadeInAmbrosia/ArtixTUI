@@ -160,6 +160,7 @@ tui_collect_install_config() {
     tui_select_priv_escalation
     tui_select_extras
     tui_select_luks
+    tui_select_auris
     tui_select_arch_repos
     tui_select_offline_mode
     tui_select_hostname

@@ -102,6 +102,7 @@ QUICK_INSTALL="$(state_get QUICK_INSTALL)"
 POWER_USER="$(state_get POWER_USER)"
 POWERUSER_PACKAGES="$(state_get POWERUSER_PACKAGES)"
 POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
+ENABLE_AURIS="$(state_get ENABLE_AURIS)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 

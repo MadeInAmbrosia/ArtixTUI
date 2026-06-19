@@ -188,3 +188,24 @@ basestrap_kernel_tkg() {
     log_info "Setting up TKG build dependencies..."
     pkgs_ref+=(bc cpio flex libelf pahole base-devel git dkms)
 }
+
+basestrap_repo_auris() {
+    if [[ "$(state_get ENABLE_AURIS no)" != "yes" ]]; then
+        return 0
+    fi
+    log_info "Enabling AURIS community init scripts repository..."
+    local key_url="https://auris.artixlinux.org/api/packages/auris/arch/repository.key"
+    curl -sL "${key_url}" -o /tmp/auris.key
+    pacman-key --add /tmp/auris.key
+    pacman-key --lsign-key 74E5750C4A3C00F037070EF2357B525A97500B9F
+    rm -f /tmp/auris.key
+    
+    if ! grep -q '^\[auris\]' /etc/pacman.conf; then
+        cat <<'EOF' >> /etc/pacman.conf
+[auris]
+SigLevel = Required
+Server = https://auris.artixlinux.org/api/packages/auris/arch/$repo/$arch
+EOF
+    fi
+    pacman -Sy --noconfirm
+}
