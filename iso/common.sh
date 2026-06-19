@@ -294,19 +294,19 @@ generate_artools_profile() {
         openrc)
             mkdir -p "${out_dir}/live-overlay/etc/runlevels/default"
             for svc in NetworkManager elogind dbus; do
-                ln -sf "/etc/init.d/${svc}" "${out_dir}/live-overlay/etc/runlevels/default/${svc}" 2>/dev/null || true
+                touch "${out_dir}/live-overlay/etc/runlevels/default/${svc}"
             done
             ;;
         dinit)
             mkdir -p "${out_dir}/live-overlay/etc/dinit.d/boot.d"
             for svc in NetworkManager elogind dbus; do
-                ln -sf "/etc/dinit.d/${svc}" "${out_dir}/live-overlay/etc/dinit.d/boot.d/${svc}" 2>/dev/null || true
+                touch "${out_dir}/live-overlay/etc/dinit.d/boot.d/${svc}"
             done
             ;;
         runit)
             mkdir -p "${out_dir}/live-overlay/etc/runit/runsvdir/default"
             for svc in NetworkManager elogind dbus; do
-                ln -sf "/etc/runit/sv/${svc}" "${out_dir}/live-overlay/etc/runit/runsvdir/default/${svc}" 2>/dev/null || true
+                touch "${out_dir}/live-overlay/etc/runit/runsvdir/default/${svc}"
             done
             ;;
         s6)
@@ -339,7 +339,7 @@ restart = false
 logfile = /tmp/artixforge-installer.log
 EOF
                 mkdir -p "${out_dir}/live-overlay/etc/dinit.d/boot.d"
-                ln -sf "../artixforge" "${out_dir}/live-overlay/etc/dinit.d/boot.d/artixforge" 2>/dev/null || true
+                touch "${out_dir}/live-overlay/etc/dinit.d/boot.d/artixforge"
                 ;;
             runit)
                 mkdir -p "${out_dir}/live-overlay/etc/runit/sv/artixforge"
@@ -354,7 +354,7 @@ exec /root/ArtixForge/install
 EOF
                 chmod +x "${out_dir}/live-overlay/etc/runit/sv/artixforge/run"
                 mkdir -p "${out_dir}/live-overlay/etc/runit/runsvdir/default"
-                ln -sf "/etc/runit/sv/artixforge" "${out_dir}/live-overlay/etc/runit/runsvdir/default/artixforge" 2>/dev/null || true
+                touch "${out_dir}/live-overlay/etc/runit/runsvdir/default/artixforge"
                 ;;
             s6)
                 log_info "s6 installer mode: cannot auto-launch without compiled service database"
@@ -369,12 +369,12 @@ EOF
 EOF
                 ;;
         esac
-        rm -f "${out_dir}/live-overlay/etc/runlevels/default/lightdm" 2>/dev/null || true
-        rm -f "${out_dir}/live-overlay/etc/runlevels/default/sddm" 2>/dev/null || true
-        rm -f "${out_dir}/live-overlay/etc/dinit.d/boot.d/lightdm" 2>/dev/null || true
-        rm -f "${out_dir}/live-overlay/etc/dinit.d/boot.d/sddm" 2>/dev/null || true
-        rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/lightdm" 2>/dev/null || true
-        rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/sddm" 2>/dev/null || true
+        rm -f "${out_dir}/live-overlay/etc/runlevels/default/lightdm"
+        rm -f "${out_dir}/live-overlay/etc/runlevels/default/sddm"
+        rm -f "${out_dir}/live-overlay/etc/dinit.d/boot.d/lightdm"
+        rm -f "${out_dir}/live-overlay/etc/dinit.d/boot.d/sddm"
+        rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/lightdm"
+        rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/sddm"
     fi
 
     local wm_de x_stack use_xlibre network_stack audio_stack
