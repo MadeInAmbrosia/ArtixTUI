@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.4.8 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: removed manual service symlink/file creation from live-overlay — artools' `configure_services` handles all init service setup (hopefully lol)
+
 ## v8.8.4.7 (2026-06-19) — ArtixForge
 
 ### Fixed

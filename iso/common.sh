@@ -290,30 +290,6 @@ generate_artools_profile() {
 
     generate_iso_package_list "${init}" "${kernel}" > "${out_dir}/packages.x86_64"
 
-    case "${init}" in
-        openrc)
-            mkdir -p "${out_dir}/live-overlay/etc/runlevels/default"
-            for svc in NetworkManager elogind dbus; do
-                touch "${out_dir}/live-overlay/etc/runlevels/default/${svc}"
-            done
-            ;;
-        dinit)
-            mkdir -p "${out_dir}/live-overlay/etc/dinit.d/boot.d"
-            for svc in NetworkManager elogind dbus; do
-                touch "${out_dir}/live-overlay/etc/dinit.d/boot.d/${svc}"
-            done
-            ;;
-        runit)
-            mkdir -p "${out_dir}/live-overlay/etc/runit/runsvdir/default"
-            for svc in NetworkManager elogind dbus; do
-                touch "${out_dir}/live-overlay/etc/runit/runsvdir/default/${svc}"
-            done
-            ;;
-        s6)
-            log_info "s6 live overlay: services must be compiled by the user post-build"
-            ;;
-    esac
-
     if [[ "${boot_mode}" == "installer" ]]; then
         log_info "Configuring installer ISO auto‑boot..."
         case "${init}" in
@@ -338,8 +314,6 @@ command = /root/ArtixForge/install
 restart = false
 logfile = /tmp/artixforge-installer.log
 EOF
-                mkdir -p "${out_dir}/live-overlay/etc/dinit.d/boot.d"
-                touch "${out_dir}/live-overlay/etc/dinit.d/boot.d/artixforge"
                 ;;
             runit)
                 mkdir -p "${out_dir}/live-overlay/etc/runit/sv/artixforge"
@@ -353,8 +327,6 @@ sleep 2
 exec /root/ArtixForge/install
 EOF
                 chmod +x "${out_dir}/live-overlay/etc/runit/sv/artixforge/run"
-                mkdir -p "${out_dir}/live-overlay/etc/runit/runsvdir/default"
-                touch "${out_dir}/live-overlay/etc/runit/runsvdir/default/artixforge"
                 ;;
             s6)
                 log_info "s6 installer mode: cannot auto-launch without compiled service database"
@@ -369,12 +341,6 @@ EOF
 EOF
                 ;;
         esac
-        rm -f "${out_dir}/live-overlay/etc/runlevels/default/lightdm"
-        rm -f "${out_dir}/live-overlay/etc/runlevels/default/sddm"
-        rm -f "${out_dir}/live-overlay/etc/dinit.d/boot.d/lightdm"
-        rm -f "${out_dir}/live-overlay/etc/dinit.d/boot.d/sddm"
-        rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/lightdm"
-        rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/sddm"
     fi
 
     local wm_de x_stack use_xlibre network_stack audio_stack
