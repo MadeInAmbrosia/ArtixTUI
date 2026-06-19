@@ -1,6 +1,192 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+generate_common_yaml() {
+    local workspace="${1}"
+    local common_dir="${workspace}/iso-profiles/common"
+    mkdir -p "${common_dir}"
+    
+    cat > "${common_dir}/common.yaml" <<'COMMONYAML'
+---
+# Packages common in all profiles (corrected for Artix package names)
+
+packages-base:
+  - base
+  - intel-ucode
+  - amd-ucode
+  - acpi
+  - alsa-firmware
+  - b43-fwcutter
+  - btrfs-progs
+  - crda
+  - dhclient
+  - diffutils
+  - dmraid
+  - dosfstools
+  - efibootmgr
+  - e2fsprogs
+  - ecryptfs-utils
+  - exfat-utils
+  - f2fs-tools
+  - grub
+  - artix-grub-theme
+  - inetutils
+  - iptables
+  - jfsutils
+  - linux
+  - linux-firmware
+  - linux-headers
+  - lsb-release
+  - logrotate
+  - lsb-release
+  - man-db
+  - man-pages
+  - memtest86+
+  - mkinitcpio
+  - mkinitcpio-openswap
+  - modemmanager
+  - nano
+  - nbd
+  - net-tools
+  - ntfs-3g
+  - os-prober
+  - s-nail
+  - sudo
+  - sysfsutils
+  - texinfo
+  - usbutils
+  - vi
+  - which
+  - xfsprogs
+  - zsh
+packages-apps:
+  - powertop
+  - inxi
+packages-xorg:
+  - xorg-server
+  - xf86-input-vmmouse
+  - xf86-input-wacom
+  - xf86-video-amdgpu
+  - xf86-video-ati
+  - xf86-video-dummy
+  - xf86-video-fbdev
+  - xf86-video-intel
+  - xf86-video-nouveau
+  - xf86-video-sisusb
+  - xf86-video-qxl
+  - xf86-video-vesa
+  - xf86-video-voodoo
+packages-xlibre:
+  - xlibre-xserver
+  - xlibre-input-vmmouse
+  - xlibre-input-wacom
+  - xlibre-video-amdgpu
+  - xlibre-video-ati
+  - xlibre-video-dummy
+  - xlibre-video-fbdev
+  - xlibre-video-intel
+  - xlibre-video-nouveau
+  - xlibre-video-sisusb
+  - xlibre-video-qxl
+  - xlibre-video-vesa
+  - xlibre-video-voodoo
+packages-misc:
+  - xorg-xhost
+  - xorg-xinit
+  - xdg-user-dirs
+  - xdg-utils
+  - wayland
+  - xorg-xwayland
+  - terminus-font
+  - ttf-droid
+  - ttf-inconsolata
+  - ttf-liberation
+  - ttf-roboto
+  - ttf-roboto-mono
+  - ttf-droid
+packages-init:
+  dinit:
+    - blocaled
+    - elogind-dinit
+    - dbus-dinit
+    - acpid-dinit
+    - avahi-dinit
+    - bluez-dinit
+    - cronie-dinit
+    - cryptsetup-dinit
+    - dhcpcd-dinit
+    - haveged-dinit
+    - lvm2-dinit
+    - mdadm-dinit
+    - nfs-utils-dinit
+    - ntp-dinit
+    - openssh-dinit
+    - power-profiles-daemon-dinit
+    - rsync-dinit
+    - wpa_supplicant-dinit
+  openrc:
+    - openrc-settingsd
+    - elogind-openrc
+    - dbus-openrc
+    - acpid-openrc
+    - avahi-openrc
+    - bluez-openrc
+    - cronie-openrc
+    - cryptsetup-openrc
+    - dhcpcd-openrc
+    - haveged-openrc
+    - lvm2-openrc
+    - mdadm-openrc
+    - nfs-utils-openrc
+    - ntp-openrc
+    - openssh-openrc
+    - power-profiles-daemon-openrc
+    - rsync-openrc
+    - wpa_supplicant-openrc
+  runit:
+    - blocaled
+    - rsm
+    - elogind-runit
+    - dbus-runit
+    - acpid-runit
+    - avahi-runit
+    - bluez-runit
+    - cronie-runit
+    - cryptsetup-runit
+    - dhcpcd-runit
+    - haveged-runit
+    - lvm2-runit
+    - mdadm-runit
+    - nfs-utils-runit
+    - ntp-runit
+    - openssh-runit
+    - power-profiles-daemon-runit
+    - rsync-runit
+    - wpa_supplicant-runit
+  s6:
+    - blocaled
+    - elogind-s6
+    - dbus-s6
+    - acpid-s6
+    - avahi-s6
+    - bluez-s6
+    - cronie-s6
+    - cryptsetup-s6
+    - dhcpcd-s6
+    - haveged-s6
+    - lvm2-s6
+    - mdadm-s6
+    - nfs-utils-s6
+    - ntp-s6
+    - openssh-s6
+    - power-profiles-daemon-s6
+    - rsync-s6
+    - wpa_supplicant-s6
+packages-boot:
+  - iso-initcpio
+COMMONYAML
+}
+
 generate_iso_package_list() {
     local init="${1}" kernel="${2}"
 

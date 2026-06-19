@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.8.3.9 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: generate corrected `common.yaml` in workspace to override broken `xlibre-xf86-*` package names in artools — upstream uses `xf86-` prefix that doesn't match Artix repos
+- ISO: profile now copied to `/usr/share/artools/iso-profiles/` for artools compatibility
+- ISO: workspace path now resolves to `/root/artools-workspace` on live ISO, `$HOME` elsewhere
+
 ## v8.8.3.8 (2026-06-19) — ArtixForge
 
 ### Fixed
