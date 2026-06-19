@@ -106,6 +106,7 @@ build_artix_iso() {
     log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode)..."
     source "${ISO_DIR}/common.sh"
     generate_artools_profile "${iso_profile_dir}" "${profile_name}" "${init}" "${kernel}" "${boot_mode}"
+    cp -a "${iso_profile_dir}" /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
 
     if [[ "${offline}" == "yes" ]]; then
         source "${ISO_DIR}/offline.sh"
