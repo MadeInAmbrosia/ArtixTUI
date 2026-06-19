@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.3.7 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: profile generation now writes full artools-compatible `profile.yaml` with `livefs`, `live-session`, `rootfs` sections, init-specific packages, and service definitions — `buildiso` correctly detects live ISO mode (HOPEFULLY)
+
 ## v8.8.3.6 (2026-06-19) — ArtixForge
 
 ### Fixed

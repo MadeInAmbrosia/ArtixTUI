@@ -191,13 +191,105 @@ EOF
         rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/sddm" 2>/dev/null || true
     fi
 
+    local wm_de
+    wm_de="$(state_get WM_DE none)"
+
+    local -a live_packages=()
+    while IFS= read -r pkg; do
+        [[ -n "${pkg}" ]] && live_packages+=("${pkg}")
+    done < "${out_dir}/packages.x86_64"
+
     cat > "${out_dir}/profile.yaml" <<YAML
-initsys: "${init}"
-kernel: "${kernel}"
-username: "artix"
-password: "artix"
-dist_release: "artixforge-${profile_name,,}"
-dist_branding: "${profile_name}"
+---
+live-session:
+  user: artix
+  password: artix
+  autologin: true
+  services:
+YAML
+
+    local network_stack audio_stack
+    network_stack="$(state_get NETWORK_STACK networkmanager)"
+    audio_stack="$(state_get AUDIO_STACK pipewire)"
+    
+    case "${network_stack}" in
+        networkmanager) echo "    - NetworkManager" >> "${out_dir}/profile.yaml" ;;
+        connman)        echo "    - connmand" >> "${out_dir}/profile.yaml" ;;
+    esac
+    echo "    - dbus" >> "${out_dir}/profile.yaml"
+    echo "    - elogind" >> "${out_dir}/profile.yaml"
+    
+    case "${wm_de}" in
+        hyprland|sway|niri|mango)
+            echo "    - seatd" >> "${out_dir}/profile.yaml" ;;
+    esac
+
+    cat >> "${out_dir}/profile.yaml" <<YAML
+  user-services:
+    - dbus
+YAML
+
+    case "${audio_stack}" in
+        pipewire)
+            echo "    - pipewire" >> "${out_dir}/profile.yaml"
+            echo "    - pipewire-pulse" >> "${out_dir}/profile.yaml"
+            echo "    - wireplumber" >> "${out_dir}/profile.yaml"
+            ;;
+        pulseaudio)
+            echo "    - pulseaudio" >> "${out_dir}/profile.yaml"
+            ;;
+    esac
+
+    cat >> "${out_dir}/profile.yaml" <<YAML
+livefs:
+  packages:
+YAML
+    for pkg in "${live_packages[@]}"; do
+        echo "    - ${pkg}" >> "${out_dir}/profile.yaml"
+    done
+
+    cat >> "${out_dir}/profile.yaml" <<YAML
+  packages-init:
+    ${init}:
+YAML
+    case "${init}" in
+        openrc)
+            echo "      - artix-live-openrc" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-openrc" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "connman" ]] && echo "      - connman-openrc" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-openrc" >> "${out_dir}/profile.yaml" && echo "      - iwd-openrc" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-openrc" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-openrc" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-openrc" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-openrc" >> "${out_dir}/profile.yaml"
+            ;;
+        dinit)
+            echo "      - artix-live-dinit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-dinit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "connman" ]] && echo "      - connman-dinit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-dinit" >> "${out_dir}/profile.yaml" && echo "      - iwd-dinit" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-dinit" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-dinit" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-dinit" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-dinit" >> "${out_dir}/profile.yaml"
+            ;;
+        runit)
+            echo "      - artix-live-runit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-runit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "connman" ]] && echo "      - connman-runit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-runit" >> "${out_dir}/profile.yaml" && echo "      - iwd-runit" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-runit" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-runit" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-runit" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-runit" >> "${out_dir}/profile.yaml"
+            ;;
+        s6)
+            echo "      - artix-live-s6" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-s6" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "connman" ]] && echo "      - connman-s6" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-s6" >> "${out_dir}/profile.yaml" && echo "      - iwd-s6" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-s6" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-s6" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-s6" >> "${out_dir}/profile.yaml"
+            [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-s6" >> "${out_dir}/profile.yaml"
+            ;;
+    esac
+
+    cat >> "${out_dir}/profile.yaml" <<YAML
+rootfs:
+  packages: []
 YAML
 
     mkdir -p "${out_dir}/airootfs/root"
