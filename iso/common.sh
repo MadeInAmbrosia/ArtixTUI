@@ -26,7 +26,7 @@ packages-base:
   - efibootmgr
   - e2fsprogs
   - ecryptfs-utils
-  - exfatprogs
+  - exfat-utils
   - f2fs-tools
   - grub
   - artix-grub-theme
@@ -195,7 +195,7 @@ generate_iso_package_list() {
     pkg_list+=(
         base base-devel linux-firmware bash nano vim sudo git curl wget pciutils
         mkinitcpio efibootmgr dosfstools gptfdisk parted cryptsetup lvm2
-        btrfs-progs xfsprogs f2fs-tools exfatprogs e2fsprogs
+        btrfs-progs xfsprogs f2fs-tools exfat-utils e2fsprogs
         gum artools openssl rsync
         bc cpio pahole libelf
     )
