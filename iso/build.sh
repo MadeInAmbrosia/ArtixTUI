@@ -103,11 +103,25 @@ build_artix_iso() {
 
     mkdir -p "${workspace}"/{iso-profiles,chroot,iso}
 
+    # can't nest another overlay for livefs
+    # Solution? Mount tmpfs workspace
+    if [[ -d /run/artix/sfs/rootfs ]]; then
+        if ! mountpoint -q "${workspace}"; then
+            mount -t tmpfs tmpfs "${workspace}"
+        fi
+    fi
+
     log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode)..."
     source "${ISO_DIR}/common.sh"
     generate_common_yaml "${workspace}"
     generate_artools_profile "${iso_profile_dir}" "${profile_name}" "${init}" "${kernel}" "${boot_mode}"
+
+    # artools also looks in /usr/share/artools/iso-profiles/ because why not?
     cp -a "${iso_profile_dir}" /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
+    # Override broken system common.yaml with artixforgeTM approved common.yaml until I contact the devs about it 
+    if [[ -f "${workspace}/iso-profiles/common/common.yaml" ]]; then
+        cp -f "${workspace}/iso-profiles/common/common.yaml" /usr/share/artools/iso-profiles/common/common.yaml
+    fi
 
     if [[ "${offline}" == "yes" ]]; then
         source "${ISO_DIR}/offline.sh"
@@ -290,7 +304,11 @@ PACMAN
             cp "${iso_log}" "${ISO_DIR}/" 2>/dev/null || true
             die "buildiso exited with an error"
         fi
-        return 0
+    fi
+
+    # Unmount tmpfs workspace if it was mounted
+    if [[ -d /run/artix/sfs/rootfs ]]; then
+        umount "${workspace}" 2>/dev/null || true
     fi
 
     log_info "Build complete. Locating ISO..."

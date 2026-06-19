@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.4.0 (2026-06-19) — ArtixForge
+
+### Added
+- ISO: tmpfs workspace mount on live ISO — bypasses overlayfs nesting limitation when building ISOs from a live environment
+- ISO: full artools-compatible `profile.yaml` generation with `livefs`, `live-session`, `rootfs` sections, init-specific packages, and service definitions
+
 ## v8.8.3.9 (2026-06-19) — ArtixForge
 
 ### Fixed
