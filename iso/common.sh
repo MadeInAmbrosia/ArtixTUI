@@ -191,8 +191,17 @@ EOF
         rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/sddm" 2>/dev/null || true
     fi
 
-    local wm_de
+    local wm_de x_stack use_xlibre network_stack audio_stack
     wm_de="$(state_get WM_DE none)"
+    x_stack="$(state_get X_STACK xlibre)"
+    network_stack="$(state_get NETWORK_STACK networkmanager)"
+    audio_stack="$(state_get AUDIO_STACK pipewire)"
+    
+    if [[ "${x_stack}" == "xlibre" ]]; then
+        use_xlibre="true"
+    else
+        use_xlibre="false"
+    fi
 
     local -a live_packages=()
     while IFS= read -r pkg; do
@@ -205,13 +214,10 @@ live-session:
   user: artix
   password: artix
   autologin: true
+  use-xlibre: ${use_xlibre}
   services:
 YAML
 
-    local network_stack audio_stack
-    network_stack="$(state_get NETWORK_STACK networkmanager)"
-    audio_stack="$(state_get AUDIO_STACK pipewire)"
-    
     case "${network_stack}" in
         networkmanager) echo "    - NetworkManager" >> "${out_dir}/profile.yaml" ;;
         connman)        echo "    - connmand" >> "${out_dir}/profile.yaml" ;;
@@ -257,32 +263,32 @@ YAML
             echo "      - artix-live-openrc" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-openrc" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "connman" ]] && echo "      - connman-openrc" >> "${out_dir}/profile.yaml"
-            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-openrc" >> "${out_dir}/profile.yaml" && echo "      - iwd-openrc" >> "${out_dir}/profile.yaml"
-            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-openrc" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-openrc" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-openrc" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && { echo "      - dhcpcd-openrc" >> "${out_dir}/profile.yaml"; echo "      - iwd-openrc" >> "${out_dir}/profile.yaml"; }
+            [[ "${audio_stack}" == "pipewire" ]] && { echo "      - pipewire-openrc" >> "${out_dir}/profile.yaml"; echo "      - pipewire-pulse-openrc" >> "${out_dir}/profile.yaml"; echo "      - wireplumber-openrc" >> "${out_dir}/profile.yaml"; }
             [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-openrc" >> "${out_dir}/profile.yaml"
             ;;
         dinit)
             echo "      - artix-live-dinit" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-dinit" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "connman" ]] && echo "      - connman-dinit" >> "${out_dir}/profile.yaml"
-            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-dinit" >> "${out_dir}/profile.yaml" && echo "      - iwd-dinit" >> "${out_dir}/profile.yaml"
-            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-dinit" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-dinit" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-dinit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && { echo "      - dhcpcd-dinit" >> "${out_dir}/profile.yaml"; echo "      - iwd-dinit" >> "${out_dir}/profile.yaml"; }
+            [[ "${audio_stack}" == "pipewire" ]] && { echo "      - pipewire-dinit" >> "${out_dir}/profile.yaml"; echo "      - pipewire-pulse-dinit" >> "${out_dir}/profile.yaml"; echo "      - wireplumber-dinit" >> "${out_dir}/profile.yaml"; }
             [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-dinit" >> "${out_dir}/profile.yaml"
             ;;
         runit)
             echo "      - artix-live-runit" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-runit" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "connman" ]] && echo "      - connman-runit" >> "${out_dir}/profile.yaml"
-            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-runit" >> "${out_dir}/profile.yaml" && echo "      - iwd-runit" >> "${out_dir}/profile.yaml"
-            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-runit" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-runit" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-runit" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && { echo "      - dhcpcd-runit" >> "${out_dir}/profile.yaml"; echo "      - iwd-runit" >> "${out_dir}/profile.yaml"; }
+            [[ "${audio_stack}" == "pipewire" ]] && { echo "      - pipewire-runit" >> "${out_dir}/profile.yaml"; echo "      - pipewire-pulse-runit" >> "${out_dir}/profile.yaml"; echo "      - wireplumber-runit" >> "${out_dir}/profile.yaml"; }
             [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-runit" >> "${out_dir}/profile.yaml"
             ;;
         s6)
             echo "      - artix-live-s6" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "networkmanager" ]] && echo "      - networkmanager-s6" >> "${out_dir}/profile.yaml"
             [[ "${network_stack}" == "connman" ]] && echo "      - connman-s6" >> "${out_dir}/profile.yaml"
-            [[ "${network_stack}" == "dhcpcd+iwd" ]] && echo "      - dhcpcd-s6" >> "${out_dir}/profile.yaml" && echo "      - iwd-s6" >> "${out_dir}/profile.yaml"
-            [[ "${audio_stack}" == "pipewire" ]] && echo "      - pipewire-s6" >> "${out_dir}/profile.yaml" && echo "      - pipewire-pulse-s6" >> "${out_dir}/profile.yaml" && echo "      - wireplumber-s6" >> "${out_dir}/profile.yaml"
+            [[ "${network_stack}" == "dhcpcd+iwd" ]] && { echo "      - dhcpcd-s6" >> "${out_dir}/profile.yaml"; echo "      - iwd-s6" >> "${out_dir}/profile.yaml"; }
+            [[ "${audio_stack}" == "pipewire" ]] && { echo "      - pipewire-s6" >> "${out_dir}/profile.yaml"; echo "      - pipewire-pulse-s6" >> "${out_dir}/profile.yaml"; echo "      - wireplumber-s6" >> "${out_dir}/profile.yaml"; }
             [[ "${audio_stack}" == "pulseaudio" ]] && echo "      - pulseaudio-s6" >> "${out_dir}/profile.yaml"
             ;;
     esac

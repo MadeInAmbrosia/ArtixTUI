@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.3.8 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: added `use-xlibre` field to generated `profile.yaml` — fixes artools `: command not found` error from empty variable expansion
+- ISO: `user-services` now correctly populated based on selected audio stack (pipewire/pulseaudio)
+
 ## v8.8.3.7 (2026-06-19) — ArtixForge
 
 ### Fixed
