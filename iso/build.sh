@@ -123,6 +123,7 @@ build_artix_iso() {
     generate_common_yaml "${workspace}"
     generate_artools_profile "${iso_profile_dir}" "${profile_name}" "${init}" "${kernel}" "${boot_mode}"
 
+    export WORKSPACE_DIR="${workspace}"
     cp -a "${iso_profile_dir}" /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
 
     if [[ "${offline}" == "yes" ]]; then
@@ -146,7 +147,7 @@ build_artix_iso() {
                     generate_iso_package_list "${INIT:-openrc}" "linux" > "${iso_profile_dir}/packages-target.x86_64"
                     offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
                     
-                    buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -x 2>&1 || die "buildiso -x failed for offline kernel build"
+                    buildiso -p "${profile_name}" -i "${init}" -x 2>&1 || die "buildiso -x failed for offline kernel build"
                     
                     local chroot_dir=""
                     local search_paths=(
@@ -219,7 +220,7 @@ PACMAN
     if [[ ${needs_chroot_build} -eq 1 ]]; then
         log_info "Non-repo packages detected. Building chroot first..."
         
-        buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -x 2>&1 || die "buildiso -x failed"
+        buildiso -p "${profile_name}" -i "${init}" -x 2>&1 || die "buildiso -x failed"
 
         local chroot_dir=""
         local search_paths=(
@@ -279,12 +280,12 @@ PACMAN
         fi
 
         log_info "Squashing chroot and generating ISO..."
-        buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -sc 2>&1 || die "buildiso -sc failed"
-        buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" -zc 2>&1 || die "buildiso -zc failed"
+        buildiso -p "${profile_name}" -i "${init}" -sc 2>&1 || die "buildiso -sc failed"
+        buildiso -p "${profile_name}" -i "${init}" -zc 2>&1 || die "buildiso -zc failed"
     else
         log_info "Building ISO (this may take a while)..."
         local iso_log="${workspace}/iso-build-$(date +%Y%m%d-%H%M%S).log"
-        buildiso -p "${profile_name}" -i "${init}" -w "${workspace}" 2>&1 | tee "${iso_log}"
+        buildiso -p "${profile_name}" -i "${init}" 2>&1 | tee "${iso_log}"
         local rc=${PIPESTATUS[0]}
 
         if [[ ${rc} -eq 0 ]]; then

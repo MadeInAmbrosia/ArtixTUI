@@ -1,5 +1,14 @@
 # Changelog
 
+## v8.8.4.7 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: replaced `-w` flag with `WORKSPACE_DIR` export for all `buildiso` calls — `-w` is "copy pacman.conf", not "workspace directory"
+
+### Confession
+- I USED THE WRONG FLAG THIS ENTIRE TIME AND DID NOT CHECK.
+- FUCK.
+
 ## v8.8.4.6 (2026-06-19) — ArtixForge
 
 ### Fixed
