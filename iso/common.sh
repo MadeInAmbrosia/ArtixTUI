@@ -191,14 +191,14 @@ EOF
         rm -f "${out_dir}/live-overlay/etc/runit/runsvdir/default/sddm" 2>/dev/null || true
     fi
 
-    cat > "${out_dir}/profile.conf" <<EOF
-initsys="${init}"
-kernel="${kernel}"
-username="artix"
-password="artix"
-dist_release="artixforge-${profile_name,,}"
-dist_branding="${profile_name}"
-EOF
+    cat > "${out_dir}/profile.yaml" <<YAML
+initsys: "${init}"
+kernel: "${kernel}"
+username: "artix"
+password: "artix"
+dist_release: "artixforge-${profile_name,,}"
+dist_branding: "${profile_name}"
+YAML
 
     mkdir -p "${out_dir}/airootfs/root"
     cp -a "${BASE_DIR}" "${out_dir}/airootfs/root/ArtixForge"
