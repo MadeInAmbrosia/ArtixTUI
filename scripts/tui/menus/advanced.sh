@@ -19,7 +19,10 @@ tui_select_luks() {
 }
 
 tui_select_auris() {
-    if tui_yesno "AURIS" "Enable the Artix User Repository of Init Scripts (AURIS)?\n\nAURIS provides community-submitted init scripts for all\nsupported init systems."; then
+    if tui_yesno "AURIS" "Enable the Artix User Repository of Init Scripts (AURIS)?
+
+AURIS provides community-submitted init scripts for all
+supported init systems."; then
         state_set ENABLE_AURIS "yes"
     else
         state_set ENABLE_AURIS "no"
