@@ -94,6 +94,7 @@ build_artix_iso() {
     fi
     local iso_output_dir="${workspace}/iso"
     local iso_profile_dir="${workspace}/iso-profiles/${profile_name}"
+    local common_yaml_backup=""
 
     if ! command -v buildiso >/dev/null; then
         log_info "Installing artools and iso-profiles..."
@@ -110,6 +111,12 @@ build_artix_iso() {
 
     # artools also looks in /usr/share/artools/iso-profiles/ because why not?
     cp -a "${iso_profile_dir}" /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
+
+    if [[ -f /usr/share/artools/iso-profiles/common/common.yaml ]] && [[ ! -f /usr/share/artools/iso-profiles/common/common.yaml.orig ]]; then
+        cp /usr/share/artools/iso-profiles/common/common.yaml /usr/share/artools/iso-profiles/common/common.yaml.orig
+        common_yaml_backup="/usr/share/artools/iso-profiles/common/common.yaml.orig"
+    fi
+    
     # Override broken system common.yaml with artixforgeTM approved common.yaml until I contact the devs about it 
     if [[ -f "${workspace}/iso-profiles/common/common.yaml" ]]; then
         cp -f "${workspace}/iso-profiles/common/common.yaml" /usr/share/artools/iso-profiles/common/common.yaml
@@ -297,6 +304,11 @@ PACMAN
             die "buildiso exited with an error"
         fi
     fi
+
+    if [[ -f "${common_yaml_backup}" ]]; then
+        mv "${common_yaml_backup}" /usr/share/artools/iso-profiles/common/common.yaml
+    fi
+    rm -rf /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
 
     log_info "Build complete. Locating ISO..."
     local iso_file

@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.4.4 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: system `common.yaml` now backed up before override and restored after build — no trace left on the host system
+- ISO: profile copy cleaned from `/usr/share/artools/iso-profiles/` after build completes
+
 ## v8.8.4.3 (2026-06-19) — ArtixForge
 
 ### Added
