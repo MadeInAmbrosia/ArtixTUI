@@ -196,7 +196,7 @@ generate_iso_package_list() {
         base base-devel linux-firmware bash nano vim sudo git curl wget pciutils
         mkinitcpio efibootmgr dosfstools gptfdisk parted cryptsetup lvm2
         btrfs-progs xfsprogs f2fs-tools exfat-utils e2fsprogs
-        gum artools openssl rsync grub artix-grub-theme
+        gum artools openssl rsync grub artix-grub-theme artix-grub-live
         bc cpio pahole libelf
     )
     pkg_list+=(intel-ucode amd-ucode)
