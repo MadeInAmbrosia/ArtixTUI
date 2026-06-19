@@ -94,7 +94,8 @@ build_artix_iso() {
     fi
     local iso_output_dir="${workspace}/iso"
     local iso_profile_dir="${workspace}/iso-profiles/${profile_name}"
-    local common_yaml_backup=""
+    local mount_sh="/usr/share/artools/lib/iso/mount.sh"
+    local mount_sh_backup="${mount_sh}.orig"
 
     if ! command -v buildiso >/dev/null; then
         log_info "Installing artools and iso-profiles..."
@@ -104,6 +105,12 @@ build_artix_iso() {
 
     mkdir -p "${workspace}"/{iso-profiles,chroot,iso}
 
+    # I LOVE RACE CONDITIONS!!!
+    if [[ -f "${mount_sh}" ]] && [[ ! -f "${mount_sh_backup}" ]]; then
+        cp "${mount_sh}" "${mount_sh_backup}"
+        sed -i 's/umount "${FS_ACTIVE_MOUNTS\[@\]}"/for i in {1..5}; do if umount -l "${FS_ACTIVE_MOUNTS[@]}" 2>\/dev\/null; then break; fi; sleep 1; done/' "${mount_sh}"
+    fi
+
     log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode)..."
     source "${ISO_DIR}/common.sh"
     generate_common_yaml "${workspace}"
@@ -112,11 +119,6 @@ build_artix_iso() {
     # artools also looks in /usr/share/artools/iso-profiles/ because why not?
     cp -a "${iso_profile_dir}" /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
 
-    if [[ -f /usr/share/artools/iso-profiles/common/common.yaml ]] && [[ ! -f /usr/share/artools/iso-profiles/common/common.yaml.orig ]]; then
-        cp /usr/share/artools/iso-profiles/common/common.yaml /usr/share/artools/iso-profiles/common/common.yaml.orig
-        common_yaml_backup="/usr/share/artools/iso-profiles/common/common.yaml.orig"
-    fi
-    
     # Override broken system common.yaml with artixforgeTM approved common.yaml until I contact the devs about it 
     if [[ -f "${workspace}/iso-profiles/common/common.yaml" ]]; then
         cp -f "${workspace}/iso-profiles/common/common.yaml" /usr/share/artools/iso-profiles/common/common.yaml
@@ -305,8 +307,8 @@ PACMAN
         fi
     fi
 
-    if [[ -f "${common_yaml_backup}" ]]; then
-        mv "${common_yaml_backup}" /usr/share/artools/iso-profiles/common/common.yaml
+    if [[ -f "${mount_sh_backup}" ]]; then
+        mv "${mount_sh_backup}" "${mount_sh}"
     fi
     rm -rf /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.4.5 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: patched artools `umount_overlayfs` to use lazy unmount with retries — fixes "target is busy" race condition when unmounting livefs overlay
+
 ## v8.8.4.4 (2026-06-19) — ArtixForge
 
 ### Fixed
