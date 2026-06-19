@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.3.6 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: profile generation now writes `profile.yaml` instead of `profile.conf` — what happens when you don't read your sources
+
 ## v8.8.3.5 (2026-06-18) — ArtixForge
 
 ### Added
