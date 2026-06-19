@@ -1,5 +1,10 @@
 # Changelog
 
+## v8.8.4.6 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: patched artools `clean_up_chroot` to make `find -delete` non-fatal — fixes build abort when temp files are busy during cleanup
+
 ## v8.8.4.5 (2026-06-19) — ArtixForge
 
 ### Fixed

@@ -96,6 +96,8 @@ build_artix_iso() {
     local iso_profile_dir="${workspace}/iso-profiles/${profile_name}"
     local mount_sh="/usr/share/artools/lib/iso/mount.sh"
     local mount_sh_backup="${mount_sh}.orig"
+    local buildiso_bin="/usr/bin/buildiso"
+    local buildiso_backup="${buildiso_bin}.orig"
 
     if ! command -v buildiso >/dev/null; then
         log_info "Installing artools and iso-profiles..."
@@ -105,10 +107,17 @@ build_artix_iso() {
 
     mkdir -p "${workspace}"/{iso-profiles,chroot,iso}
 
-    # I LOVE RACE CONDITIONS!!!
+    # I LOVE RACE CONDITIONS!!! (lazy unmount fixes "target is busy" race condition)
     if [[ -f "${mount_sh}" ]] && [[ ! -f "${mount_sh_backup}" ]]; then
         cp "${mount_sh}" "${mount_sh_backup}"
         sed -i 's/umount "${FS_ACTIVE_MOUNTS\[@\]}"/for i in {1..5}; do if umount -l "${FS_ACTIVE_MOUNTS[@]}" 2>\/dev\/null; then break; fi; sleep 1; done/' "${mount_sh}"
+    fi
+
+    # clean_up_chroot non-fatal edition (find -delete can fail on busy filesystems)
+    if [[ -f "${buildiso_bin}" ]] && [[ ! -f "${buildiso_backup}" ]]; then
+        cp "${buildiso_bin}" "${buildiso_backup}"
+        sed -i '/find.*-delete &> \/dev\/null/s/ &> \/dev\/null/ 2>\/dev\/null || true/g' "${buildiso_bin}"
+        sed -i '/find "\$mnt" -name.*\.pacnew.*-delete/s/$/ 2>\/dev\/null || true/' "${buildiso_bin}"
     fi
 
     log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode)..."
@@ -309,6 +318,9 @@ PACMAN
 
     if [[ -f "${mount_sh_backup}" ]]; then
         mv "${mount_sh_backup}" "${mount_sh}"
+    fi
+    if [[ -f "${buildiso_backup}" ]]; then
+        mv "${buildiso_backup}" "${buildiso_bin}"
     fi
     rm -rf /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
 
