@@ -101,6 +101,11 @@ tui_iso_target_config() {
 }
 
 start_iso_build() {
+    if [[ -d /run/artix/sfs/rootfs ]]; then
+        tui_msg_quick "Not Supported" "ISO building from a live environment is not supported due to overlayfs limitations in artools.\n\nPlease build ISOs from an installed Artix system."
+        return 0
+    fi
+
     if ! command -v buildiso &>/dev/null; then
         if tui_yesno "Missing Tools" "artools is not installed. Install now?"; then
             pacman -S --noconfirm artools iso-profiles || die "Failed to install artools"

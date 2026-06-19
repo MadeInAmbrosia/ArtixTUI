@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.8.4.2 (2026-06-19) — ArtixForge
+
+### Changed
+- ISO: building from a live environment now blocked with a clear message — overlayfs limitations in artools prevent live ISO builds
+- ISO: tmpfs mount workaround removed from build pipeline — no longer needed with live ISO block in place
+
 ## v8.8.4.1 (2026-06-19) — ArtixForge
 
 ### Fixed

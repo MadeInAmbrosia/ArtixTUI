@@ -103,11 +103,6 @@ build_artix_iso() {
 
     mkdir -p "${workspace}"/{iso-profiles,chroot,iso}
 
-    if [[ -d /run/artix/sfs/rootfs ]]; then
-        export CHROOTS_DIR="${workspace}/chroots"
-        mkdir -p "${CHROOTS_DIR}"
-    fi
-
     log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode)..."
     source "${ISO_DIR}/common.sh"
     generate_common_yaml "${workspace}"
@@ -146,7 +141,7 @@ build_artix_iso() {
                     local chroot_dir=""
                     local search_paths=(
                         "/var/lib/artools/buildiso/${profile_name}/artix/rootfs"
-                        "${CHROOTS_DIR:-/var/lib/artools}/buildiso/${profile_name}/artix/rootfs"
+                        "${workspace}/buildiso/${profile_name}/artix/rootfs"
                     )
                     for candidate in "${search_paths[@]}"; do
                         if [[ -d "${candidate}" && -x "${candidate}/bin/sh" ]]; then
@@ -154,7 +149,7 @@ build_artix_iso() {
                             break
                         fi
                     done
-                    [[ -z "${chroot_dir}" ]] && chroot_dir=$(find "${CHROOTS_DIR:-/var/lib/artools}" -type d -name rootfs -path "*/artix/rootfs" 2>/dev/null | head -n1)
+                    [[ -z "${chroot_dir}" ]] && chroot_dir=$(find "${workspace}" -type d -name rootfs -path "*/artix/rootfs" 2>/dev/null | head -n1)
                     
                     if [[ -n "${chroot_dir}" && -d "${chroot_dir}" ]]; then
                         mkdir -p "${iso_profile_dir}/airootfs/mnt/repo"
@@ -218,7 +213,8 @@ PACMAN
 
         local chroot_dir=""
         local search_paths=(
-            "${CHROOTS_DIR:-/var/lib/artools}/buildiso/${profile_name}/artix/rootfs"
+            "/var/lib/artools/buildiso/${profile_name}/artix/rootfs"
+            "${workspace}/buildiso/${profile_name}/artix/rootfs"
         )
         for candidate in "${search_paths[@]}"; do
             if [[ -d "${candidate}" && -x "${candidate}/bin/sh" ]]; then
@@ -227,7 +223,7 @@ PACMAN
             fi
         done
         if [[ -z "${chroot_dir}" ]]; then
-            chroot_dir=$(find "${CHROOTS_DIR:-/var/lib/artools}" -type d -name rootfs -path "*/artix/rootfs" 2>/dev/null | head -n1)
+            chroot_dir=$(find "${workspace}" -type d -name rootfs -path "*/artix/rootfs" 2>/dev/null | head -n1)
         fi
 
         if [[ -n "${chroot_dir}" && -d "${chroot_dir}" ]]; then
