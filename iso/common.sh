@@ -289,7 +289,7 @@ generate_artools_profile() {
     mkdir -p "${out_dir}"/{live-overlay,desktop-overlay,airootfs/etc}
 
     generate_iso_package_list "${init}" "${kernel}" > "${out_dir}/packages.x86_64"
-    touch "${out_dir}/live-overlay/.keep" 
+    touch "${out_dir}/live-overlay/keep" 
 
     if [[ "${boot_mode}" == "installer" ]]; then
         log_info "Configuring installer ISO auto‑boot..."
