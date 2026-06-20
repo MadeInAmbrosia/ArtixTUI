@@ -432,7 +432,7 @@ main() {
                     "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
                 fi
                 
-                (cd "${BASE_DIR}/forge-gui" && "${venv_dir}/bin/python3" -m forge_ui.cli --mode config 2>/tmp/gui-error.log) || true
+                cd "${BASE_DIR}/forge-gui" && "${venv_dir}/bin/python3" -m forge_ui.cli --mode config > /tmp/gui-output.log 2>&1 || true
                
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
