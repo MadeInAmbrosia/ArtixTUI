@@ -424,15 +424,12 @@ main() {
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
                 
-                pacman -S --noconfirm --needed python-gobject python-jsonschema gtk3 2>/dev/null || true
-                
                 local venv_dir="${BASE_DIR}/forge-gui/venv"
                 if [[ ! -d "${venv_dir}" ]]; then
                     log_info "Setting up Python virtual environment for GUI..."
-                    python3 -m venv "${venv_dir}" --system-site-packages 2>/dev/null || {
-                        pacman -S --noconfirm --needed python-virtualenv
-                        python3 -m venv "${venv_dir}" --system-site-packages
-                    }
+                    pacman -S --noconfirm --needed python-virtualenv gtk3 python-gobject python-jsonschema
+                    python3 -m venv "${venv_dir}" --system-site-packages
+                    "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
                 fi
                 
                 (cd "${BASE_DIR}/forge-gui" && "${venv_dir}/bin/python3" -m forge_ui.cli --mode config)
