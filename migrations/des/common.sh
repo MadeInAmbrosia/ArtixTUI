@@ -494,6 +494,12 @@ run_de_migration() {
         _prepare_target_repo "$target_de"
     fi
 
+    if [[ "$(state_get DE_MIG_DM '')" != "" ]]; then
+        log_info "Using GUI-specified migration choices"
+    else
+        prompt_migration_choices
+    fi
+
     if [[ "$source_de" == "none" ]]; then
         local default_dm="${DE_DISPLAY_MANAGER[$target_de]:-none}"
         state_set DE_MIG_DM "$default_dm"
