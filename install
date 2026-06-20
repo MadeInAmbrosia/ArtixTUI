@@ -440,7 +440,7 @@ main() {
                 fi
                 
                 unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
-                cd "${BASE_DIR}/forge-gui" && "${venv_dir}/bin/python3" forge_ui/cli.py --mode config > /tmp/gui-output.log 2>&1 || true
+                cd "${BASE_DIR}/forge-gui" && PYTHONPATH=".:${PYTHONPATH:-}" "${venv_dir}/bin/python3" -m forge_ui.cli --mode config > /tmp/gui-output.log 2>&1 || true
 
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
