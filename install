@@ -393,6 +393,7 @@ main() {
                 kernel="$(state_get KERNEL_CHOICE 'linux')"
                 offline="$(state_get ALLOW_OFFLINE 'no')"
                 boot_mode="$(state_get ISO_BOOT_MODE 'live')"
+                ;;
             migrate)
                 local mig_type mig_src mig_tgt
                 mig_type="$(state_get MIGRATION_TYPE '')"
