@@ -417,6 +417,9 @@ main() {
     fi
 
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
+        echo "DEBUG: BASE_DIR=${BASE_DIR}" >> /tmp/gui-debug.log
+        echo "DEBUG: ls BASE_DIR/forge-gui: $(ls -d "${BASE_DIR}/forge-gui" 2>&1)" >> /tmp/gui-debug.log
+        echo "DEBUG: PWD=$(pwd)" >> /tmp/gui-debug.log
         if [[ -d "${BASE_DIR}/forge-gui" ]]; then
             if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
                 clear
