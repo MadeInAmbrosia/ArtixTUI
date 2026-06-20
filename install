@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
-
 set -Eeuo pipefail
+
+rm -rf /tmp/artix-run
 
 SELF_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 BASE_DIR="${SELF_PATH%/*}"
@@ -307,7 +308,6 @@ start_system_migration() {
 
 main() {
     ensure_dirs
-    rm -rf /tmp/artix-run 
     require_root
     require_efi
 
