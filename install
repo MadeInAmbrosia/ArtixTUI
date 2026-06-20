@@ -436,8 +436,8 @@ main() {
                
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
-                    state_load
-                    MODE="$(state_get MODE auto)"
+                    MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
+                    MODE="${MODE:-auto}"
                     log_info "Mode: ${MODE}"
                     exec "$0" --non-interactive
                     exit 0
@@ -456,8 +456,8 @@ main() {
                 
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
-                    state_load
-                    MODE="$(state_get MODE auto)"
+                    MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
+                    MODE="${MODE:-auto}"
                     log_info "Mode: ${MODE}"
                     exec "$0" --non-interactive
                     exit 0
