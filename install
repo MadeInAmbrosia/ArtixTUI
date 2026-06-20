@@ -424,6 +424,10 @@ main() {
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
                 
+                export DISPLAY="${DISPLAY:-:0}"
+                export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
+                command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
+
                 local venv_dir="/tmp/artix-gui-venv"
                 if [[ ! -d "${venv_dir}" ]]; then
                     log_info "Setting up Python virtual environment for GUI..."
