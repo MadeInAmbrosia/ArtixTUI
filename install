@@ -426,7 +426,16 @@ main() {
                 
                 pacman -S --noconfirm --needed python-gobject python-jsonschema gtk3 2>/dev/null || true
                 
-                (cd "${BASE_DIR}/forge-gui" && "${venv_dir}/bin/python3" -m forge_ui.cli --mode config 2>/tmp/gui-error.log) || true 
+                local venv_dir="${BASE_DIR}/forge-gui/venv"
+                if [[ ! -d "${venv_dir}" ]]; then
+                    log_info "Setting up Python virtual environment for GUI..."
+                    python3 -m venv "${venv_dir}" --system-site-packages 2>/dev/null || {
+                        pacman -S --noconfirm --needed python-virtualenv
+                        python3 -m venv "${venv_dir}" --system-site-packages
+                    }
+                fi
+                
+                (cd "${BASE_DIR}/forge-gui" && "${venv_dir}/bin/python3" -m forge_ui.cli --mode config)
                
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
