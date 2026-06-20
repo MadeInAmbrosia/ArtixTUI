@@ -26,8 +26,6 @@ Many, many things changed. this changelog is incomplete for it's scope.
 - GUI: _on_package_toggled() signal handler for package list checkboxes
 - GUI: _on_coreutils_changed() signal handler for coreutils combo box
 
-
-
 ## v8.8.4.8 (2026-06-19) — ArtixForge
 
 ### Fixed
