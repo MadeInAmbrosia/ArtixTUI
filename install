@@ -99,6 +99,7 @@ verify_installer_layout() {
     [[ -d "${POWERUSER_DIR:-${BASE_DIR}/poweruser}/tui/menup" ]] || return 1
     [[ -d "${BASE_DIR}/iso" ]] || return 1
     [[ -d "${BASE_DIR}/migrations" ]] || return 1
+    [[ -d "${BASE_DIR}/forge-gui" ]] || return 1
     return 0
 }
 
@@ -421,11 +422,15 @@ main() {
         if [[ -d "${BASE_DIR}/forge-gui" ]]; then
             if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
                 clear
-                log_info "Launching GUI configuration window from submodule..."
+                log_info "Launching GUI configuration window..."
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
                 
-                (cd "${BASE_DIR}/forge-gui" && python3 -m forge_ui.cli --mode config)
+                local gui_dir="${SELF_PATH%/*}/forge-gui"
+                if [[ ! -d "${gui_dir}" ]]; then
+                    gui_dir="${BASE_DIR}/forge-gui"
+                fi
+                (cd "${gui_dir}" && python3 -m forge_ui.cli --mode config)
                 
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
