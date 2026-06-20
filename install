@@ -424,7 +424,7 @@ main() {
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
                 
-                local venv_dir="${BASE_DIR}/forge-gui/venv"
+                local venv_dir="/tmp/artix-gui-venv"
                 if [[ ! -d "${venv_dir}" ]]; then
                     log_info "Setting up Python virtual environment for GUI..."
                     pacman -S --noconfirm --needed python-virtualenv gtk3 python-gobject python-jsonschema
