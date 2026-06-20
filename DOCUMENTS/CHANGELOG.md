@@ -1,5 +1,31 @@
 # Changelog
 
+## v8.9.2.0 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: complete GTK4 + libadwaita rewrite — GTK3 replaced across all 16 frontend files
+- GUI: `Gtk.DropDown` replaces `Gtk.ComboBoxText` — native dark/light theme support, no more CSS hacks
+- GUI: `Gtk.PasswordEntry` replaces `Gtk.Entry` with visibility toggle — password fields use proper secure widget
+- GUI: `Adw.StyleManager` replaces manual CSS providers — system dark/light mode switches automatically, Gentoo/Artix/Jet Black/Mono/Retro themes preserved via accent color
+- GUI: all `override_background_color` and `override_color` calls removed — GTK4 deprecation warnings eliminated
+- GUI: window sizing simplified — fixed default 680×420, compositor handles centering
+- GUI: `theme.py` stripped from 414 lines to 15 — only color code mapping remains for backend ANSI output
+- GUI: `setup.py` bumped to v0.4.0, jsonschema removed from hard dependencies
+- GUI: LICENSE updated to Forge Attribution License 1.0
+- README: updated for GTK4, libadwaita dependency, `--mode config` documented
+
+### Fixed
+- GUI: ANSI escape codes finally killed — `isprintable()` filter in progress log view catches all control characters from gum output
+- GUI: progress window `_on_destroy` no longer sets `cancelled=True` on successful completion — fixes false "Installation cancelled by user"
+- GUI: installation failure dialog now shows last 8 lines of install log — users see what went wrong
+- GUI: `Gtk.FileChooserDialog` ported to GTK4 async response pattern — profile file browser works
+- GUI: tweak flags dialog uses `Gtk.Dialog` with `transient_for` — proper parenting, no black-on-white rendering bugs
+
+### Removed
+- GUI: 1728 lines of GTK3 code deleted — all manual CSS, font overrides, combo box theming, notebook background patches
+- `theme.py`: `get_dark_css()`, `get_light_css()`, `get_global_css()`, `_color_to_hex()`, `_lighten_hex()` — all replaced by `Adw.StyleManager`
+- Recovery edge cases removed from testing roadmap — will be addressed per user reports
+
 ## v8.9.1.0 (2026-06-20) — ArtixForge
 
 ### Fixed
