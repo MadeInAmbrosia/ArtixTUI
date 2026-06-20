@@ -383,7 +383,6 @@ main() {
                 ;;
             iso)
                 source "${BASE_DIR}/iso/tui.sh"
-                # Non‑interactive ISO build – use state saved by GUI
                 local profile_name init kernel offline boot_mode
                 profile_name="$(state_get QUICK_PROFILE 'Desktop')"
                 init="$(state_get INIT 'openrc')"
@@ -428,12 +427,15 @@ main() {
                 
                 (cd "${BASE_DIR}/forge-gui" && python3 -m forge_ui.cli --mode config)
                 
-                if [[ -f "${STATE_FILE}" ]] && grep -q '^GUI_MODE=.*yes' "${STATE_FILE}"; then
-                    log_info "Configuration saved. Restarting installer in non‑interactive mode..."
+                if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
+                    log_info "GUI configuration complete. Starting installation..."
+                    state_load
+                    MODE="$(state_get MODE auto)"
+                    log_info "Mode: ${MODE}"
                     exec "$0" --non-interactive
                     exit 0
                 else
-                    log_error "GUI configuration was not saved. Falling back to TUI."
+                    log_error "GUI configuration was not completed. Falling back to TUI."
                 fi
             fi
         elif command -v forge-gui &>/dev/null; then
@@ -445,12 +447,15 @@ main() {
                 
                 forge-gui --mode config
                 
-                if [[ -f "${STATE_FILE}" ]] && grep -q '^GUI_MODE=.*yes' "${STATE_FILE}"; then
-                    log_info "Configuration saved. Restarting installer in non‑interactive mode..."
+                if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
+                    log_info "GUI configuration complete. Starting installation..."
+                    state_load
+                    MODE="$(state_get MODE auto)"
+                    log_info "Mode: ${MODE}"
                     exec "$0" --non-interactive
                     exit 0
                 else
-                    log_error "GUI configuration was not saved. Falling back to TUI."
+                    log_error "GUI configuration was not completed. Falling back to TUI."
                 fi
             fi
         fi
