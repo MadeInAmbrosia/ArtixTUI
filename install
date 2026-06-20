@@ -432,8 +432,9 @@ main() {
                     "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
                 fi
                 
-                cd "${BASE_DIR}/forge-gui" && env -i DISPLAY="${DISPLAY}" HOME="${HOME}" PATH="${venv_dir}/bin:/usr/bin:/bin" "${venv_dir}/bin/python3" forge_ui/cli.py --mode config > /tmp/gui-output.log 2>&1 || true
-               
+                unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
+                cd "${BASE_DIR}/forge-gui" && "${venv_dir}/bin/python3" forge_ui/cli.py --mode config > /tmp/gui-output.log 2>&1 || true
+
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
                     MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
