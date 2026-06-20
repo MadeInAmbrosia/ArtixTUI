@@ -381,16 +381,18 @@ main() {
                 stage_finalize  || die 'finalization stage failed'
                 ;;
             iso)
+                if ! command -v buildiso &>/dev/null; then
+                    log_info "Installing artools and iso-profiles..."
+                    pacman -S --noconfirm artools iso-profiles || die "Failed to install artools"
+                    modprobe loop
+                fi
                 source "${BASE_DIR}/iso/tui.sh"
                 local profile_name init kernel offline boot_mode
                 profile_name="$(state_get QUICK_PROFILE 'Desktop')"
                 init="$(state_get INIT 'openrc')"
                 kernel="$(state_get KERNEL_CHOICE 'linux')"
                 offline="$(state_get ALLOW_OFFLINE 'no')"
-                boot_mode="live"
-                source "${BASE_DIR}/iso/build.sh"
-                build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
-                ;;
+                boot_mode="$(state_get ISO_BOOT_MODE 'live')"
             migrate)
                 local mig_type mig_src mig_tgt
                 mig_type="$(state_get MIGRATION_TYPE '')"
