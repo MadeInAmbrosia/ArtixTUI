@@ -1,5 +1,33 @@
 # Changelog
 
+## v8.9.1.0 (2026-06-20) — ArtixForge
+
+### Fixed
+
+- GUI: method name mangling resolved — __init_common_pages renamed to _init_common_pages across CommonPages and AutomaticWindow to prevent AttributeError when inherited by PowerUserWindow
+- GUI: stale code execution from /tmp/artix-run copy identified — Python bytecode cache and installer self-copy behavior documented as potential footgun during development
+- GUI: tweak flags dialog now inherits parent window background — labels and entries match light/dark theme
+- GUI: extras notebook background updates on theme toggle — _apply_theme() re-applies notebook and child page backgrounds when switching between light and dark
+- GUI: hardcoded notebook background override removed from create_extras_page — CSS provider handles theming, _apply_theme fixes toggle
+- GUI: cancelled installation no longer confuses the TUI fallback — ProgressWindow._cancel() clears DISK= from state.conf so the wrapper doesn't attempt --non-interactive with incomplete state
+- GUI: Power User Kernel Hardware page now hidden when linux is not selected in package list
+- GUI: Power User New Recipe page now hidden when coreutils is not set to custom
+- GUI: Recovery mode now auto-detects installed system on startup — runs reconstruct_state_from_system and displays status before user selects an action
+- GUI: Recovery mode dynamically shows repair-method options (filesystem repair method, ClamAV toggle) based on selected action
+
+- GUI: Migration mode now auto-detects current init system and desktop environment — displays detected values and pre-selects combo boxes
+- GUI: Desktop migration now includes full sub-prompts — display manager, display stack, audio stack, network stack, and extras checkboxes with parity to TUI
+- GUI: ISO Builder now includes Load Profile file chooser with Browse button for selecting saved profile files
+- GUI: ISO Builder offline mode now includes Target System Configuration page — writes /tmp/artix-installer/iso-target-state.conf for offline package bundle generation
+- GUI: ISO Builder sets ALLOW_OFFLINE, ISO_OUTPUT_DIR, and ISO_EXTRA_PACKAGES in state — offline ISOs build correctly from GUI configuration
+
+### Changed
+- GUI: Recovery window restructured — single main page with status display, action combo, and dynamic extra options replacing separate pages
+- GUI: Migration window expanded from 3 pages to 6 — adds dedicated pages for DE display/audio config and network/extras config
+- GUI: ISO Builder expanded from 7 pages to 9 — adds Load Profile page and Target System Config page for offline builds
+- GUI: on_next() navigation logic rewritten for Recovery, Migration, and ISO Builder to handle conditional page flows
+
+
 ## v8.9.0.0 (2026-06-20) — ArtixForge
 
 Many, many things changed. this changelog is incomplete for it's scope.
