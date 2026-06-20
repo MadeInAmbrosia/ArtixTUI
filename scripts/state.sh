@@ -13,6 +13,7 @@ ensure_state_dirs() {
 state_save() {
     ensure_state_dirs
     {
+        printf 'MODE=%q\n'                  "${MODE:-auto}"
         printf 'DISK=%q\n'                  "${DISK:-}"
         printf 'FS_TYPE=%q\n'               "${FS_TYPE:-}"
         printf 'INIT=%q\n'                  "${INIT:-}"
