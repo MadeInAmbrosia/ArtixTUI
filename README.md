@@ -34,9 +34,7 @@ sudo ./install
 
 Currently, the following needs testing:
 - *Removed what's already tested and proven as functional*
-- GUI testing                 [90%]
-- Offline mode                [?]
-- Recovery edge cases         [>W.I.P<]
+- GUI testing                 [GTK4 Rewrite]
 
 Currently (17th-20th of June), I have tested a lot of stuff honestly.. see [the Changelog.](DOCUMENTS/CHANGELOG.md)
 
