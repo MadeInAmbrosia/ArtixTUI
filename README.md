@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.8.4.8-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.9.0.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
@@ -21,10 +21,10 @@
 
 ---
 
-# **TESTING BRANCH BABOONERY**
+# **TESTING BRANCH FINISH LINE**
 ###### We're going to milky way [galaxy] edition!
 ### Scroll down to see what ArtixForge is about!
-### AKA *Here's how to test v9-merger:*
+### AKA *Here's how to USE v9-merger:*
 ```bash
 git clone --branch v9-merger --recursive https://github.com/realvolk/ArtixForge.git ArtixForge
 cd ArtixForge
@@ -32,21 +32,13 @@ chmod +x install
 sudo ./install
 ```
 
-As of 17th of June 2026, I am back to commited testing after a long haitus. Sorry for the bugs!
-###### Fine. I'll do it myself.
-
 Currently, the following needs testing:
 - *Removed what's already tested and proven as functional*
-- GUI rendering               [WORKING ON IT]
+- GUI rendering               [Wrapping...]
 - Offline mode                [?]
 - Recovery edge cases         [>W.I.P<]
 
-Currently, I have tested the following:
-- TKG (Compilation and booting)
-- Limine and GRUB in several cases
-- Various combinations of LUKS+LVM, LUKS+UKI, LVM+UKI, etc.
-- Cachy kernels with Limine and BTRFS + LXQt
-- A lot of stuff honestly.. see [the Changelog.](DOCUMENTS/CHANGELOG.md)
+Currently (17th-20th of June), I have tested a lot of stuff honestly.. see [the Changelog.](DOCUMENTS/CHANGELOG.md)
 
 ### **FOUND A BUG? SOMETHING NOT WORKING?**
 

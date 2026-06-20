@@ -1,5 +1,33 @@
 # Changelog
 
+## v8.9.0.0 (2026-06-20) — ArtixForge
+
+Many, many things changed. this changelog is incomplete for it's scope.
+
+### Fixed
+- GUI: Power User progress window now opens correctly — start_installation() override calls collect_state() before launching the installer, matching the pattern used by Recovery, Migration, and Resume windows
+- GUI: ISO Builder now correctly sets ALLOW_OFFLINE in state — offline ISO builds no longer silently fall back to online mode
+- GUI: ISO Builder now includes output directory field and sets ISO_OUTPUT_DIR in state — ISO is saved to the user's chosen location
+- GUI: password mismatch now blocks navigation — users cannot proceed past the Users page or click Install with mismatched user/root passwords
+- GUI: collect_state_common() return value now respected by Automatic, Power User, and Manual windows — silent state collection failures no longer ignored
+- GUI: Kernel Hardware page in Power User mode now hidden when linux is not selected in the package list
+- GUI: Custom Recipe page in Power User mode now hidden when coreutils is not set to custom
+- GUI: __init_common_pages() now called in AutomaticWindow.__init__() — fixes missing extras checkboxes dict in Manual and Power User modes
+- GUI: Manual window no longer leaks SWAP_ENABLED, USE_LUKS, LUKS_PASS, USE_LVM into state from previous runs
+
+### Changed
+- GUI: password validation extracted to _validate_passwords() method in BaseWindow — reusable across all windows
+- GUI: on_next() now calls password validation before leaving the Users page — catches mismatches earlier in the flow
+- GUI: Power User package checkboxes now emit toggled signals for conditional page visibility — Kernel Hardware and Custom Recipe pages react in real time
+- GUI: ISO Builder build page reorganized with output directory entry alongside offline toggle
+
+### Added
+- GUI: conditional page visibility system in PowerUserWindow — _update_conditional_pages() toggles page visibility based on user selections
+- GUI: _on_package_toggled() signal handler for package list checkboxes
+- GUI: _on_coreutils_changed() signal handler for coreutils combo box
+
+
+
 ## v8.8.4.8 (2026-06-19) — ArtixForge
 
 ### Fixed
