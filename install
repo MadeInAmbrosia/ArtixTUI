@@ -2,8 +2,6 @@
 # shellcheck source=/dev/null
 set -Eeuo pipefail
 
-rm -rf /tmp/artix-run
-
 SELF_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 BASE_DIR="${SELF_PATH%/*}"
 SCRIPT_DIR="${BASE_DIR}/scripts"
