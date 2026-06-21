@@ -1,5 +1,27 @@
 # Changelog
 
+## v8.9.4.0 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: Artix logo added to header bar — 48px branding thumbnail displayed next to title on every page
+- GUI: semi-transparent Artix logo watermark restored — 15% opacity logo centered behind all content
+- GUI: `_conditional_pages` system added to `BaseWindow` — pages can register visibility conditions via lambdas
+- GUI: `add_revealer_page()` method added — wraps content in `Gtk.Revealer` for future animation use
+- GUI: `_update_conditional_pages()` re-evaluates all page conditions — called on power user toggle, coreutils change, package selection
+- GUI: `_show_current_page()` centralizes page switching — triggers `update_summary()` when reaching last page
+- GUI: `Gtk.Stack` transition duration set to 300ms — smoother page slides
+- GUI: install button styled with `suggested-action` CSS class — consistent accent color
+- GUI: theme accent color codes converted to integers — 34, 117, 196, 255, 11 replace hex strings
+- GUI: all dialog dismissals use `.destroy()` — consistent GTK4 resource cleanup
+
+### Fixed
+- GUI: `install_script` path corrected in `iso.py`, `migration.py`, `recovery.py` — `..` removed, direct path to repository root
+- GUI: `sudo` removed from `iso.py`, `migration.py`, `recovery.py` progress commands — GUI runs as root, no second password prompt
+- GUI: `close-request` handler replaces `destroy` for window close — proper GTK4 lifecycle
+
+### Added
+- `forge_ui/artixgui/media/` directory — bundled assets directory for logo and future resources
+
 ## v8.9.3.0 (2026-06-21) — ArtixForge
 
 ### Changed
