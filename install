@@ -10,7 +10,7 @@ if [[ "${ARTIX_RUNTIME_DIR:-}" != "/tmp/artix-run" && -d /tmp ]]; then
     mkdir -p /tmp/artix-run
     cp -a "${BASE_DIR}" /tmp/artix-run/
     export ARTIX_RUNTIME_DIR=/tmp/artix-run
-    exec "/tmp/artix-run/ArtixForge/install" "$@"
+    exec "/tmp/artix-run/${BASE_DIR##*/}/install" "$@"
     exit 0
 fi
 
