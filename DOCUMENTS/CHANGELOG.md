@@ -1,5 +1,38 @@
 # Changelog
 
+## v8.9.3.0 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: `Gtk.Application` + `GLib.MainLoop` architecture — proper GTK4 application lifecycle replaces manual `Gtk.main()` hacks
+- GUI: mode selection window now uses `Gtk.ApplicationWindow` — stays open until user choice, no more instant-close bugs
+- GUI: progress window registers with application via `app.add_window()` — application stays alive during installation
+- GUI: dialog dismissal uses nested `GLib.MainLoop` — blocks cleanly until user clicks OK, then unwinds all loops
+- GUI: `Gtk.Revealer` animation framework prepared — page visibility uses direct `set_visible()` for stability, revealer wrapping deferred to page creation
+- GUI: disk selection filters loop (`/dev/loop`) and optical (`/dev/sr`) devices — only real storage devices shown
+- GUI: state file cleared on fresh installation modes (Automatic, Manual, Power User, ISO) — preserves state for Resume, Recovery, and Migration
+- GUI: theme accent colors applied to entire GUI via `Adw.StyleManager.set_accent_color()` — dropdowns, buttons, and tabs follow selected theme
+- GUI: "Gentoo" theme renamed to "ArtixForge" — purple/green palette now the default
+- GUI: welcome page displays system information — CPU model, RAM, and available disks detected at startup
+- GUI: progress bar added to installation window — fills dynamically as stages complete
+- GUI: progress bar matches actual backend completion messages — adapts to whether Power User or BusyBox init stages run
+- GUI: ANSI escape sequence stripping hardened — catches gum's bare `[38;5;Nm` patterns without ESC prefix
+- GUI: Power User recipe sections trigger package list rebuild — toggling a section immediately refreshes available recipes
+- GUI: Power User recipes auto-downloaded from community repository — missing recipe files fetched silently in background
+- GUI: Power User package tooltips show source URL and description — user knows where each recipe comes from
+- GUI: Power User fallback kernel frame hidden when linux not selected — entire section disappears, not just grayed out
+- GUI: hidden pages skipped during navigation — Back/Next jump over invisible pages seamlessly
+- GUI: Artix logo overlay support — semi-transparent logo displayed behind all content when `media/artix-logo.png` exists
+- `forge_ui/artixgui/media/` directory added — bundled assets ship with the GUI (soon)
+
+### Fixed
+- GUI: `Gtk.main()` and `Gtk.main_quit()` fully eradicated — all 8 remaining calls replaced with `GLib.MainLoop`
+- GUI: `search-changed` signal corrected to `changed` on search entry — extras search tab no longer crashes
+- GUI: `window`/`win` variable name mismatch in `mode_select.py` — mode selection dialog now appears
+- GUI: config window no longer closes when progress window opens — `app.hold()` keeps application alive
+- GUI: `sudo` removed from progress window command — GUI already runs as root, second sudo prompt killed the window
+- GUI: `Gdk` import added to `backends/gui.py` — CSS provider for log view works
+- GUI: `ImportError` on `Gtk.main` resolved — Python 3.14 GTK4 bindings compatibility
+
 ## v8.9.2.0 (2026-06-21) — ArtixForge
 
 ### Changed

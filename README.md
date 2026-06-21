@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.9.2.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v8.9.3.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
@@ -34,7 +34,7 @@ sudo ./install
 
 Currently, the following needs testing:
 - *Removed what's already tested and proven as functional*
-- GUI testing                 [GTK4 Rewrite]
+- GUI testing                 [Polishing..]
 
 Currently (17th-21th of June), I have tested a lot of stuff honestly.. see [the Changelog.](DOCUMENTS/CHANGELOG.md)
 
