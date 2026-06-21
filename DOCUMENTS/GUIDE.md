@@ -114,12 +114,12 @@ The core of the operating system.
 | linux-lts | Long‑term support; receives only security fixes | Very stable |
 | linux-hardened | Security‑focused with extra protections | Stable |
 | linux-libre | Completely free software (removes non‑free firmware) | **May break hardware** – Wi‑Fi, Bluetooth, NVIDIA often fail |
-| linux-cachyos-bore | Performance‑optimised, uses BORE scheduler | Generally stable |
+| linux-cachyos-* | Performance‑optimised kernels | Generally stable |
 | linux-bazzite-bin | Gaming‑focused, includes extra patches | May occasionally have issues |
 | xanmod | Aggressive performance tweaks | May be less stable than mainline |
 | tkg | Fully customisable; build with your own configuration | Stability depends entirely on your choices |
 
-Standard `linux` is a safe choice. If you do a lot of interactive work or gaming, `linux-zen` or `linux-cachyos-bore` may feel snappier. Avoid `linux-libre` unless you are certain your hardware works without proprietary firmware.
+Standard `linux` is a safe choice. If you do a lot of interactive work or gaming, `linux-zen` or `linux-cachyos-*` may feel snappier. Avoid `linux-libre` unless you are certain your hardware works without proprietary firmware.
 
 ---
 
@@ -449,7 +449,7 @@ Open an issue on [GitHub](https://github.com/realvolk/ArtixForge/issues) or visi
 | If you want… | Consider… |
 |--------------|-----------|
 | A simple, stable desktop | Automatic, ext4, GRUB, linux, KDE, NetworkManager, PipeWire, sudo |
-| A snappy gaming machine | As above + linux-zen or linux-cachyos-bore |
+| A snappy gaming machine | As above + linux-zen or linux-cachyos-* |
 | A lightweight laptop | XFCE or LXQt, linux-lts |
 | A headless server | No desktop, dhcpcd+iwd, ext4, doas, possibly LVM |
 | A minimal, embedded system | Power User, BusyBox init, linux-lts, BusyBox coreutils |
