@@ -20,7 +20,7 @@ optdepends=(
 makedepends=('git')
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/realvolk/ArtixForge/archive/refs/tags/v${pkgver}.tar.gz"
         "forge-gui-0.4.0.tar.gz::https://github.com/realvolk/forge-gui/archive/refs/tags/v0.4.0.tar.gz")
-sha256sums=('7ac9380a5aff33ca9734ca91f3f19ed6dbc512226ae4e3f6378e4f4c1461db99'
+sha256sums=('3232b02fd51d24d68e0d2073f4dfc185409a7bb155ab1da981cfdf297a416182'
             '15d5359c8c8d7666eab6dc7ba7b9c5ec14d04882a440d4dc1bcb5b9bdce9984b')
 
 package() {
