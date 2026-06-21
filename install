@@ -134,34 +134,36 @@ MODE=""
 DEBUG="false"
 
 main_menu() {
-    local mode
-    mode=$(tui_menu "ArtixForge v9" "Select installation mode:" \
-        "Automatic – guided installation" \
-        "Manual – detect existing partitions" \
-        "Resume – resume interrupted install" \
-        "Advanced – recovery, power user, migration, ISO") || exit 1
+    while true; do
+        local mode
+        mode=$(tui_menu "ArtixForge v9" "Select installation mode:" \
+            "Automatic – guided installation" \
+            "Manual – detect existing partitions" \
+            "Resume – resume interrupted install" \
+            "Advanced – recovery, power user, migration, ISO") || exit 1
 
-    case "${mode}" in
-        Automatic*) MODE='auto' ;;
-        Manual*)    MODE='manual' ;;
-        Resume*)    MODE='resume' ;;
-        Advanced*)
-            mode=$(tui_menu "Advanced" "Select advanced mode:" \
-                "Recovery – scan /mnt for existing system" \
-                "Power User – source‑built packages" \
-                "System Migration – convert init or desktop" \
-                "Build ISO – create a custom live ISO" \
-                "Back") || return 1
-            case "${mode}" in
-                Recovery*)          MODE='recovery' ;;
-                Power*)             MODE='power' ;;
-                "System Migration"*) MODE='migrate' ;;
-                "Build ISO"*)       MODE='iso' ;;
-                *)                  return 1 ;;
-            esac
-            ;;
-        *) MODE='auto' ;;
-    esac
+        case "${mode}" in
+            Automatic*) MODE='auto' ; break ;;
+            Manual*)    MODE='manual' ; break ;;
+            Resume*)    MODE='resume' ; break ;;
+            Advanced*)
+                mode=$(tui_menu "Advanced" "Select advanced mode:" \
+                    "Recovery – scan /mnt for existing system" \
+                    "Power User – source‑built packages" \
+                    "System Migration – convert init or desktop" \
+                    "Build ISO – create a custom live ISO" \
+                    "Back") || continue
+                case "${mode}" in
+                    Recovery*)          MODE='recovery' ; break ;;
+                    Power*)             MODE='power' ; break ;;
+                    "System Migration"*) MODE='migrate' ; break ;;
+                    "Build ISO"*)       MODE='iso' ; break ;;
+                    *)                  continue ;;
+                esac
+                ;;
+            *) MODE='auto' ; break ;;
+        esac
+    done
 
     if tui_yesno "Debug Mode" "Enable debug mode (verbose logging)?"; then
         DEBUG='true'
