@@ -11,8 +11,10 @@ depends=('bash' 'gum' 'git' 'curl' 'openssl' 'rsync' 'coreutils')
 optdepends=(
     'pacman-contrib: mirror ranking support'
     'artools: ISO build support'
-    'gtk3: GUI installer'
+    'gtk4: GUI installer'
+    'libadwaita: GUI installer'
     'python-gobject: GUI installer'
+    'python-virtualenv: GUI installer'
     'python-jsonschema: GUI installer'
 )
 makedepends=('git')

@@ -36,7 +36,6 @@ EOF
     cat <<EOF > /mnt/etc/vconsole.conf
 KEYMAP=${keymap}
 EOF
-    artix-chroot /mnt localectl set-keymap "${keymap}" 2>/dev/null || log_warn "Failed to set console keymap"
 
     local wm_de
     wm_de="$(state_get WM_DE none)"
@@ -45,7 +44,15 @@ EOF
             log_info "Wayland compositor detected — skipping X11 keymap (compositor handles layout)"
             ;;
         *)
-            artix-chroot /mnt localectl set-x11-keymap "${keymap}" 2>/dev/null || log_warn "Failed to set X11 keymap"
+            log_info "Setting X11 keymap..."
+            mkdir -p /mnt/etc/X11/xorg.conf.d
+            cat > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf <<X11KEY
+Section "InputClass"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "${keymap}"
+EndSection
+X11KEY
             ;;
     esac
 

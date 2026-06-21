@@ -423,7 +423,7 @@ main() {
 
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
         if [[ -d "${BASE_DIR}/forge-gui" ]]; then
-            if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
+            if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
                 clear
                 log_info "Launching GUI configuration window..."
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
@@ -436,7 +436,7 @@ main() {
                 local venv_dir="/tmp/artix-gui-venv"
                 if [[ ! -d "${venv_dir}" ]]; then
                     log_info "Setting up Python virtual environment for GUI..."
-                    pacman -S --noconfirm --needed python-virtualenv gtk3 python-gobject python-jsonschema
+                    pacman -S --noconfirm --needed python-virtualenv gtk4 libadwaita python-gobject python-jsonschema
                     python3 -m venv "${venv_dir}" --system-site-packages
                     "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
                 fi
@@ -456,7 +456,7 @@ main() {
                 fi
             fi
         elif command -v forge-gui &>/dev/null; then
-            if gum confirm "Graphical environment detected.\n\nUse GUI installer (GTK) instead of TUI?" --affirmative="Yes" --negative="No"; then
+            if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
                 clear
                 log_info "Launching GUI configuration window from PATH..."
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"

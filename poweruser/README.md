@@ -54,11 +54,7 @@ The build engine then:
 
 ## After Installation
 
-The `anvil` tool is installed to:
-
-```text
-/usr/local/bin/anvil
-```
+The `anvil` tool is installed to `/usr/local/bin/anvil`.
 
 Use it to manage recipes, source-built packages, kernel configuration, recovery operations, and community repositories.
 

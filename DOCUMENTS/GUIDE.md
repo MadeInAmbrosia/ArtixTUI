@@ -12,7 +12,7 @@ ArtixForge offers **two interfaces**:
 | Interface | When it appears | How to use |
 |-----------|----------------|------------|
 | **Terminal UI (TUI)** | Default in a TTY or when `DISPLAY` is not set | Keyboard only, works on any terminal |
-| **Graphical UI (GUI)** | When a desktop environment (KDE, XFCE, etc.) is detected | Mouse + keyboard, native GTK windows |
+| **Graphical UI (GUI)** | When a desktop environment (KDE, XFCE, etc.) is detected | Mouse + keyboard, native GTK4 windows |
 
 If you boot an ArtixForge‑generated ISO with a desktop environment, you'll see a desktop icon.
 Double‑click it to launch the GUI installer. Alternatively, run `sudo ./install` in a terminal
@@ -298,6 +298,8 @@ so the installer can run without an internet connection.
 The built ISO will be placed in `~/ArtixForge-ISO/` along with a build log.
 You can burn it to a USB stick or boot it in a virtual machine.
 
+**GUI ISO Builder:** includes a file browser for loading saved profiles and a target system configuration page for offline builds.
+
 ---
 
 ## 19. System Migration (Convert init or desktop)
@@ -334,6 +336,8 @@ The migration will:
 - Preserve or reinstall your selected extra packages
 
 After migration, reboot to start the new environment.
+
+**GUI Migration:** the current init system and desktop environment are auto-detected and displayed. Desktop migration includes sub-pages for display manager, display stack, audio stack, network stack, and extra package selection.
 
 ---
 
@@ -399,7 +403,18 @@ At the end, a summary page shows your choices and any safety warnings.
 
 After clicking **Install**, the GUI saves your configuration and starts the
 non‑interactive backend. A progress window will display live logs from the
-installation (partitioning, package downloads, kernel builds, etc.).
+installation (partitioning, package downloads, kernel builds, etc.). A progress
+bar fills as each installation stage completes.
+
+The GUI supports five colour themes (ArtixForge, Artix, Jet Black, Mono, Retro)
+with light/dark backgrounds. The theme is applied to the entire window including
+buttons, dropdowns, and tabs.
+
+Passwords are hashed before being saved to the configuration file.
+
+Power User mode includes recipe fetching from the community repository, package
+selection with tooltips showing source URLs, and conditional pages that appear
+only when relevant options are selected.
 
 You can cancel the installation from the progress window. If you do,
 the system will not be modified. You can run the installer again and

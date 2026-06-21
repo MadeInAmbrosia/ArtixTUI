@@ -19,7 +19,7 @@ stage_post() {
     log_info "Preparing installer environment..."
     mkdir -p /mnt/root
     rm -rf /mnt/root/ArtixForge
-    cp -r . /mnt/root/ArtixForge
+    cp -r "${BASE_DIR}" /mnt/root/ArtixForge
 
     [[ -x /mnt/bin/bash ]] || die "chroot environment missing /bin/bash"
     [[ -f /mnt/etc/os-release ]] || die "invalid target root filesystem"

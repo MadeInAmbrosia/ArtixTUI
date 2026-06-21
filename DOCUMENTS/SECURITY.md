@@ -56,4 +56,5 @@ Security concerns include, but are not limited to:
 - Post‑installation, `anvil` runs with root privileges. Users should audit recipes before building, especially those obtained from third‑party sources.
 - The installer's state directory (`/tmp/artix-installer/`) lives on a tmpfs and is lost on reboot. The target configuration file (`/mnt/etc/artix-installer.conf`) is shredded or removed during the finalize stage.
 - Recovery mode requires explicit user confirmation before modifying any system files. Detection is read‑only until the user chooses a repair action.
-- **GUI installer (`forge-gui`):** runs in a separate Python process, passes JSON over stdin/stdout, does not keep secrets in long‑lived memory after the window closes.
+- **GUI installer (`forge-gui`):** runs in a separate Python process, passes JSON over stdin/stdout, hashes user/root passwords before writing to state, does not keep secrets in long‑lived memory after the window closes. LUKS passphrases are held in memory only and cleared when the config window closes.
+- **GUI installer (`forge-gui`):** user and root passwords are hashed with `openssl passwd -6` in the GUI process before being written to `state.conf` — plaintext passwords never touch the state file or disk. LUKS passphrases are held in memory only and cleared when the config window closes.

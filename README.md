@@ -11,40 +11,13 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v8.9.3.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v9.0.0.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Artix-[galaxy] *soon*-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy">
+  <img src="https://img.shields.io/badge/Artix-[galaxy] *pending*-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy">
 </p>
-
----
-
-# **TESTING BRANCH FINISH LINE**
-###### We're going to milky way [galaxy] edition!
-### Scroll down to see what ArtixForge is about!
-### AKA *Here's how to USE v9-merger:*
-```bash
-git clone --branch v9-merger --recursive https://github.com/realvolk/ArtixForge.git ArtixForge
-cd ArtixForge
-chmod +x install
-sudo ./install
-```
-
-Currently, the following needs testing:
-- *Removed what's already tested and proven as functional*
-- GUI testing                 [Polishing..]
-
-Currently (17th-21th of June), I have tested a lot of stuff honestly.. see [the Changelog.](DOCUMENTS/CHANGELOG.md)
-
-### **FOUND A BUG? SOMETHING NOT WORKING?**
-
-Open an issue [here](https://github.com/realvolk/ArtixForge/issues)! Please describe:
-
-- The exact combination you tested (e.g., "LUKS+LVM+UKI with GRUB")
-- Any error messages from /tmp/artix-installer/install.log
-- Whether the GUI or TUI was used
 
 ---
 
@@ -110,7 +83,7 @@ sudo ./install
 
 You'll be greeted by a main menu where you choose your installation mode.
 
-**If you booted a desktop environment (KDE, XFCE, etc.)**, you will be asked whether you want to use the **Graphical UI (GTK)** instead of the terminal interface. Answer `Yes` to launch a persistent configuration window with mouse support.
+**If you booted a desktop environment (KDE, XFCE, etc.)**, you will be asked whether you want to use the **Graphical UI (GTK4)** instead of the terminal interface. Answer `Yes` to launch a persistent configuration window with mouse support.
 
 ---
 
@@ -135,12 +108,12 @@ A debug toggle is available for every mode from the same menu.
 
 ## Core Installer
 
-* **Two UIs:** Terminal (TUI) with `gum` or Graphical (GUI) with GTK – same backend, different frontend.
+* **Two UIs:** Terminal (TUI) with `gum` or Graphical (GUI) with GTK4 + libadwaita – same backend, different frontend.
 * Tabbed full-screen TUI – navigate steps with keyboard, jump between tabs, see completed steps with checkmarks
-* Persistent GUI configuration window – all options collected in one window, progress window during installation
+* Persistent GUI configuration window with 5 colour themes, progress bar, and conditional page visibility
 * Modular architecture – separate scripts for storage, install, post, stages, recovery, and TUI sub-menus
 * Universal logger – writes to `/tmp/artix-installer/install.log` and `/mnt/var/log/artix-installer.log`
-* Safe passwords – hashed with `openssl passwd -6`, never written to disk
+* Safe passwords – GUI hashes before saving to state, backend hashes before writing to target
 * Quick install profiles (see table above)
 * Network pre-configuration – WiFi, DHCP, or static IP before installation
 * Optional mirror ranking with `rankmirrors`
@@ -185,7 +158,7 @@ A debug toggle is available for every mode from the same menu.
 * Offline source bootstrap
 * Build queue with resume, error recovery, and live log viewer
 * Post-build validation
-* `gartix` package manager (CLI + TUI) with recipe editor, offline bootstrap, and recipe self‑healing
+* `anvil` package manager (CLI + TUI) with recipe editor, offline bootstrap, and recipe self‑healing
 
 ## Extras
 
@@ -201,7 +174,7 @@ Terminals, Shell & Prompt, Monitoring, and Media. Includes:
 # Dependencies
 
 * **TUI:** `gum` (installed automatically if missing).
-* **GUI:** `gtk3`, `python-gobject`, `jsonschema` (installed automatically when GUI mode is selected).
+* **GUI:** `gtk4`, `libadwaita`, `python-gobject`, `jsonschema` (installed automatically when GUI mode is selected).
 
 Everything else is handled by the installer.
 

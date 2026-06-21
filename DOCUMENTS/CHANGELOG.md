@@ -1,5 +1,86 @@
 # Changelog
 
+## v9.0.0.0 (2026-06-21) — ArtixForge
+
+It's finally here. I'm done.
+
+### Added
+- GUI installer: full GTK4 + libadwaita graphical interface with 7 installation modes
+- GUI: mode selection dialog, persistent config window (13+ pages), progress window with live log and progress bar
+- GUI: 5 colour themes (ArtixForge, Artix, Jet Black, Mono, Retro), light/dark backgrounds, logo watermark
+- GUI: welcome page with system info, conditional page visibility, extras search tab
+- GUI: Power User recipe sections with auto-download, tooltips, conditional hardware pages
+- GUI: ISO Builder with Load Profile chooser, Target System Config for offline builds
+- GUI: Migration with auto-detection of init and desktop, sub-pages for DM/audio/network/extras
+- GUI: password hashing before state save, `Gtk.Revealer` animation framework
+- System Migration: init (16 combinations) and desktop (13 DEs/WMs) with auto-detection
+- ISO Generation: custom live ISOs with offline bundles, Live Desktop and Installer modes
+- Recovery: auto-detection, surgical repair, filesystem repair, rootkit scanning, untrusted recovery
+- Power User: source-based package compilation, community recipe repository, `anvil` package manager
+- AURIS: Artix User Repository of Init Scripts support
+- Quick Install profiles: Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal
+- Limine bootloader: BTRFS snapshot booting, Windows chainloading, LUKS/LVM-aware cmdline
+- ZFS: wiki-compliant ZFS-on-root with dual-pool setup, native encryption
+- CachyOS: all 9 kernel variants with v3/v4 architecture-specific repositories
+- SonicDE, MangoWM, TKG, Bazzite, XanMod kernels with AUR/Chaotic-AUR integration
+- UKI: Unified Kernel Image with Secure Boot signing
+- LVM with LUKS integration, bcachefs with DKMS, f2fs with compression
+- Community recipe repository with auto-download, section filtering, and self-healing
+
+### Changed
+- GUI: GTK3 → GTK4 + libadwaita (1728 lines removed, 861 added)
+- GUI: `Adw.StyleManager` for theming, `Gtk.DropDown`, `Gtk.PasswordEntry`, `Gtk.Application` architecture
+- GUI: "Gentoo" → "ArtixForge" theme, `gartix` → `anvil` rename
+- Backend: `localectl` removed, X11 keymap via xorg.conf.d, console via vconsole.conf
+- Backend: `configure_users` detects pre-hashed passwords for GUI/TUI compatibility
+- Backend: `basestrap.sh`, `bootloader.sh`, `detect.sh`, `repair.sh` atomized into sub-modules
+- Backend: TKG kernel completely rewritten, no longer depends on interactive scripts
+- Filesystems: exFAT removed as root, ZFS temporarily disabled (kernel 6.19+)
+- Recovery: kernel detection covers all 9 supported kernels
+- Migrations: OpenRC hub model for non-direct conversions, live ISO chroot support
+- Documentation: GUIDE.md, SECURITY.md, PRIVACY_POLICY.md, README.md all updated
+
+### Fixed
+- GUI: ANSI escape codes stripped, progress window stays visible, password mismatch blocks navigation
+- GUI: hidden pages skipped during navigation, disk selection filters loop/optical devices
+- GUI: state file cleared on fresh installs, preserved for Resume/Recovery/Migration
+- GUI: `install_script` path correct, `sudo` removed from progress commands
+- Backend: post-install chroot inherits correct working directory
+- Keyboard layout: non-US layouts work without systemd's `localectl`
+- TKG: failed patches restore corrupted files, kernel compiles with remaining patches
+- Limine: kernel panic on boot, snapshot loop quoting, ESP kernel copy
+- CachyOS: Intel 12th gen+ v4→v3 downgrade, architecture repo config
+- ZFS: preflight installs correct DKMS for live kernel, GRUB compatibility
+- LUKS: mapper name dynamic, crypt_uuid correct for LUKS-only setups
+- UKI: generation after ESP detection, Secure Boot signing restored
+- bcachefs: mkinitcpio hook appends instead of replacing
+- Migrations: custom service detection, orphan removal, init package transformation
+- Recovery: plain partition detection, UKI syntax error, pacman batch arithmetic
+- ISO: profile.yaml generation, offline kernel builds, workspace path resolution
+- Post-install: package list deduplicated, zram-tools package names corrected
+- Basestrap: gnupg permissions, /sbin/init symlink, duplicate hook accumulation
+- Drivers: VM detection case-insensitive, CachyOS header detection, Nouveau fallback
+- Installer: self-update copies to /tmp/artix-run, installer_error shows log tail
+
+## v8.9.4.1 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: user and root passwords now hashed with `openssl passwd -6` before saving to state — plaintext never touches disk
+- GUI: progress window now runs backend from correct working directory — `cwd` passed through to `subprocess.Popen`
+- Documentation: PRIVACY_POLICY.md updated — GUI network access clarified, password hash storage documented
+- Documentation: SECURITY.md updated — GUI password hashing added to best practices
+- Documentation: GUIDE.md updated — GUI section expanded with theme support, progress bar, password hashing, Power User recipe fetching, ISO builder file browser, and Migration auto-detection notes
+- README.md: GUI dependencies updated to GTK4 + libadwaita, features list corrected, gartix→anvil rename applied
+
+### Fixed
+- GUI: `install_script` path uses 4 `dirname` calls — correct path from `forge_ui/artixgui/base.py` to repository root
+- GUI: progress bar matches actual backend completion messages — advances at each stage completion
+- GUI: `app=self` parameter removed from `mode_select.py` — window constructors no longer receive unexpected keyword argument
+- GUI: `app.add_window()` call removed from `run_installer` — progress window registers itself with application
+- Backend: `post.sh` `cp -r .` inherits correct working directory — post-install chroot can find ArtixForge scripts
+- Backend: `configure_users` detects pre-hashed passwords — compatible with both TUI (plaintext) and GUI (pre-hashed) flows
+- Backend: keyboard layout configuration fixed — `localectl` calls removed, console keymap set via `vconsole.conf`, X11 keymap written to `/etc/X11/xorg.conf.d/00-keyboard.conf`
+
 ## v8.9.4.0 (2026-06-21) — ArtixForge
 
 ### Changed

@@ -8,16 +8,6 @@ In-place migration of init systems and desktop environments for Artix Linux.
 
 From the ArtixForge installer main menu, select **System Migration**, then choose the migration type.
 
-Alternatively, run the scripts directly:
-
-```bash
-# Init migration (any pair)
-source migrations/inits/common.sh && tui_init_migration_menu
-
-# Desktop migration (any pair)
-source migrations/des/common.sh && tui_de_migration_menu
-```
-
 ---
 
 # Init Systems
@@ -142,16 +132,7 @@ System configuration:
 
 # Migration Scripts
 
-All pair-specific migration scripts follow the same pattern. Example:
-
-```bash
-#!/usr/bin/env bash
-set -Eeuo pipefail
-MIGRATIONS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-source "${MIGRATIONS_DIR}/common.sh"
-run_de_migration "kde" "xfce"
-```
-
+All pair-specific migration scripts follow the same pattern. 
 Generic scripts (any-to.sh, none-to.sh, any-to-none.sh) detect the
 current desktop environment automatically and prompt for the target.
 
@@ -196,4 +177,3 @@ To add a new desktop environment or window manager:
 - All packages are installed with correct init-specific suffixes
 - Supports installation, replacement, or complete removal of graphical environments
 
----
