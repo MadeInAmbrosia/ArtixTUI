@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-[[ -f /etc/artix-installer.conf ]] && source /etc/artix-installer.conf
+[[ -f /etc/artix-installer.conf ]] && source /etc/artix-installer.conf || true
 
 service_exists() {
     local svc="${1}" init="${INIT:-openrc}"
@@ -24,6 +24,20 @@ enable_service() {
         runit)  mkdir -p /etc/runit/runsvdir/default ; ln -sf "/etc/runit/sv/${svc}" "/etc/runit/runsvdir/default/${svc}" ;;
         dinit)  mkdir -p /etc/dinit.d/boot.d ; ln -sf "../${svc}" "/etc/dinit.d/boot.d/${svc}" ;;
         s6)     s6-rc-bundle-update add default "${svc}" 2>/dev/null || true ;;
+    esac
+}
+
+enable_service_boot() {
+    local svc="${1}" init="${INIT:-openrc}"
+    if ! service_exists "${svc}"; then
+        log_warn "Service not found for ${init}: ${svc}"
+        return 1
+    fi
+    case "${init}" in
+        openrc) rc-update add "${svc}" boot ;;
+        runit)  mkdir -p /etc/runit/runsvdir/boot ; ln -sf "/etc/runit/sv/${svc}" "/etc/runit/runsvdir/boot/${svc}" ;;
+        dinit)  mkdir -p /etc/dinit.d/boot.d ; ln -sf "../${svc}" "/etc/dinit.d/boot.d/${svc}" ;;
+        s6)     s6-rc-bundle-update add boot "${svc}" 2>/dev/null || true ;;
     esac
 }
 

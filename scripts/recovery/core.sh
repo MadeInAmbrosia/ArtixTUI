@@ -15,10 +15,15 @@ recovery_mount_all() {
     if [[ ${#luks_parts[@]} -gt 0 ]]; then
         tui_msg "LUKS Container Found" "Found encrypted partition(s): ${luks_parts[*]}"
         for part in "${luks_parts[@]}"; do
+            local mapper_name="crypt_$(basename "${part}")"
+            if [[ -b "/dev/mapper/${mapper_name}" ]]; then
+                log_info "Mapper ${mapper_name} already open — skipping unlock"
+                continue
+            fi
             if tui_yesno "Unlock LUKS" "Unlock ${part}?"; then
                 local pass=""
                 pass=$(tui_password "LUKS Passphrase" "Enter passphrase for ${part}:") || die "LUKS unlock cancelled"
-                printf '%s' "${pass}" | cryptsetup luksOpen "${part}" "crypt_$(basename "${part}")" - || {
+                printf '%s' "${pass}" | cryptsetup luksOpen "${part}" "${mapper_name}" - || {
                     log_warn "Failed to unlock ${part} – wrong passphrase?"
                     continue
                 }
@@ -44,6 +49,7 @@ recovery_mount_all() {
     if [[ -z "${root_candidate}" ]]; then
         for dev in /dev/mapper/*; do
             [[ -b "${dev}" ]] || continue
+            [[ "$(basename "${dev}")" == "control" ]] && continue
             local fs_type
             fs_type=$(blkid -o value -s TYPE "${dev}" 2>/dev/null || true)
             if [[ "${fs_type}" =~ ^(ext[234]|xfs|btrfs|f2fs)$ ]]; then
@@ -51,6 +57,18 @@ recovery_mount_all() {
                 break
             fi
         done
+    fi
+
+    if [[ -z "${root_candidate}" ]]; then
+        log_info "No LUKS/LVM root found — scanning plain partitions..."
+        while IFS= read -r dev; do
+            local fs_type
+            fs_type=$(blkid -o value -s TYPE "${dev}" 2>/dev/null || true)
+            if [[ "${fs_type}" =~ ^(ext[234]|xfs|btrfs|f2fs)$ ]]; then
+                root_candidate="${dev}"
+                break
+            fi
+        done < <(lsblk -no PATH 2>/dev/null | grep -v '/dev/loop')
     fi
 
     if [[ -z "${root_candidate}" ]]; then
@@ -86,7 +104,7 @@ recovery_mount_all() {
         mount --bind /sys/firmware/efi/efivars /mnt/sys/firmware/efi/efivars 2>/dev/null || true
     fi
 
-    log_info "Recovery environment prepared."
+    log_info "Mounted ${root_candidate} at /mnt with ESP."
 }
 
 recovery_detect_install() {
@@ -111,6 +129,7 @@ validate_recovery_root() {
 }
 
 pacman_root_has() {
+    [[ -n "${1:-}" ]] || return 1
     [[ -d "${ROOT}/var/lib/pacman/local" ]] \
         || return 1
 
@@ -136,13 +155,20 @@ recovery_get_status() {
     status+="Kernel: $(state_get KERNEL_CHOICE unknown)"$'\n'
     status+="Power User: $(state_get POWER_USER no)"$'\n'
     status+="Coreutils: $(state_get COREUTILS unknown)"$'\n'
-    local fstab_issues boot_issues pacman_issues
+
+    local fstab_issues boot_issues pacman_issues migration_issues iso_issues
     fstab_issues=$(state_get FSTAB_ISSUES none)
     boot_issues=$(state_get BOOT_ISSUES none)
     pacman_issues=$(state_get PACMAN_ISSUES none)
+    migration_issues=$(state_get MIGRATION_ISSUES none)
+    iso_issues=$(state_get ISO_ISSUES none)
+
     [[ "${fstab_issues}" != "none" ]] && status+=$'\n'"FSTAB issues: ${fstab_issues}"
     [[ "${boot_issues}" != "none" ]] && status+=$'\n'"Boot issues: ${boot_issues}"
     [[ "${pacman_issues}" != "none" ]] && status+=$'\n'"Pacman issues: ${pacman_issues}"
+    [[ "${migration_issues}" != "none" ]] && status+=$'\n'"Migration issues: ${migration_issues}"
+    [[ "${iso_issues}" != "none" ]] && status+=$'\n'"ISO issues: ${iso_issues}"
+
     printf '%s\n' "${status}"
 }
 
@@ -180,6 +206,10 @@ reconstruct_state_from_system() {
     detect_fstab_health
     detect_boot_health
     detect_pacman_health
+    if tui_yesno "Extended Detection" "Run extended checks for INIT migration issues or broken ISO builds?"; then
+        detect_migration_health
+        detect_iso_health
+    fi
 
     state_save
 }

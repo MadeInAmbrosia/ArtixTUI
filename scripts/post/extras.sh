@@ -4,7 +4,40 @@ set -Eeuo pipefail
 install_extras() {
     local selected=" ${EXTRAS:-} " pkgs=() init="${INIT:-openrc}"
 
+    local -a CURATED_NAMES=(
+        git flatpak firewalld bluez zram-tools usb_modeswitch
+        nano vim neovim micro helix
+        firefox chromium qutebrowser
+        ranger lf nnn thunar
+        alacritty kitty foot
+        fastfetch fzf zoxide starship eza tmux
+        btop htop nvtop
+        mpv feh
+        rsvc swaybg swaylock waybar wofi fuzzel hyprpaper
+    )
+
+    local curated_str=" ${CURATED_NAMES[*]} "
+
     [[ "${selected}" == *" git "* ]] && pkgs+=(git base-devel)
+
+    [[ "${selected}" == *" flatpak "* ]] && pkgs+=(flatpak)
+    [[ "${selected}" == *" firewalld "* ]] && pkgs+=(firewalld "firewalld-${init}")
+    [[ "${selected}" == *" bluez "* ]] && pkgs+=(bluez bluez-utils "bluez-${init}")
+    [[ "${selected}" == *" zram-tools "* ]] && pkgs+=(zramen "zramen-${init}")
+    [[ "${selected}" == *" usb_modeswitch "* ]] && pkgs+=(usb_modeswitch)
+
+    local -a SIMPLE=(
+        nano vim neovim micro helix
+        firefox chromium qutebrowser
+        ranger lf nnn thunar
+        alacritty kitty foot
+        fastfetch fzf zoxide starship eza tmux
+        btop htop nvtop
+        mpv feh
+    )
+    for pkg in "${SIMPLE[@]}"; do
+        [[ "${selected}" == *" ${pkg} "* ]] && pkgs+=("${pkg}")
+    done
 
     if [[ "${selected}" == *" rsvc "* ]]; then
         if [[ "${init}" != 'runit' ]]; then
@@ -14,53 +47,24 @@ install_extras() {
         fi
     fi
 
-    [[ "${selected}" == *" flatpak "* ]] && pkgs+=(flatpak)
-    [[ "${selected}" == *" firewalld "* ]] && pkgs+=(firewalld "firewalld-${init}")
-    [[ "${selected}" == *" bluez "* ]] && pkgs+=(bluez bluez-utils "bluez-${init}")
-    [[ "${selected}" == *" zram-tools "* ]] && pkgs+=(zram-tools "zram-tools-${init}")
-    [[ "${selected}" == *" usb_modeswitch "* ]] && pkgs+=(usb_modeswitch)
+    local -a extra_tokens
+    read -ra extra_tokens <<< "${EXTRAS:-}"
+    for token in "${extra_tokens[@]}"; do
+        [[ -z "${token}" || " ${curated_str} " == *" ${token} "* ]] && continue
+        pkgs+=("${token}")
+    done
 
-    [[ "${selected}" == *" nano "* ]] && pkgs+=(nano)
-    [[ "${selected}" == *" vim "* ]] && pkgs+=(vim)
-    [[ "${selected}" == *" neovim "* ]] && pkgs+=(neovim)
-    [[ "${selected}" == *" micro "* ]] && pkgs+=(micro)
-    [[ "${selected}" == *" helix "* ]] && pkgs+=(helix)
+    if [[ ${#pkgs[@]} -eq 0 ]]; then return 0; fi
 
-    [[ "${selected}" == *" firefox "* ]] && pkgs+=(firefox)
-    [[ "${selected}" == *" chromium "* ]] && pkgs+=(chromium)
-    [[ "${selected}" == *" qutebrowser "* ]] && pkgs+=(qutebrowser)
-
-    [[ "${selected}" == *" ranger "* ]] && pkgs+=(ranger)
-    [[ "${selected}" == *" lf "* ]] && pkgs+=(lf)
-    [[ "${selected}" == *" nnn "* ]] && pkgs+=(nnn)
-    [[ "${selected}" == *" thunar "* ]] && pkgs+=(thunar)
-
-    [[ "${selected}" == *" alacritty "* ]] && pkgs+=(alacritty)
-    [[ "${selected}" == *" kitty "* ]] && pkgs+=(kitty)
-    [[ "${selected}" == *" foot "* ]] && pkgs+=(foot)
-
-    [[ "${selected}" == *" fastfetch "* ]] && pkgs+=(fastfetch)
-    [[ "${selected}" == *" fzf "* ]] && pkgs+=(fzf)
-    [[ "${selected}" == *" zoxide "* ]] && pkgs+=(zoxide)
-    [[ "${selected}" == *" starship "* ]] && pkgs+=(starship)
-    [[ "${selected}" == *" eza "* ]] && pkgs+=(eza)
-    [[ "${selected}" == *" tmux "* ]] && pkgs+=(tmux)
-
-    [[ "${selected}" == *" btop "* ]] && pkgs+=(btop)
-    [[ "${selected}" == *" htop "* ]] && pkgs+=(htop)
-    [[ "${selected}" == *" nvtop "* ]] && pkgs+=(nvtop)
-
-    [[ "${selected}" == *" mpv "* ]] && pkgs+=(mpv)
-    [[ "${selected}" == *" feh "* ]] && pkgs+=(feh)
-
-    if [[ ${#pkgs[@]} -eq 0 && "${selected}" != *" rsvc "* ]]; then return 0; fi
+    local -a deduped
+    mapfile -t deduped < <(printf '%s\n' "${pkgs[@]}" | sort -u)
 
     log_info "Installing extras..."
-    [[ ${#pkgs[@]} -gt 0 ]] && pacman -S --noconfirm --needed "${pkgs[@]}"
+    pacman -S --noconfirm --needed "${deduped[@]}"
 
     [[ "${selected}" == *" firewalld "* ]] && enable_service firewalld
-    [[ "${selected}" == *" bluez "* ]] && enable_service bluetooth
-    [[ "${selected}" == *" zram-tools "* ]] && enable_service zramd
+    [[ "${selected}" == *" bluez "* ]] && enable_service bluetoothd
+    [[ "${selected}" == *" zram-tools "* ]] && enable_service zramen
 
     if [[ "${selected}" == *" rsvc "* && "${init}" == 'runit' ]]; then
         log_info "Installing rsvc..."

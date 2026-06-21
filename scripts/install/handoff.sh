@@ -13,7 +13,12 @@ prepare_handoff() {
         linux-lts)           kernel_image='/mnt/boot/vmlinuz-linux-lts' ; initramfs_image='/mnt/boot/initramfs-linux-lts.img' ;;
         linux-hardened)     kernel_image='/mnt/boot/vmlinuz-linux-hardened' ; initramfs_image='/mnt/boot/initramfs-linux-hardened.img' ;;
         linux-libre)        kernel_image='/mnt/boot/vmlinuz-linux-libre' ; initramfs_image='/mnt/boot/initramfs-linux-libre.img' ;;
-        linux-cachyos-bore) kernel_image='/mnt/boot/vmlinuz-linux-cachyos-bore' ; initramfs_image='/mnt/boot/initramfs-linux-cachyos-bore.img' ;;
+        linux-cachyos*)
+            mapfile -t k < <(find /mnt/boot -maxdepth 1 -type f -name 'vmlinuz-linux-cachyos*' 2>/dev/null | sort)
+            mapfile -t i < <(find /mnt/boot -maxdepth 1 -type f -name 'initramfs-linux-cachyos*.img' ! -name '*fallback*' 2>/dev/null | sort)
+            [[ ${#k[@]} -gt 0 ]] && kernel_image="${k[0]}"
+            [[ ${#i[@]} -gt 0 ]] && initramfs_image="${i[0]}"
+            ;;
         linux-bazzite-bin)  kernel_image='/mnt/boot/vmlinuz-linux-bazzite-bin' ; initramfs_image='/mnt/boot/initramfs-linux-bazzite-bin.img' ;;
         xanmod)
             mapfile -t k < <(find /mnt/boot -maxdepth 1 -type f -name 'vmlinuz-linux-xanmod*' 2>/dev/null | sort)
@@ -97,11 +102,11 @@ QUICK_INSTALL="$(state_get QUICK_INSTALL)"
 POWER_USER="$(state_get POWER_USER)"
 POWERUSER_PACKAGES="$(state_get POWERUSER_PACKAGES)"
 POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
-KERNEL_IMAGE="$(state_get KERNEL_IMAGE)"
+ENABLE_AURIS="$(state_get ENABLE_AURIS)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
-    cat > /mnt/etc/gartix-theme.conf <<EOF
+    cat > /mnt/etc/anvil-theme.conf <<EOF
 GUM_TITLE_COLOR="$(state_get GUM_TITLE_COLOR 212)"
 GUM_ACCENT_COLOR="$(state_get GUM_ACCENT_COLOR 34)"
 EOF

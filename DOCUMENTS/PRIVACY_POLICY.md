@@ -16,8 +16,9 @@ The installer runs entirely on your local machine. It does not:
 |------|----------|------|
 | Installation configuration | `/tmp/artix-installer/state.conf` | Deleted on reboot (tmpfs) |
 | Stage progress markers | `/tmp/artix-installer/stages/` | Deleted on reboot (tmpfs) |
-| User password hashes | Memory only, never written to disk | Gone when installer exits |
+| User password hashes | `/tmp/artix-installer/state.conf` (SHA-512 crypt hash) | Deleted on reboot (tmpfs) |
 | LUKS passphrase | Memory only, never written to disk | Gone when installer exits |
+| GUI installer state (forge-gui) | Python memory, writes to state.conf | Cleared when GUI window closes; state.conf on tmpfs |
 | Target system config | `/mnt/etc/artix-installer.conf` | Shredded or removed during finalize stage |
 | Quick Profile save | `/mnt/etc/artixforge-profile.conf` | Remains on installed system for reuse |
 | Installer log | `/mnt/var/log/artix-installer.log` | Remains on the installed system for debugging |
@@ -42,6 +43,10 @@ fails. This only happens during an active build failure — never during normal 
 The recovery mode rootkit scanner (`rkhunter`) downloads its database updates
 from the rkhunter project servers when first run. This is the only optional
 third-party network request outside of package management.
+
+SonicDE packages are downloaded from the sonicde-artix.github.io third-party repository. The user is warned before installation that signature verification is disabled for this source.
+
+**The GUI installer (`forge-gui`):** extras search queries local pacman cache only. Power User recipe list is fetched once from the community repository at startup; individual recipe files are downloaded on demand when sections are enabled. All other data reads/writes `state.conf` and spawns the non‑interactive Bash installer. No telemetry, no analytics, no background network activity.
 
 ## Third-party services
 

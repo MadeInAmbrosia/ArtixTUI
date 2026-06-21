@@ -1,0 +1,3 @@
+[submodule "forge-gui"]
+	path = forge-gui
+	url = https://github.com/realvolk/forge-gui.git

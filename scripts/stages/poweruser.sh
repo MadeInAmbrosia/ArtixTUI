@@ -10,6 +10,13 @@ stage_poweruser() {
         return 0
     }
 
+    if [[ "$(state_get GUI_MODE no)" != "yes" ]]; then
+        POWERUSER_DIR="${BASE_DIR}/poweruser"
+        source "${POWERUSER_DIR}/lib/common.sh"
+        source "${POWERUSER_DIR}/tui/menu_poweruser.sh"
+        tui_poweruser_config
+    fi
+
     POWERUSER_DIR="${BASE_DIR}/poweruser"
     source "${POWERUSER_DIR}/lib/common.sh"
     source "${POWERUSER_DIR}/lib/flags.bash"
@@ -116,7 +123,7 @@ stage_poweruser() {
 
     mkdir -p /mnt/usr/local/bin /mnt/usr/share/artix-poweruser/{lib,tui,recipes,db,profile,build/{sources,artifacts,work,queue,logs}}
     cp "${POWERUSER_DIR}/bin/"* /mnt/usr/local/bin/
-    chmod +x /mnt/usr/local/bin/gartix
+    chmod +x /mnt/usr/local/bin/anvil
 
     cp "${POWERUSER_DIR}/lib"/{common.sh,flags,recipe,validate,builder,cache,rebuild,kconfig,hwdetect}.bash /mnt/usr/share/artix-poweruser/lib/ 2>/dev/null || true
     cp "${POWERUSER_DIR}/lib/common.sh" /mnt/usr/share/artix-poweruser/lib/ 2>/dev/null || true
@@ -130,7 +137,7 @@ stage_poweruser() {
     touch /mnt/usr/share/artix-poweruser/db/local.db
     cp "${POWERUSER_DIR}/db/local.db" /mnt/usr/share/artix-poweruser/db/local.db 2>/dev/null || true
 
-    log_info "gartix and all dependencies installed to target"
+    log_info "anvil and all dependencies installed to target"
 
     tui_build_timing_summary
     validate_system

@@ -23,15 +23,31 @@ get_gpu_info() {
 }
 
 get_pci_id() {
-    lspci -n 2>/dev/null | awk '/0300|0302/ {print $3}' | awk -F':' '{print $2}' | head -n1 || true
+    local raw
+    raw=$(lspci -n 2>/dev/null | awk '/0300|0302/ {print $3}' | awk -F':' '{print $2}' | head -n1 || true)
+    if [[ "${raw}" =~ ^[0-9a-fA-F]{4}$ ]]; then
+        printf '%s\n' "${raw}"
+    else
+        printf ''
+    fi
 }
 
 detect_vm() {
     local vm
-    vm=$(grep -h -oE 'vmware|qemu|kvm|oracle|virtualbox' /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor 2>/dev/null | head -n1)
-    [[ -n "${vm}" ]] && printf '%s\n' "${vm}" || printf 'none\n'
+    vm=$(grep -h -oiE 'vmware|qemu|kvm|oracle|virtualbox|vbox' /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor 2>/dev/null | head -n1)
+    if [[ -z "${vm}" ]]; then
+        if grep -qE '^flags\b.*\bhypervisor\b' /proc/cpuinfo 2>/dev/null; then
+            vm='kvm'
+        fi
+    fi
+    if [[ -n "${vm}" ]]; then
+        vm="${vm,,}"
+        [[ "${vm}" == "vbox" ]] && vm='virtualbox'
+        echo "${vm}"
+    else
+        echo 'none'
+    fi
 }
-
 export -f get_gpu_vendor get_gpu_info get_pci_id detect_vm
 
 install_drivers() {
@@ -55,9 +71,8 @@ install_drivers() {
         linux-lts)               pkgs+=(linux-lts-headers) ;;
         linux-hardened)          pkgs+=(linux-hardened-headers) ;;
         linux-zen)               pkgs+=(linux-zen-headers) ;;
-        linux-cachy|linux-cachyos)
-            pacman -Si linux-cachyos-headers >/dev/null 2>&1 && pkgs+=(linux-cachyos-headers) \
-                || pacman -Si linux-cachy-headers >/dev/null 2>&1 && pkgs+=(linux-cachy-headers) ;;
+        linux-cachy*|linux-cachyos*)
+            pacman -Si linux-cachyos-headers >/dev/null 2>&1 && pkgs+=(linux-cachyos-headers) ;;
         linux-bazzite-bin|bazzite) initramfs_tool='dracut' ;;
         xanmod)
             local cpu_level kernel_headers
@@ -161,7 +176,9 @@ install_drivers() {
             fi
         fi
 
-        [[ "${vm_type}" == 'kvm' || "${vm_type}" == 'qemu' ]] && enable_service qemu-guest-agent
+        if [[ "${vm_type}" == 'kvm' || "${vm_type}" == 'qemu' ]]; then
+            enable_service qemu-guest-agent || log_warn "Failed to enable qemu-guest-agent"
+        fi
 
         if [[ ${rc} -eq 0 ]]; then
             log_info "Driver installation complete."
@@ -174,6 +191,8 @@ install_drivers() {
         log_error "NVIDIA failed. Trying nouveau fallback..."
         {
             export COLUMNS=80 LINES=24 TERM=dumb
+            modprobe -r nvidia nvidia_modeset nvidia_uvm nvidia_drm 2>/dev/null || true
+            dkms remove nvidia --all 2>/dev/null || true
             if [[ "${x_stack}" == 'xlibre' ]]; then
                 retry_command "nouveau fallback" pacman --color=never --noconfirm --needed -S xlibre-video-nouveau mesa
             else

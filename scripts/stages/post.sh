@@ -19,7 +19,7 @@ stage_post() {
     log_info "Preparing installer environment..."
     mkdir -p /mnt/root
     rm -rf /mnt/root/ArtixForge
-    cp -r . /mnt/root/ArtixForge
+    cp -r "${BASE_DIR}" /mnt/root/ArtixForge
 
     [[ -x /mnt/bin/bash ]] || die "chroot environment missing /bin/bash"
     [[ -f /mnt/etc/os-release ]] || die "invalid target root filesystem"
@@ -55,12 +55,6 @@ source ./scripts/post/networking.sh
 source ./scripts/post/desktop.sh
 source ./scripts/post/audio.sh
 source ./scripts/post/extras.sh
-source ./scripts/post/kernel.sh
-
-if [[ "${KERNEL_CHOICE}" == 'linux-bazzite-bin' ]]; then
-    log_info "Building Bazzite kernel..."
-    install_kernel_bazzite
-fi
 
 log_info "Configuring networking..."
 setup_networking

@@ -4,12 +4,12 @@ set -Eeuo pipefail
 tui_show_sanity_warnings() {
     local warnings=()
 
-    [[ "$(state_get FS_TYPE)" == "exfat" ]] && warnings+=("exFAT not recommended for root")
     [[ "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("ZFS is experimental — DKMS rebuilds may be required")
     [[ "$(state_get FS_TYPE)" == "bcachefs" ]] && warnings+=("bcachefs is experimental — tools may be unstable")
+    [[ "$(state_get FS_TYPE)" == "zfs" && "$(state_get BOOTLOADER)" != "grub" ]] && warnings+=("ZFS boot without GRUB is untested — consider using GRUB for ZFS systems")
 
     [[ "$(state_get KERNEL_CHOICE)" == "linux-libre" ]] && warnings+=("linux-libre removes non-free firmware — hardware may not work")
-    [[ "$(state_get KERNEL_CHOICE)" == "tkg" ]] && warnings+=("TKG kernel requires manual compilation after install")
+    [[ "$(state_get KERNEL_CHOICE)" == "tkg" ]] && warnings+=("TKG kernel is compiled from source during installation — may take 20–30 minutes")
 
     [[ "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("EFIStub needs compatible UEFI firmware")
     [[ "$(state_get BOOTLOADER)" == "uki" ]] && warnings+=("UKI is UEFI-only — BIOS systems not supported")
@@ -23,8 +23,7 @@ tui_show_sanity_warnings() {
     [[ "$(state_get USE_LVM)" == "yes" && "$(state_get BOOTLOADER)" == "grub" ]] && warnings+=("LVM + GRUB: ensure lvm2 hook is in initramfs")
     [[ "$(state_get USE_LVM)" == "yes" && "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("LVM + EFIStub: cmdline must reference /dev/mapper paths")
     [[ "$(state_get USE_LVM)" == "yes" && "$(state_get USE_LUKS)" == "yes" ]] && warnings+=("LVM on LUKS: correct crypt device order is critical")
-    [[ "$(state_get USE_LVM)" == "yes" && "$(state_get FS_TYPE)" == "exfat" ]] && warnings+=("LVM + exFAT is unusual — ensure your use case supports this")
-    
+
     [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get BOOTLOADER)" == "refind" ]] && warnings+=("LUKS + rEFInd: may require manual boot config")
     [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("LUKS + ZFS: complex setup, test thoroughly before relying on it")
 
@@ -34,6 +33,8 @@ tui_show_sanity_warnings() {
     [[ "$(state_get COREUTILS)" != "gnu" && "$(state_get COREUTILS)" != "none" && "$(state_get COREUTILS)" != "" ]] && warnings+=("Non-GNU coreutils: some install scripts may behave unexpectedly")
 
     [[ "$(state_get WM_DE)" == "none" ]] && warnings+=("No desktop environment selected")
+    [[ "$(state_get WM_DE)" == "sonicde" ]] && warnings+=("SonicDE is a third-party KDE replacement — not officially supported by Artix")
+    [[ "$(state_get WM_DE)" == "sonicde" && "$(state_get ENABLE_ARCH_REPOS)" == "no" ]] && warnings+=("SonicDE may need Arch repositories for dependencies")
     [[ "$(state_get WM_DE)" =~ ^(hyprland|niri|sway)$ && "$(state_get X_STACK)" == "xorg" ]] && warnings+=("Wayland compositor selected but X.Org display stack configured")
     [[ "$(state_get WM_DE)" =~ ^(hyprland|niri)$ && "$(state_get ENABLE_ARCH_REPOS)" == "no" ]] && warnings+=("Hyprland/Niri may need Arch repositories for dependencies")
     [[ "$(state_get DISPLAY_MANAGER)" == "none" && "$(state_get WM_DE)" != "none" ]] && warnings+=("No display manager — you'll start the desktop manually")
@@ -47,7 +48,7 @@ tui_show_sanity_warnings() {
     [[ "$(state_get ALLOW_OFFLINE)" == "yes" ]] && warnings+=("Offline mode — packages may be outdated or missing")
 
     [[ "$(state_get PRIV_ESCALATION)" == "none" ]] && warnings+=("No privilege escalation tool — you'll need to configure su manually")
-    [[ "$(state_get PRIV_ESCALATION)" == "doas" && "$(state_get POWER_USER)" == "yes" ]] && warnings+=("doas + Power User: gartix commands require root; use 'doas gartix ...'")
+    [[ "$(state_get PRIV_ESCALATION)" == "doas" && "$(state_get POWER_USER)" == "yes" ]] && warnings+=("doas + Power User: anvil commands require root; use 'doas anvil ...'")
 
     [[ "$(state_get QUICK_INSTALL)" == "yes" && "$(state_get WM_DE)" == "embedded" ]] && warnings+=("Embedded profile: minimal system, no networking, no desktop — know what you're doing")
 

@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+BASESTRAP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/basestraps"
+
+source "${BASESTRAP_DIR}/packages.sh"
+source "${BASESTRAP_DIR}/target_repos.sh"
+source "${BASESTRAP_DIR}/kernel_build.sh"
+source "${BASESTRAP_DIR}/zfs_basestrap.sh"
+
 install_base_system() {
     local init kernel fs_type bootloader network_stack user_shell display_manager wm_de locale keymap timezone microcode_override
 
@@ -65,112 +72,22 @@ install_base_system() {
 
     case "${kernel}" in
         linux|linux-zen|linux-lts|linux-hardened)
-            if [[ $skip_binary_kernel -eq 1 ]]; then
-                log_info "Skipping binary ${kernel} kernel (fallback disabled)"
-            else
-                pkgs+=("${KERNEL_PACKAGE}" "${KERNEL_HEADERS}")
-            fi
+            basestrap_kernel_standard pkgs "${skip_binary_kernel}"
             ;;
         linux-libre)
-            if [[ $skip_binary_kernel -eq 1 ]]; then
-                log_info "Skipping binary linux-libre kernel (fallback disabled)"
-            else
-                log_info "Enabling linux-libre repository..."
-                if ! grep -q '^\[libre\]' /etc/pacman.conf; then
-                    cat <<'EOF' >> /etc/pacman.conf
-[libre]
-SigLevel = Never
-Server = https://repo.parabola.nu/libre/os/x86_64
-EOF
-                fi
-                pkgs+=(linux-libre linux-libre-headers)
-                log_warn "linux-libre removes non-free firmware/drivers. NVIDIA, Wi‑Fi, Bluetooth may stop working."
-            fi
+            basestrap_kernel_linux_libre pkgs "${skip_binary_kernel}"
             ;;
-        linux-cachyos-bore)
-            if [[ $skip_binary_kernel -eq 1 ]]; then
-                log_info "Skipping binary cachyos kernel (fallback disabled)"
-            else
-                log_info "Setting up CachyOS repository..."
-                pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-                pacman-key --lsign-key F3B607488DB35A47
-                local cachyos_keyring cachyos_mirrorlist
-                cachyos_keyring=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-keyring-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
-                cachyos_mirrorlist=$(curl -sL 'https://mirror.cachyos.org/repo/x86_64/cachyos/' | grep -oP 'cachyos-mirrorlist-\d+.*?\.pkg\.tar\.zst' | sort -V | tail -1)
-                if [[ -z "${cachyos_keyring}" || -z "${cachyos_mirrorlist}" ]]; then
-                    log_warn "Could not scrape CachyOS mirror — trying static fallback URLs"
-                    cachyos_keyring="cachyos-keyring-20250101-1-any.pkg.tar.zst"
-                    cachyos_mirrorlist="cachyos-mirrorlist-20250101-1-any.pkg.tar.zst"
-                fi
-                pacman -U --noconfirm "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_keyring}" "https://mirror.cachyos.org/repo/x86_64/cachyos/${cachyos_mirrorlist}" || {
-                    log_error "Failed to install CachyOS bootstrap packages — mirror may be down"
-                    die 'CachyOS repository setup failed'
-                }
-                if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
-                    cat <<'EOF' >> /etc/pacman.conf
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
-EOF
-                fi
-                pkgs+=(linux-cachyos-bore linux-cachyos-bore-headers)
-            fi
+        linux-cachyos*)
+            basestrap_kernel_cachyos pkgs "${skip_binary_kernel}"
             ;;
         linux-bazzite-bin)
-            if [[ $skip_binary_kernel -eq 1 ]]; then
-                log_info "Skipping binary bazzite kernel (fallback disabled)"
-            else
-                log_info "Setting up Bazzite kernel AUR build..."
-                if ! pacman -Q artix-archlinux-support >/dev/null 2>&1; then
-                    pacman -S --noconfirm --needed artix-archlinux-support
-                fi
-                local arch_mirrorlist='/etc/pacman.d/mirrorlist-arch'
-                if [[ ! -f "${arch_mirrorlist}" ]]; then
-                    install -Dm644 /dev/null "${arch_mirrorlist}"
-                    cat > "${arch_mirrorlist}" <<'MIRROR_EOF'
-Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
-MIRROR_EOF
-                fi
-                if ! grep -q '^\[extra\]' /etc/pacman.conf; then
-                    cat <<'EOF' >> /etc/pacman.conf
-[extra]
-Include = /etc/pacman.d/mirrorlist-arch
-EOF
-                fi
-                if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
-                    cat <<'EOF' >> /etc/pacman.conf
-[multilib]
-Include = /etc/pacman.d/mirrorlist-arch
-EOF
-                fi
-                pkgs+=(base-devel git mkinitcpio)
-            fi
+            basestrap_kernel_bazzite pkgs "${skip_binary_kernel}"
             ;;
         xanmod)
-            if [[ $skip_binary_kernel -eq 1 ]]; then
-                log_info "Skipping binary xanmod kernel (fallback disabled)"
-            else
-                log_info "Setting up Chaotic-AUR for XanMod..."
-                export GNUPGHOME="/etc/pacman.d/gnupg"
-                mkdir -p "${GNUPGHOME}"
-                chmod 700 "${GNUPGHOME}"
-                pacman-key --init
-                pacman-key --populate artix
-                pacman-key --recv-keys 3056513887B78AEB --keyserver hkp://keyserver.ubuntu.com
-                pacman-key --lsign-key 3056513887B78AEB
-                pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
-                if ! grep -q '^\[chaotic-aur\]' /etc/pacman.conf; then
-                    cat <<'EOF' >> /etc/pacman.conf
-[chaotic-aur]
-Include = /etc/pacman.d/chaotic-mirrorlist
-EOF
-                fi
-                pkgs+=("${KERNEL_PACKAGE}" "${KERNEL_HEADERS}")
-            fi
+            basestrap_kernel_xanmod pkgs "${skip_binary_kernel}"
             ;;
         tkg)
-            log_info "Setting up TKG build dependencies..."
-            pkgs+=(dkms bc cpio flex libelf pahole base-devel git)
-            log_warn "TKG kernels must be manually compiled after installation. Repository will be cloned into /opt/linux-tkg."
+            basestrap_kernel_tkg pkgs
             ;;
         *)
             die "unsupported kernel: ${kernel}" ;;
@@ -194,7 +111,6 @@ EOF
         xfs)       pkgs+=(xfsprogs) ;;
         f2fs)      pkgs+=(f2fs-tools) ;;
         bcachefs)  pkgs+=(bcachefs-tools bcachefs-dkms) ;;
-        exfat)     pkgs+=(exfatprogs) ;;
         zfs)
             log_info "Setting up OpenZFS repository..."
             if ! grep -q '^\[archzfs\]' /etc/pacman.conf; then
@@ -219,11 +135,11 @@ EOF
     esac
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
-        pkgs+=(lvm2)
+        pkgs+=(lvm2 "lvm2-${init}")
     fi
 
     if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
-        pkgs+=(cryptsetup)
+        pkgs+=(cryptsetup "cryptsetup-${init}")
     fi
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
@@ -273,6 +189,8 @@ EOF
         pacman -S --noconfirm --needed archlinux-keyring
     fi
 
+    basestrap_repo_auris
+
     log_info "Starting basestrap..."
     printf '%s\n' "${pkgs[@]}" >> "${debug_log}"
     clean_pacman_lock /mnt/var/lib/pacman/db.lck
@@ -283,48 +201,44 @@ EOF
         done; then
         recoverable_error "basestrap failed – the installer can update itself and retry"
     fi
+
     [[ -x /mnt/bin/bash ]] || die "/mnt/bin/bash missing after basestrap"
     [[ -f /mnt/etc/os-release ]] || die "target root invalid after basestrap"
+
+    if [[ ! -e /mnt/sbin/init ]]; then
+        log_warn "/sbin/init not found — creating init symlink"
+        local init_bin
+        init_bin="$(state_get INIT openrc)"
+        artix-chroot /mnt ln -sf "/usr/bin/${init_bin}" /sbin/init 2>/dev/null || {
+            log_error "Failed to create /sbin/init symlink for ${init_bin}"
+            die "Init symlink missing — system will not boot"
+        }
+    fi
 
     if ! grep -q '^Architecture' /mnt/etc/pacman.conf 2>/dev/null; then
         sed -i '1s/^/[options]\nArchitecture = auto\n\n/' /mnt/etc/pacman.conf
     fi
 
+    if [[ -d /mnt/etc/pacman.d/gnupg ]]; then
+        artix-chroot /mnt chown -R root:root /etc/pacman.d/gnupg/ 2>/dev/null || true
+        artix-chroot /mnt chmod 755 /etc/pacman.d/gnupg/ 2>/dev/null || true
+        [[ -f /mnt/etc/pacman.d/gnupg/pubring.gpg ]] && artix-chroot /mnt chmod 644 /etc/pacman.d/gnupg/pubring.gpg 2>/dev/null || true
+        [[ -f /mnt/etc/pacman.d/gnupg/trustdb.gpg ]] && artix-chroot /mnt chmod 644 /etc/pacman.d/gnupg/trustdb.gpg 2>/dev/null || true
+        [[ -d /mnt/etc/pacman.d/gnupg/private-keys-v1.d ]] && artix-chroot /mnt chmod 700 /etc/pacman.d/gnupg/private-keys-v1.d/ 2>/dev/null || true
+    fi
+
     case "${kernel}" in
-        linux-cachyos-bore)
-            if ! grep -q '^\[cachyos\]' /mnt/etc/pacman.conf 2>/dev/null; then
-                mkdir -p /mnt/etc/pacman.d
-                cp /etc/pacman.d/cachyos-mirrorlist /mnt/etc/pacman.d/ 2>/dev/null || true
-                cat <<'EOF' >> /mnt/etc/pacman.conf
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
-EOF
-            fi
+        linux-cachyos*)
+            basestrap_target_repo_cachyos
             ;;
         linux-bazzite-bin)
-            if ! grep -q '^\[extra\]' /mnt/etc/pacman.conf 2>/dev/null; then
-                mkdir -p /mnt/etc/pacman.d
-                cp /etc/pacman.d/mirrorlist-arch /mnt/etc/pacman.d/ 2>/dev/null || true
-                cat <<'EOF' >> /mnt/etc/pacman.conf
-[extra]
-Include = /etc/pacman.d/mirrorlist-arch
-
-[multilib]
-Include = /etc/pacman.d/mirrorlist-arch
-EOF
-            fi
+            basestrap_target_repo_bazzite
             ;;
         xanmod)
-            if ! grep -q '^\[chaotic-aur\]' /mnt/etc/pacman.conf 2>/dev/null; then
-                mkdir -p /mnt/etc/pacman.d
-                cp /etc/pacman.d/chaotic-mirrorlist /mnt/etc/pacman.d/ 2>/dev/null || true
-                cat <<'EOF' >> /mnt/etc/pacman.conf
-[chaotic-aur]
-Include = /etc/pacman.d/chaotic-mirrorlist
-EOF
-            fi
+            basestrap_target_repo_xanmod
             ;;
     esac
+    basestrap_target_repo_auris
 
     log_info "Configuring locale..."
     artix-chroot /mnt /bin/bash -c "
@@ -345,26 +259,33 @@ EOF
     artix-chroot /mnt hwclock --systohc
 
     if [[ "${fs_type}" == 'zfs' ]]; then
-        log_info "Generating hostid for ZFS..."
-        artix-chroot /mnt zgenhostid
-
-        log_info "Adding ZFS hook to mkinitcpio..."
-        artix-chroot /mnt sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block keyboard zfs filesystems)/' /etc/mkinitcpio.conf
+        basestrap_zfs_setup
     fi
 
     if [[ "${fs_type}" == 'bcachefs' ]]; then
         log_info "Adding Bcachefs hook to mkinitcpio..."
-        artix-chroot /mnt sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block keyboard bcachefs filesystems)/' /etc/mkinitcpio.conf
+        if ! artix-chroot /mnt grep -q 'bcachefs' /etc/mkinitcpio.conf; then
+            artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/bcachefs \1/' /etc/mkinitcpio.conf
+        fi
     fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Adding LVM hook to mkinitcpio..."
-        artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
+        if ! artix-chroot /mnt grep -q 'lvm2' /etc/mkinitcpio.conf; then
+            artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
+        fi
+        log_info "Enabling LVM boot service..."
+        enable_service_boot lvm
     fi
 
     if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
         log_info "Adding encrypt hook to mkinitcpio..."
-        artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+        if ! artix-chroot /mnt grep -q 'encrypt' /etc/mkinitcpio.conf; then
+            artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+        fi
+        log_info "Enabling LUKS boot services..."
+        enable_service_boot dmcrypt
+        enable_service_boot device-mapper
     fi
 
     if ! grep -q 'virtio_blk' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
@@ -373,14 +294,35 @@ EOF
     fi
 
     if [[ "${kernel}" == 'tkg' ]]; then
-        log_info "Cloning linux-tkg repository..."
-        artix-chroot /mnt git clone https://github.com/Frogging-Family/linux-tkg /opt/linux-tkg || true
-        log_info "TKG source ready in /opt/linux-tkg. Compile manually after reboot."
+        basestrap_build_tkg
+    fi
+
+    if [[ "${kernel}" == 'linux-bazzite-bin' ]]; then
+        basestrap_build_bazzite
+        artix-chroot /mnt mkinitcpio -P
+        if [[ -d /mnt/boot/grub ]]; then
+            artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+        fi
     fi
 
     if [[ "${fs_type}" != 'zfs' ]]; then
         log_info "Generating fstab..."
         fstabgen -U /mnt > /mnt/etc/fstab
+    fi
+
+    if [[ -d /mnt/repo ]]; then
+        log_info "Offline mode: copying local repository to target..."
+        mkdir -p /mnt/mnt/repo
+        cp -a /mnt/repo/. /mnt/mnt/repo/ 2>/dev/null || true
+        if ! grep -q '\[custom\]' /mnt/etc/pacman.conf 2>/dev/null; then
+            cat >> /mnt/etc/pacman.conf <<'EOF'
+
+[custom]
+SigLevel = Optional
+Server = file:///mnt/repo/
+EOF
+        fi
+        log_info "Target system configured for offline package access"
     fi
 
     log_info "Base system installation complete."

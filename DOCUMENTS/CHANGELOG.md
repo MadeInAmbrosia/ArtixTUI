@@ -1,5 +1,881 @@
 # Changelog
 
+## v9.0.0.0 (2026-06-21) — ArtixForge
+
+It's finally here. I'm done.
+
+### Added
+- GUI installer: full GTK4 + libadwaita graphical interface with 7 installation modes
+- GUI: mode selection dialog, persistent config window (13+ pages), progress window with live log and progress bar
+- GUI: 5 colour themes (ArtixForge, Artix, Jet Black, Mono, Retro), light/dark backgrounds, logo watermark
+- GUI: welcome page with system info, conditional page visibility, extras search tab
+- GUI: Power User recipe sections with auto-download, tooltips, conditional hardware pages
+- GUI: ISO Builder with Load Profile chooser, Target System Config for offline builds
+- GUI: Migration with auto-detection of init and desktop, sub-pages for DM/audio/network/extras
+- GUI: password hashing before state save, `Gtk.Revealer` animation framework
+- System Migration: init (16 combinations) and desktop (13 DEs/WMs) with auto-detection
+- ISO Generation: custom live ISOs with offline bundles, Live Desktop and Installer modes
+- Recovery: auto-detection, surgical repair, filesystem repair, rootkit scanning, untrusted recovery
+- Power User: source-based package compilation, community recipe repository, `anvil` package manager
+- AURIS: Artix User Repository of Init Scripts support
+- Quick Install profiles: Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal
+- Limine bootloader: BTRFS snapshot booting, Windows chainloading, LUKS/LVM-aware cmdline
+- ZFS: wiki-compliant ZFS-on-root with dual-pool setup, native encryption
+- CachyOS: all 9 kernel variants with v3/v4 architecture-specific repositories
+- SonicDE, MangoWM, TKG, Bazzite, XanMod kernels with AUR/Chaotic-AUR integration
+- UKI: Unified Kernel Image with Secure Boot signing
+- LVM with LUKS integration, bcachefs with DKMS, f2fs with compression
+- Community recipe repository with auto-download, section filtering, and self-healing
+
+### Changed
+- GUI: GTK3 → GTK4 + libadwaita (1728 lines removed, 861 added)
+- GUI: `Adw.StyleManager` for theming, `Gtk.DropDown`, `Gtk.PasswordEntry`, `Gtk.Application` architecture
+- GUI: "Gentoo" → "ArtixForge" theme, `gartix` → `anvil` rename
+- Backend: `localectl` removed, X11 keymap via xorg.conf.d, console via vconsole.conf
+- Backend: `configure_users` detects pre-hashed passwords for GUI/TUI compatibility
+- Backend: `basestrap.sh`, `bootloader.sh`, `detect.sh`, `repair.sh` atomized into sub-modules
+- Backend: TKG kernel completely rewritten, no longer depends on interactive scripts
+- Filesystems: exFAT removed as root, ZFS temporarily disabled (kernel 6.19+)
+- Recovery: kernel detection covers all 9 supported kernels
+- Migrations: OpenRC hub model for non-direct conversions, live ISO chroot support
+- Documentation: GUIDE.md, SECURITY.md, PRIVACY_POLICY.md, README.md all updated
+
+### Fixed
+- GUI: ANSI escape codes stripped, progress window stays visible, password mismatch blocks navigation
+- GUI: hidden pages skipped during navigation, disk selection filters loop/optical devices
+- GUI: state file cleared on fresh installs, preserved for Resume/Recovery/Migration
+- GUI: `install_script` path correct, `sudo` removed from progress commands
+- Backend: post-install chroot inherits correct working directory
+- Keyboard layout: non-US layouts work without systemd's `localectl`
+- TKG: failed patches restore corrupted files, kernel compiles with remaining patches
+- Limine: kernel panic on boot, snapshot loop quoting, ESP kernel copy
+- CachyOS: Intel 12th gen+ v4→v3 downgrade, architecture repo config
+- ZFS: preflight installs correct DKMS for live kernel, GRUB compatibility
+- LUKS: mapper name dynamic, crypt_uuid correct for LUKS-only setups
+- UKI: generation after ESP detection, Secure Boot signing restored
+- bcachefs: mkinitcpio hook appends instead of replacing
+- Migrations: custom service detection, orphan removal, init package transformation
+- Recovery: plain partition detection, UKI syntax error, pacman batch arithmetic
+- ISO: profile.yaml generation, offline kernel builds, workspace path resolution
+- Post-install: package list deduplicated, zram-tools package names corrected
+- Basestrap: gnupg permissions, /sbin/init symlink, duplicate hook accumulation
+- Drivers: VM detection case-insensitive, CachyOS header detection, Nouveau fallback
+- Installer: self-update copies to /tmp/artix-run, installer_error shows log tail
+
+## v8.9.4.1 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: user and root passwords now hashed with `openssl passwd -6` before saving to state — plaintext never touches disk
+- GUI: progress window now runs backend from correct working directory — `cwd` passed through to `subprocess.Popen`
+- Documentation: PRIVACY_POLICY.md updated — GUI network access clarified, password hash storage documented
+- Documentation: SECURITY.md updated — GUI password hashing added to best practices
+- Documentation: GUIDE.md updated — GUI section expanded with theme support, progress bar, password hashing, Power User recipe fetching, ISO builder file browser, and Migration auto-detection notes
+- README.md: GUI dependencies updated to GTK4 + libadwaita, features list corrected, gartix→anvil rename applied
+
+### Fixed
+- GUI: `install_script` path uses 4 `dirname` calls — correct path from `forge_ui/artixgui/base.py` to repository root
+- GUI: progress bar matches actual backend completion messages — advances at each stage completion
+- GUI: `app=self` parameter removed from `mode_select.py` — window constructors no longer receive unexpected keyword argument
+- GUI: `app.add_window()` call removed from `run_installer` — progress window registers itself with application
+- Backend: `post.sh` `cp -r .` inherits correct working directory — post-install chroot can find ArtixForge scripts
+- Backend: `configure_users` detects pre-hashed passwords — compatible with both TUI (plaintext) and GUI (pre-hashed) flows
+- Backend: keyboard layout configuration fixed — `localectl` calls removed, console keymap set via `vconsole.conf`, X11 keymap written to `/etc/X11/xorg.conf.d/00-keyboard.conf`
+
+## v8.9.4.0 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: Artix logo added to header bar — 48px branding thumbnail displayed next to title on every page
+- GUI: semi-transparent Artix logo watermark restored — 15% opacity logo centered behind all content
+- GUI: `_conditional_pages` system added to `BaseWindow` — pages can register visibility conditions via lambdas
+- GUI: `add_revealer_page()` method added — wraps content in `Gtk.Revealer` for future animation use
+- GUI: `_update_conditional_pages()` re-evaluates all page conditions — called on power user toggle, coreutils change, package selection
+- GUI: `_show_current_page()` centralizes page switching — triggers `update_summary()` when reaching last page
+- GUI: `Gtk.Stack` transition duration set to 300ms — smoother page slides
+- GUI: install button styled with `suggested-action` CSS class — consistent accent color
+- GUI: theme accent color codes converted to integers — 34, 117, 196, 255, 11 replace hex strings
+- GUI: all dialog dismissals use `.destroy()` — consistent GTK4 resource cleanup
+
+### Fixed
+- GUI: `install_script` path corrected in `iso.py`, `migration.py`, `recovery.py` — `..` removed, direct path to repository root
+- GUI: `sudo` removed from `iso.py`, `migration.py`, `recovery.py` progress commands — GUI runs as root, no second password prompt
+- GUI: `close-request` handler replaces `destroy` for window close — proper GTK4 lifecycle
+
+### Added
+- `forge_ui/artixgui/media/` directory — bundled assets directory for logo and future resources
+
+## v8.9.3.0 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: `Gtk.Application` + `GLib.MainLoop` architecture — proper GTK4 application lifecycle replaces manual `Gtk.main()` hacks
+- GUI: mode selection window now uses `Gtk.ApplicationWindow` — stays open until user choice, no more instant-close bugs
+- GUI: progress window registers with application via `app.add_window()` — application stays alive during installation
+- GUI: dialog dismissal uses nested `GLib.MainLoop` — blocks cleanly until user clicks OK, then unwinds all loops
+- GUI: `Gtk.Revealer` animation framework prepared — page visibility uses direct `set_visible()` for stability, revealer wrapping deferred to page creation
+- GUI: disk selection filters loop (`/dev/loop`) and optical (`/dev/sr`) devices — only real storage devices shown
+- GUI: state file cleared on fresh installation modes (Automatic, Manual, Power User, ISO) — preserves state for Resume, Recovery, and Migration
+- GUI: theme accent colors applied to entire GUI via `Adw.StyleManager.set_accent_color()` — dropdowns, buttons, and tabs follow selected theme
+- GUI: "Gentoo" theme renamed to "ArtixForge" — purple/green palette now the default
+- GUI: welcome page displays system information — CPU model, RAM, and available disks detected at startup
+- GUI: progress bar added to installation window — fills dynamically as stages complete
+- GUI: progress bar matches actual backend completion messages — adapts to whether Power User or BusyBox init stages run
+- GUI: ANSI escape sequence stripping hardened — catches gum's bare `[38;5;Nm` patterns without ESC prefix
+- GUI: Power User recipe sections trigger package list rebuild — toggling a section immediately refreshes available recipes
+- GUI: Power User recipes auto-downloaded from community repository — missing recipe files fetched silently in background
+- GUI: Power User package tooltips show source URL and description — user knows where each recipe comes from
+- GUI: Power User fallback kernel frame hidden when linux not selected — entire section disappears, not just grayed out
+- GUI: hidden pages skipped during navigation — Back/Next jump over invisible pages seamlessly
+- GUI: Artix logo overlay support — semi-transparent logo displayed behind all content when `media/artix-logo.png` exists
+- `forge_ui/artixgui/media/` directory added — bundled assets ship with the GUI (soon)
+
+### Fixed
+- GUI: `Gtk.main()` and `Gtk.main_quit()` fully eradicated — all 8 remaining calls replaced with `GLib.MainLoop`
+- GUI: `search-changed` signal corrected to `changed` on search entry — extras search tab no longer crashes
+- GUI: `window`/`win` variable name mismatch in `mode_select.py` — mode selection dialog now appears
+- GUI: config window no longer closes when progress window opens — `app.hold()` keeps application alive
+- GUI: `sudo` removed from progress window command — GUI already runs as root, second sudo prompt killed the window
+- GUI: `Gdk` import added to `backends/gui.py` — CSS provider for log view works
+- GUI: `ImportError` on `Gtk.main` resolved — Python 3.14 GTK4 bindings compatibility
+
+## v8.9.2.0 (2026-06-21) — ArtixForge
+
+### Changed
+- GUI: complete GTK4 + libadwaita rewrite — GTK3 replaced across all 16 frontend files
+- GUI: `Gtk.DropDown` replaces `Gtk.ComboBoxText` — native dark/light theme support, no more CSS hacks
+- GUI: `Gtk.PasswordEntry` replaces `Gtk.Entry` with visibility toggle — password fields use proper secure widget
+- GUI: `Adw.StyleManager` replaces manual CSS providers — system dark/light mode switches automatically, Gentoo/Artix/Jet Black/Mono/Retro themes preserved via accent color
+- GUI: all `override_background_color` and `override_color` calls removed — GTK4 deprecation warnings eliminated
+- GUI: window sizing simplified — fixed default 680×420, compositor handles centering
+- GUI: `theme.py` stripped from 414 lines to 15 — only color code mapping remains for backend ANSI output
+- GUI: `setup.py` bumped to v0.4.0, jsonschema removed from hard dependencies
+- GUI: LICENSE updated to Forge Attribution License 1.0
+- README: updated for GTK4, libadwaita dependency, `--mode config` documented
+
+### Fixed
+- GUI: ANSI escape codes finally killed — `isprintable()` filter in progress log view catches all control characters from gum output
+- GUI: progress window `_on_destroy` no longer sets `cancelled=True` on successful completion — fixes false "Installation cancelled by user"
+- GUI: installation failure dialog now shows last 8 lines of install log — users see what went wrong
+- GUI: `Gtk.FileChooserDialog` ported to GTK4 async response pattern — profile file browser works
+- GUI: tweak flags dialog uses `Gtk.Dialog` with `transient_for` — proper parenting, no black-on-white rendering bugs
+
+### Removed
+- GUI: 1728 lines of GTK3 code deleted — all manual CSS, font overrides, combo box theming, notebook background patches
+- `theme.py`: `get_dark_css()`, `get_light_css()`, `get_global_css()`, `_color_to_hex()`, `_lighten_hex()` — all replaced by `Adw.StyleManager`
+- Recovery edge cases removed from testing roadmap — will be addressed per user reports
+
+## v8.9.1.0 (2026-06-20) — ArtixForge
+
+### Fixed
+
+- GUI: method name mangling resolved — __init_common_pages renamed to _init_common_pages across CommonPages and AutomaticWindow to prevent AttributeError when inherited by PowerUserWindow
+- GUI: stale code execution from /tmp/artix-run copy identified — Python bytecode cache and installer self-copy behavior documented as potential footgun during development
+- GUI: tweak flags dialog now inherits parent window background — labels and entries match light/dark theme
+- GUI: extras notebook background updates on theme toggle — _apply_theme() re-applies notebook and child page backgrounds when switching between light and dark
+- GUI: hardcoded notebook background override removed from create_extras_page — CSS provider handles theming, _apply_theme fixes toggle
+- GUI: cancelled installation no longer confuses the TUI fallback — ProgressWindow._cancel() clears DISK= from state.conf so the wrapper doesn't attempt --non-interactive with incomplete state
+- GUI: Power User Kernel Hardware page now hidden when linux is not selected in package list
+- GUI: Power User New Recipe page now hidden when coreutils is not set to custom
+- GUI: Recovery mode now auto-detects installed system on startup — runs reconstruct_state_from_system and displays status before user selects an action
+- GUI: Recovery mode dynamically shows repair-method options (filesystem repair method, ClamAV toggle) based on selected action
+
+- GUI: Migration mode now auto-detects current init system and desktop environment — displays detected values and pre-selects combo boxes
+- GUI: Desktop migration now includes full sub-prompts — display manager, display stack, audio stack, network stack, and extras checkboxes with parity to TUI
+- GUI: ISO Builder now includes Load Profile file chooser with Browse button for selecting saved profile files
+- GUI: ISO Builder offline mode now includes Target System Configuration page — writes /tmp/artix-installer/iso-target-state.conf for offline package bundle generation
+- GUI: ISO Builder sets ALLOW_OFFLINE, ISO_OUTPUT_DIR, and ISO_EXTRA_PACKAGES in state — offline ISOs build correctly from GUI configuration
+
+### Changed
+- GUI: Recovery window restructured — single main page with status display, action combo, and dynamic extra options replacing separate pages
+- GUI: Migration window expanded from 3 pages to 6 — adds dedicated pages for DE display/audio config and network/extras config
+- GUI: ISO Builder expanded from 7 pages to 9 — adds Load Profile page and Target System Config page for offline builds
+- GUI: on_next() navigation logic rewritten for Recovery, Migration, and ISO Builder to handle conditional page flows
+
+
+## v8.9.0.0 (2026-06-20) — ArtixForge
+
+Many, many things changed. this changelog is incomplete for it's scope.
+
+### Fixed
+- GUI: Power User progress window now opens correctly — start_installation() override calls collect_state() before launching the installer, matching the pattern used by Recovery, Migration, and Resume windows
+- GUI: ISO Builder now correctly sets ALLOW_OFFLINE in state — offline ISO builds no longer silently fall back to online mode
+- GUI: ISO Builder now includes output directory field and sets ISO_OUTPUT_DIR in state — ISO is saved to the user's chosen location
+- GUI: password mismatch now blocks navigation — users cannot proceed past the Users page or click Install with mismatched user/root passwords
+- GUI: collect_state_common() return value now respected by Automatic, Power User, and Manual windows — silent state collection failures no longer ignored
+- GUI: Kernel Hardware page in Power User mode now hidden when linux is not selected in the package list
+- GUI: Custom Recipe page in Power User mode now hidden when coreutils is not set to custom
+- GUI: __init_common_pages() now called in AutomaticWindow.__init__() — fixes missing extras checkboxes dict in Manual and Power User modes
+- GUI: Manual window no longer leaks SWAP_ENABLED, USE_LUKS, LUKS_PASS, USE_LVM into state from previous runs
+
+### Changed
+- GUI: password validation extracted to _validate_passwords() method in BaseWindow — reusable across all windows
+- GUI: on_next() now calls password validation before leaving the Users page — catches mismatches earlier in the flow
+- GUI: Power User package checkboxes now emit toggled signals for conditional page visibility — Kernel Hardware and Custom Recipe pages react in real time
+- GUI: ISO Builder build page reorganized with output directory entry alongside offline toggle
+
+### Added
+- GUI: conditional page visibility system in PowerUserWindow — _update_conditional_pages() toggles page visibility based on user selections
+- GUI: _on_package_toggled() signal handler for package list checkboxes
+- GUI: _on_coreutils_changed() signal handler for coreutils combo box
+
+## v8.8.4.8 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: removed manual service symlink/file creation from live-overlay — artools' `configure_services` handles all init service setup (hopefully lol)
+
+## v8.8.4.7 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: replaced `-w` flag with `WORKSPACE_DIR` export for all `buildiso` calls — `-w` is "copy pacman.conf", not "workspace directory"
+
+### Confession
+- I USED THE WRONG FLAG THIS ENTIRE TIME AND DID NOT CHECK.
+- FUCK.
+
+## v8.8.4.6 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: patched artools `clean_up_chroot` to make `find -delete` non-fatal — fixes build abort when temp files are busy during cleanup
+
+## v8.8.4.5 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: patched artools `umount_overlayfs` to use lazy unmount with retries — fixes "target is busy" race condition when unmounting livefs overlay
+
+## v8.8.4.4 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: system `common.yaml` now backed up before override and restored after build — no trace left on the host system
+- ISO: profile copy cleaned from `/usr/share/artools/iso-profiles/` after build completes
+
+## v8.8.4.3 (2026-06-19) — ArtixForge
+
+### Added
+- AURIS: Artix User Repository of Init Scripts now supported — users can enable community-submitted init scripts during installation
+
+## v8.8.4.2 (2026-06-19) — ArtixForge
+
+### Changed
+- ISO: building from a live environment now blocked with a clear message — overlayfs limitations in artools prevent live ISO builds
+- ISO: tmpfs mount workaround removed from build pipeline — no longer needed with live ISO block in place
+
+## v8.8.4.1 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: redirect artools chroot directory via `CHROOTS_DIR` env var — bypasses overlayfs nesting limitation when building ISOs from a live environment without mounting tmpfs on system directories
+
+## v8.8.4.0 (2026-06-19) — ArtixForge
+
+### Added
+- ISO: tmpfs workspace mount on live ISO — bypasses overlayfs nesting limitation when building ISOs from a live environment
+- ISO: full artools-compatible `profile.yaml` generation with `livefs`, `live-session`, `rootfs` sections, init-specific packages, and service definitions
+
+## v8.8.3.9 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: generate corrected `common.yaml` in workspace to override broken `xlibre-xf86-*` package names in artools — upstream uses `xf86-` prefix that doesn't match Artix repos
+- ISO: profile now copied to `/usr/share/artools/iso-profiles/` for artools compatibility
+- ISO: workspace path now resolves to `/root/artools-workspace` on live ISO, `$HOME` elsewhere
+
+## v8.8.3.8 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: added `use-xlibre` field to generated `profile.yaml` — fixes artools `: command not found` error from empty variable expansion
+- ISO: `user-services` now correctly populated based on selected audio stack (pipewire/pulseaudio)
+
+## v8.8.3.7 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: profile generation now writes full artools-compatible `profile.yaml` with `livefs`, `live-session`, `rootfs` sections, init-specific packages, and service definitions — `buildiso` correctly detects live ISO mode (HOPEFULLY)
+
+## v8.8.3.6 (2026-06-19) — ArtixForge
+
+### Fixed
+- ISO: profile generation now writes `profile.yaml` instead of `profile.conf` — what happens when you don't read your sources
+
+## v8.8.3.5 (2026-06-18) — ArtixForge
+
+### Added
+- ISO: offline bundles now build non-repo kernels (bazzite, cachyos, xanmod) in chroot and include them — true offline support for exotic kernels
+- ISO: `build_nonrepo_for_offline()` — extensible function for building any kernel that needs compilation for offline mode
+
+## v8.8.3.4 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: target system configuration now correctly saved to separate state file — offline package bundle reflects actual target system choices, not live ISO defaults
+
+## v8.8.3.3 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: live ISO and offline target system now use completely separate state files — target config no longer pollutes live environment's kernel/DE selection
+- ISO: offline package download now uses `--ask=4` to auto-resolve group selections and provider choices — no more interactive prompts blocking the download
+- ISO: Quick Profiles removed from ISO configuration — designed for system installation, not live ISO building
+- ISO: buildbot signing key now fetched from keyserver before local signing — eliminates spurious key trust warning
+
+## v8.8.3.2 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: live ISO state and offline target system state now separated — target config no longer overwrites live environment's kernel/DE selection
+- ISO: offline package bundle generated from target system config while live ISO uses its own lightweight config
+- ISO: live ISO kernel selection locked to standard Artix kernels (linux, zen, lts, hardened) — no AUR/external kernel builds in the live environment
+
+## v8.8.3.1 (2026-06-18) — ArtixForge
+
+### Fixed
+- ISO: offline package download now uses live system's pacman database instead of blank db — packages actually download (hopefully)
+- ISO: buildbot signing key now fetched from keyserver before local signing — eliminates spurious key trust warning
+
+## v8.8.3.0 (2026-06-18) — ArtixForge
+
+### Changed
+- ISO: builder no longer asks for disk, partitions, users, or passwords — live ISO configuration is now lightweight (DE, init, kernel, network, audio, extras only)
+- ISO: bootloader, filesystem-specific, and UKI packages removed from live ISO — leaner image, faster builds
+- ISO: user can now choose output directory for the final ISO
+- ISO: offline mode target system configuration separated from live ISO config — asks for system packages without disk selection
+
+## v8.8.2.7 (2026-06-18) — ArtixForge
+
+### Fixed
+- CachyOS: Intel 12th gen+ CPUs (Alder Lake and newer) now correctly downgraded from v4 to v3 — AVX-512 is fused off on these chips despite being reported as supported (Special thanks to https://github.com/HappyAmper for pointing it out)
+
+## v8.8.2.6 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: `CONFIG_DM_CRYPT` and `CONFIG_DM_INTEGRITY` enabled after `make defconfig` — LUKS-encrypted root now unlocks correctly with TKG-custom kernels
+- mkinitcpio: `lvm2`, `encrypt`, `bcachefs`, and `zfs` hooks now check for existing entry before appending — no more duplicate hook accumulation on resume or re-run
+
+## v8.8.2.5 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: kernel renamed using modification-time detection — newest `vmlinuz*` always becomes `vmlinuz-artixforge-tkg`, eliminating `vmlinuz.old` edge case
+- Limine: kernel glob widened from `vmlinuz-*` to `vmlinuz*` with `nullglob` — no longer dies on non-standard kernel names
+- mkinitcpio: `lvm2`, `encrypt`, `bcachefs`, and `zfs` hooks now check for existing entry before appending — no more duplicate hook accumulation on resume or re-run
+
+## v8.8.2.4 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: mkinitcpio preset uses actual kernel path from `make install` — matches `vmlinuz` without version suffix
+- TKG: success check matches `vmlinuz*` without requiring version suffix
+
+## v8.8.2.3 (2026-06-18) — ArtixForge
+
+### Fixed
+- TKG: mkinitcpio preset now created after kernel build — `mkinitcpio -P` finds the preset and generates initramfs
+
+## v8.8.2.2 (2026-06-18) — ArtixForge
+
+### Fixed
+- Bootloader: `generate_root_cmdline()` now includes `rootflags=subvol=@` for btrfs — fixes "init does not exist" on btrfs installs with Limine
+- TKG: failed patches now restore ALL files they touched, not just files with `.rej` — fixes `debug.c`/`sched.h` mismatch from partial PRJC patch application
+
+## v8.8.2.1 (2026-06-18) — ArtixForge
+
+### Changed
+- TKG: kernel now compiled inside target chroot instead of live ISO (Another oopsie)
+
+### Fixed
+- TKG: failed scheduler patches now restore corrupted files and continue build — kernel compiles with remaining patches
+- TKG: user warned which patches failed to apply after successful build
+
+## v8.8.2.0 (2026-06-18) — ArtixForge
+
+### Added
+- GUI: non‑interactive backend now supports Recovery, Migration, ISO, and Power User modes — GUI config flows drive the full pipeline
+- GUI: password confirmation enforced — mismatched passwords block navigation with warning dialog
+
+### Changed
+- GUI: filesystem list updated — exFAT and ZFS removed to match TUI
+- GUI: `save_state()` no longer uses `sudo` — installer already runs as root
+- Non‑interactive: `tui_password_confirm` reads passwords from state — GUI‑saved credentials used correctly
+- Non‑interactive: `tui_password` handles LUKS prompts from saved state
+
+### Fixed
+- Non‑interactive: recovery mode reads `RECOVERY_ACTION` from state and executes the correct repair
+- Non‑interactive: migration mode reads `MIGRATION_SRC`/`MIGRATION_TGT` from state and runs the correct migration
+- Non‑interactive: ISO mode reads profile/init/kernel from state and builds with `build_artix_iso`
+- Power User: interactive `tui_poweruser_config` skipped when `GUI_MODE=yes` — GUI config used instead
+
+## v8.8.1.8 (2026-06-18) — ArtixForge
+
+### Fixed
+- Basestrap: `/sbin/init` symlink verified after installation — kernel panic from missing init no longer possible
+- Recovery: `detect_boot_health` now checks for `/sbin/init` — missing init symlink detected and repairable
+- Recovery: `repair_boot` can recreate `/sbin/init` symlink from detected init system
+
+## v8.8.1.7 (2026-06-18) — ArtixForge
+
+### Fixed
+- Basestrap: gnupg permissions corrected on target system — `pacman-key --init` no longer required after installing CachyOS/XanMod kernels (Special thanks to https://github.com/etrigan63 for pointing this out)
+
+## v8.8.1.6 (2026-06-18) — ArtixForge
+
+### Fixed
+- Extras: `zram-tools` installs `zramen`/`zramen-${init}`, services use `zramen` and `bluetoothd` — correct Artix package names (Special thanks to https://github.com/etrigan63 for pointing this out)
+- Limine: kernel and initramfs copied to ESP — `boot():/` paths now resolve correctly, fixes kernel panic on boot
+
+## v8.8.1.5 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `known_services` exclusion list expanded with `logind`, `lightdm`, and all standard openrc boot services — no more false custom service detection
+
+## v8.8.1.4 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `list_enabled_services()` returns empty string when init not installed — no more ANSI escape codes crashing service enumeration
+- Migrations: `_install_target_init_fallback()` removes conflicting `cryptsetup-scripts` before installing openrc
+- Installer: `installer_error()` now displays last 10 lines of install log and migration debug log — users see actual errors instead of line numbers
+
+## v8.8.1.3 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `detect_custom_services()` excludes known system services — NetworkManager, agetty, bootmisc, and other standard services no longer misdetected as custom scripts
+- Migrations: `migrated=$((migrated + 1))` replaces `((migrated++))` — avoids post-increment `set -e` crash in init service migration loop
+- Migrations: service-specific init packages installed before service migration — `NetworkManager-runit`, `dhcpcd-runit`, etc. now present when `enable_service` runs
+
+## v8.8.1.2 (2026-06-18) — ArtixForge
+
+### Fixed
+- Migrations: `detect_custom_services()` excludes known system services — NetworkManager no longer misdetected as custom script
+- Migrations: `((migrated++))` and `((skipped++))` replaced with `migrated=$((migrated + 1))` — avoids post-increment `set -e` issues in init service migration loop
+
+## v8.8.1.1 (2026-06-17) — ArtixForge
+
+### Added
+- Migrations: `_repair_pacman_db()` runs at start of `run_de_migration` — detects and repairs broken package database entries before detection
+- Migrations: `_cleanup_target_repo()` removes SonicDE repository after migration — `SigLevel = Never` not left permanent ( ͠° ͟ʖ ͡°)
+
+### Fixed
+- Migrations: `ROOT` variable conflict resolved — recovery detection now correctly queries target system packages
+
+## v8.8.1.0 (2026-06-17) — ArtixForge
+
+### Changed
+- Migrations: `migrations/inits/common.sh` now supports live ISO via `MIG_ROOT` — all system operations route through chroot
+- Migrations: init detection uses recovery's `detect_init` instead of manual selection
+- Migrations: `_enable_service()` wrapper shared between DE and init migrations
+- Migrations: detection functions in `des/common.sh` replaced with wrappers that call recovery's existing `detect_desktop`, `detect_display_manager`, `detect_xstack`, `detect_audio_stack`, `detect_network_stack` (That moment when you forget your own codebase)
+
+## v8.8.0.10 (2026-06-17) — ArtixForge
+
+### Changed
+- Migrations: all detection functions refactored to use associative arrays with loops — adding new DEs/DMs/inits is one line
+- Migrations: `_prepare_target_repo()` handles external repository setup (SonicDE, Chaotic-AUR) for migrations
+- Migrations: live ISO detection uses `-d` instead of `-f` for `/run/artix/sfs/rootfs` directory check
+
+### Fixed
+- Migrations: pacman -Qtdq orphan check now guarded with || true — no longer fatal when no orphans exist
+- Migrations: tui_de_migration_menu uses tui_msg_quick instead of tui_msg for current DE detection display
+
+## v8.8.0.9 (2026-06-17) — ArtixForge
+
+### Changed
+- Migrations: `migrations/des/common.sh` now detects live ISO and routes all system operations through chroot to `/mnt` — migrations work from both live ISO and installed system
+- Migrations: `_chroot()` and `_pacman_Q()` helpers added for transparent root path routing
+- Migrations: `_enable_service()` wrapper runs service enablement inside target chroot with correct `INIT` exported
+- Migrations: `recovery_mount_all()` offered interactively when target not mounted on live ISO
+
+## v8.8.0.8 (2026-06-17) — ArtixForge
+
+### Fixed
+- Migrations: `apply_migration_choices` now exports `INIT` before calling `enable_service` — services enabled for correct init system
+- Migrations: `mkinitcpio` now runs inside `artix-chroot /mnt` — no longer rebuilds live ISO kernel (FUCK)
+- Recovery: `detect_iso_health` skips when not running from live ISO — no more false `missing-artixforge`
+- Recovery: menu loop allows multiple repairs, added "Return to main menu" and "Exit" options
+
+## v8.8.0.7 (2026-06-17) — ArtixForge
+
+### Fixed
+- Migrations: `enable_service` calls in `apply_migration_choices` now guarded with `|| log_warn` — no longer fatal when service is missing or something else happens for any reason
+
+## v8.8.0.6 (2026-06-17) — ArtixForge
+
+### Fixed
+- Migrations: `run_de_migration` now auto-selects target DE's default display manager when migrating from `none` — e.g. lightdm correctly installed for xfce
+- Migrations: `tui_de_migration_menu` no longer warns on missing pair scripts — generic `run_de_migration` handles all combos silently
+
+## v8.8.0.5 (2026-06-17) — ArtixForge
+
+### Fixed
+- Drivers: CachyOS kernel header detection simplified — removed nonexistent `linux-cachy-headers` fallback
+
+## v8.8.0.4 (2026-06-17) — ArtixForge
+
+### Fixed
+- Drivers: VM detection now case-insensitive, adds `vbox` pattern — VirtualBox no longer misdetected as KVM
+- Drivers: `enable_service qemu-guest-agent` guarded with `|| log_warn` — no longer fatal when service is missing
+
+## v8.8.0.3 (2026-06-17) — ArtixForge
+
+### Fixed
+- Drivers: CachyOS kernel header detection fixed — `linux-cachy*` pattern now matches all variants
+
+## v8.8.0.2 (2026-06-17) — ArtixForge
+
+### Fixed
+- Post-install: removed stale `source ./scripts/post/kernel.sh` — file no longer exists, stage no longer fails
+
+## v8.8.0.1 (2026-06-16) — ArtixForge
+
+### Fixed
+- CachyOS: `Architecture = x86_64 x86_64_v4` now set globally under `[options]` instead of per-repo — pacman accepts v4 packages
+
+## v8.8.0.0 (2026-06-16) — ArtixForge
+
+The next few patches will include GUI upgrades.
+
+### Added
+- ISO: artix-keyring refreshed before `buildiso` call
+
+### Changed
+- System: keyboard layout now applied to X11 sessions via `localectl set-x11-keymap` — non-US layouts work in graphical environments
+- Post-install: package list deduplicated with `sort -u` before `pacman -S`
+- Installer: self-update copies to `/tmp/artix-run` before replacing files
+- Filesystems: exFAT removed as root option — no Unix permissions or symlink support
+- Kernel: `find_kernel_image()` and `find_initramfs_image()` match `KERNEL_CHOICE` explicitly
+- Bootloader: `generate_root_cmdline()` unified across all five bootloaders
+- Bootloader: Secure Boot signing paths use chroot-relative paths
+- Audio: `setup_audio()` detects and removes conflicting stacks, skips already-installed packages
+- Desktop: SonicDE and MangoWM isolated into dedicated functions with trap cleanup
+- Drivers: PCI ID validated as hex, VM detection uses CPUID hypervisor bit, Nouveau fallback cleans DKMS
+- Networking: detects conflicting stacks, skips already-installed packages
+- Recovery: `detect_init` uses binary detection — no more state/runtime mismatch
+- Recovery: kernel detection uses tiered priority
+- Recovery: `detect_coreutils` verifies BusyBox symlinks before assuming implementation
+- Power User: `validate_system()` uses `sort -V` for kernel module directory ordering
+- ZFS: service files support all four init systems, mkinitcpio hook appends instead of replacing
+- Migrations: DM/network normalisation uses explicit case mapping, init package transformation fixed
+- ISO: `BASE_DIR` and installer functions sourced if missing, chroot detection uses multiple fallbacks
+- Partitioning: removed unnecessary `dd` wipe, LVM volume group name configurable
+
+### Fixed
+- CachyOS: `Architecture = x86_64_v4` added to v4 repo sections
+- Recovery: `pacman_root_has` guarded against empty input
+- Recovery: `repair_pacman` batch arithmetic fixed
+- Recovery: filesystem repair unmounts BTRFS recursively, verifies FS before remount
+- Recovery: `/dev/mapper/control` filtered, already-open mappers skipped
+- ZFS: preflight installs `zfs-dkms` from archzfs with repo prefix
+- ZFS: removed unbound `zfs_pkg` variable in modprobe check
+- TKG: `make modules_install INSTALL_MOD_PATH=/mnt` and `make install INSTALL_PATH=/mnt/boot`
+- bcachefs: mkinitcpio hook appends instead of replacing
+- Bootloader: `find_kernel_image` matches `KERNEL_CHOICE` instead of alphabetical `head -n1`
+- Limine: snapshot loop uses `while read` with proper quoting
+- Storage: duplicate block-device validation removed
+- Storage: LUKS reopen cleans up stale mappers
+- Storage: EFIStub mount detection fixed
+- Desktop: dead `elif` in KDE profile logic removed
+- Desktop: MangoWM AUR build uses trap for cleanup
+- Drivers: PCI ID validated, VM detection improved, Nouveau fallback cleans DKMS
+- Networking: service enable failures logged
+- Migrations: orphan removal checks list first, extras loop builds clean list
+- ISO: offline mode skips target configuration for installer ISOs
+- ISO: `cleanup.sh` uses explicit `output_dir` fallback
+- Power User: kernel module sort fixed
+
+## v8.7.0.8 (2026-06-16) — ArtixForge
+
+### Fixed
+- CachyOS: `Architecture = x86_64_v4` added to v4 repo sections — fixes "package architecture is not valid" on v4-capable CPUs
+
+## v8.7.0.7 (2026-06-15) — ArtixForge
+
+### Fixed
+- ISO: artix-keyring refreshed before `buildiso` call — prevents "Signature from Artix Buildbot is invalid" error
+
+## v8.7.0.6 (2026-06-15) — ArtixForge
+
+### Fixed
+- CachyOS: v3/v4 mirrorlist now downloaded before repo sections added to `pacman.conf` — fixes broken config when mirrorlist package fails (oops...)
+
+## v8.7.0.5 (2026-06-15) — ArtixForge
+
+### Changed
+- Filesystems: ZFS temporarily disabled — ZFS max supported kernel is 6.15 (live ISOs ship 6.19 and above!)
+- Filesystems: selecting ZFS now shows an "Unavailable" message and returns to selection
+
+## v8.7.0.4 (2026-06-15) — ArtixForge
+
+### Fixed
+- ZFS: preflight now installs `zfs-dkms` from archzfs with repo prefix — live ISO kernel rarely matches prebuilt ABI and may ship outdated ZFS
+- ZFS: preflight forces `archzfs/zfs-dkms` to override outdated live ISO packages
+- ZFS: removed unbound `zfs_pkg` variable in modprobe check — now reports DKMS status on failure
+
+## v8.7.0.3 (2026-06-15) — ArtixForge
+
+### Fixed
+- Recovery: `recovery_mount_all()` now detects plain partitions (ext4/btrfs/xfs/f2fs) — no longer requires LUKS or LVM to auto-mount (I FORGOT)
+- Recovery: auto-mount falls back to `lsblk` scan when no LUKS/LVM volumes found
+- Recovery: `detect_uki` syntax error fixed — missing `; then` after grep condition causing exit 127
+- Recovery: UKI missing file no longer flagged as a boot issue — system boots via bootloader
+- TUI: kernel sub-menu case patterns fixed — `"linux-* (standard)"` and `"linux-cachyos-*"` now match menu display
+- TUI: `tui_filter()` no longer redirects stdin to `/dev/tty` — `gum filter` correctly receives piped package list (oops)
+- Extras: `EXTRAS_SAFETY_FILTER` regex fixed — `*` changed to `.*` to silence grep warnings
+- ZFS: preflight now installs ZFS module for live kernel instead of target kernel — fixes install failure when target kernel differs from live ISO
+- ZFS: removed spurious die when live and target kernels differ — target gets its own ZFS package during basestrap
+
+## v8.7.0.2 (2026-06-15) — ArtixForge
+
+### Added
+- Extras: "Search for packages..." — live fuzzy search over Artix `world` and `galaxy` repositories
+- Extras: `tui_search_extras()` using `tui_filter` (wraps `gum filter`) for real-time package filtering
+- Extras: `EXTRAS_SAFETY_FILTER` excludes DEs, kernels, bootloaders, init services, and system packages from search results
+- TUI: `tui_filter()` wrapper added to `scripts/tui/core.sh`
+
+### Changed
+- Post-install: `install_extras()` refactored — `SIMPLE` array loop replaces repetitive `[[ ]]` checks; init-specific packages remain explicit
+- Post-install: searched packages install as plain `pacman` packages, curated list unchanged
+
+## v8.7.0.1 (2026-06-14) — ArtixForge
+
+### Changed
+- Main menu: Recovery, Power User, Migration, and ISO modes moved under "Advanced" sub-menu
+- Each advanced mode now shows a clear warning explaining what it does and its risks before proceeding
+
+## v8.7.0.0 (2026-06-14) — ArtixForge
+
+### Added
+- Kernels: sub-menu grouping — standard kernels (linux, zen, lts, hardened) under "linux-*" and CachyOS variants under "linux-cachyos-*"
+- CachyOS: full variant support — all 9 CachyOS kernels (cachyos, bore, eevdf, bmq, rt-bore, hardened, lts, server, deckify)
+- CachyOS: architecture-specific repository tiers — v3 (AVX2) and v4 (AVX512) optimized repos configured based on CPU detection
+- Bazzite: kernel now compiled from AUR during basestrap instead of post-install
+
+### Changed
+- `basestrap.sh`: atomized — kernel packages, target repos, custom kernel builds, and ZFS config extracted to `scripts/install/basestraps/`
+- `bootloader.sh`: atomized — GRUB, Limine, rEFInd, and EFIStub each in `scripts/install/bootloaders/`
+- `detect.sh`: atomized — detection functions grouped into `scripts/recovery/detects/{system,desktop,network_audio,packages,hardware,health}.sh`
+- `repair.sh`: atomized — repair functions grouped into `scripts/recovery/repairs/{system,packages,advanced,migration_iso}.sh`
+- `kernel.sh`: removed unused `install_kernel_bazzite` (now in `basestraps/kernel_build.sh`)
+- `stages/post.sh`: removed dead bazzite build call
+- Recovery: `detect_kernel` refactored to single loop over all known kernels
+- Recovery: `detect_extras` refactored to single loop with special case for zram-tools
+- Recovery: `detect_desktop` refactored to associative array lookup
+- TUI: kernel menu uses `-*` suffix notation to indicate sub-menu choices
+
+### Fixed
+- Limine: kernel panic on boot — config now creates an entry for every installed kernel with exact filenames and matching initramfs
+- Limine: missing kernel path error replaced with clear failure during install if no kernels found
+
+## v8.6.4.7 (2026-06-14) — ArtixForge
+
+### Fixed
+- Limine: kernel panic on boot — config now creates an entry for every installed kernel with exact filenames and matching initramfs
+- Limine: missing kernel path error replaced with clear failure during install if no kernels found
+
+## v8.6.4.6 (2026-06-13) — ArtixForge
+
+### Added
+- SonicDE: user warning before installation — notifies that signature verification is disabled due to upstream key infrastructure issues
+- SonicDE: user can cancel and return to desktop selection if they decline unsigned installation
+
+### Fixed
+- SonicDE: removed old repository URLs before adding new one to prevent key conflicts
+- SonicDE: `SigLevel = Never` at repo level to work around missing upstream signing key (70B4B1EF0FF2A94E)???
+
+## v8.6.4.5 (2026-06-13) — ArtixForge
+
+### Changed
+- TKG: completely rewritten build process — no longer depends on TKG's interactive scripts (they suck)
+- TKG: clones Artix's current kernel version from kernel.org, applies TKG patches directly
+- TKG: uses `make defconfig` for a clean baseline (no LiveISO kernel dependency)
+- TKG: GRUB configuration regenerated after kernel install
+
+## v8.6.4.4 (2026-06-13) — ArtixForge
+
+### Added
+- Extras: "Wayland Extras" category with swaybg, swaylock, waybar, wofi, fuzzel, foot, hyprpaper
+- Wayland compositors now show a recommendation message during extras selection
+
+### Fixed
+- MangoWM: complete AUR dependency chain now built in order (wlroots0.19-hidpi-xprop → scenefx0.4 → mangowm-git)
+- MangoWM: temporary passwordless sudo configured during AUR builds, cleaned up automatically
+- MangoWM: build user added to `seat` group so compositor can launch without root
+- MangoWM: Arch repositories now enforced when MangoWM is selected
+
+### Changed
+- MangoWM: AUR build now uses `makepkg -si --noconfirm` to automatically resolve all dependencies
+
+## v8.6.4.3 (2026-06-13) — ArtixForge
+
+### Fixed
+- MangoWM: pacman keyring initialization now sets `GNUPGHOME` before Chaotic-AUR key import
+- MangoWM: AUR build dependencies (`cjson`, `scenefx0.4`, `xorg-xwayland`) installed before compilation
+- SonicDE: `sonic-login-manager-${init}` init-specific package restored in desktop installation
+- XanMod: pacman keyring initialization now sets `GNUPGHOME` before Chaotic-AUR key import
+
+## v8.6.4.2 (2026-06-12) — ArtixForge
+
+### Changed
+- TKG: kernel now compiled automatically during installation instead of requiring manual post‑install build
+- TKG: uses TKG's own `_tkg_srcprep` + `make` with a non‑interactive customization.cfg (BORE scheduler, running‑kernel config, GCC)
+- TKG: built kernel and modules copied to `/mnt` automatically; target initramfs regenerated
+
+## v8.6.4.1 (2026-06-12) — ArtixForge
+
+### Added
+- SonicDE: full desktop environment support — repository setup, package installation, and Sonic Login Manager integration
+- SonicDE: migration support — DE_PACKAGES, DE_DISPLAY_MANAGER, and DM_PACKAGES entries for sonicde ↔ any DE
+- SonicDE: recovery detection — `detect_desktop()` and `detect_display_manager()` recognize sonicde-meta and sonic-login-manager
+- SonicDE: GUI support — desktop combo boxes in `base.py` and `iso.py` include sonicde
+
+## v8.6.4.0 (2026-06-12) — ArtixForge
+
+### Added
+- ZFS: full wiki-compliant ZFS-on-root support with dual-pool setup (bpool + rpool)
+- ZFS: optional native encryption on root pool (aes-256-gcm) with passphrase confirmation
+- ZFS: container and filesystem datasets with data separation (home, root, srv, usr/local, var/log, var/spool, var/tmp)
+- ZFS: dedicated boot pool partition (BE00) and root pool partition (BF00) in GPT layout
+- ZFS: `archzfs` repository configuration on target system
+- ZFS: `zfs-mount` init script for automatic dataset mounting at boot
+- ZFS: `zpool.cache` generation for initramfs embedding
+- ZFS: GRUB compatibility workarounds (`ZPOOL_VDEV_NAME_PATH`, pool name detection in `10_linux`, `--removable` install)
+- ZFS: manual fstab entries for boot pool and EFI partition (replaces fstabgen)
+- LUKS: PBKDF2 key derivation added to all `luksFormat` calls for GRUB compatibility
+- LUKS/LVM: init-specific service packages (`cryptsetup-${init}`, `lvm2-${init}`) installed on target
+- LUKS/LVM: `dmcrypt`, `device-mapper`, and `lvm` services enabled at boot via `enable_service_boot()`
+- Services: `enable_service_boot()` function added for boot-runlevel service activation across all four inits
+- README: installation instructions for `pacman -S artixforge` package
+- README: [galaxy] soonTM badge added
+- PKGBUILD: ready for Artix [galaxy] submission? (pending v9 merger)
+
+### Changed
+- Migration: `install_target_init` now queries installed init packages via `pacman -Qsq` instead of hardcoded lists
+- Migration: `cache_target_init_packages` downloads new init packages before removing old ones (network-safe)
+- Migration: `remove_source_init` uses `pacman -Qsq` to find and remove all init-specific packages
+- Migration: `cold_reboot()` function for SysRq-based reboot after init swap (prevents broken symlink hangs)
+- Partition: ZFS layout now creates 1GB EFI + 4GB boot pool + root pool partitions
+- ISO: `build.sh` now uses wiki method for non-repo packages (`buildiso -x` → chroot → `-sc` → `-zc`)
+- SECURITY.md: supported versions table updated (v9.x future, v8.6.x best effort)
+- OSI.md: corrected license name reference
+- GUIDE.md: `gartix` references updated to `anvil`
+
+## v8.6.3.0 (2026-06-12) — ArtixForge
+
+### Added
+- Migration: full Arch→Artix migration path following the official Artix wiki — replaces pacman.conf/mirrorlist, installs Artix keyring, removes systemd, reinstalls all packages from Artix repos
+- Migration: LVM service enablement for all init systems after migration
+- Migration: systemd junk cleanup (accounts, directories)
+- Migration: bootloader update (mkinitcpio + GRUB reinstall) after migration
+- Migration: pacman cache cleanup and security level toggle for keyring installation
+
+### Changed
+- Migration: `run_init_migration` now handles systemd→Artix as a complete system replacement (wiki parity)
+- Migration: `install_target_init` now includes elogind and init-system packages for all inits
+- Migration: `remove_source_init` replaces manual package removal with batched init-specific cleanup
+- Migration: init migration now always updates bootloader and enables LVM services post-migration
+- `services.sh`: relaxed sourcing — no longer dies when `/etc/artix-installer.conf` is missing (supports migration/recovery contexts)
+
+## v8.6.2.0 (2026-06-10) — ArtixForge
+
+### Added
+- Recovery: migration health detection — detects multiple init systems, init mismatches, orphaned service symlinks
+- Recovery: ISO health detection — detects missing pacman, broken package database, missing kernel, incomplete base
+- Recovery: migration repair — reinstalls correct init system, cleans up conflicting init directories
+- Recovery: ISO repair — reinstalls missing base packages and kernel when salvageable
+- Recovery: extended detection prompt — migration and ISO checks are opt-in, keeping standard recovery fast
+
+### Fixed
+- Recovery: `esp_disk` and `esp_part` undefined variables in `repair_boot` Limine EFI entry repair
+- Recovery: `_kernel_pkg` incorrectly listed `linux-bazzite-bin-headers` as a repo package (AUR, same as TKG)
+
+## v8.6.1.0 (2026-06-10) — ArtixForge
+
+### Fixed
+- GUI: `extras_checkboxes` string corruption bug — state collection now reads directly from widget tree
+- GUI: `state.conf` not saving — `save_state()` now writes via sudo with temp file shredding
+- GUI: installer not launching from GUI — fixed path resolution for `install` script
+- GUI: `state_load` never called in non‑interactive mode — installer now loads state before pipeline
+- GUI: `&&`/`||` logic error in non‑interactive auto/manual causing false `power user stage failed` — replaced with `|| true`
+- GUI: `GUI_MODE` flag not set — `collect_state_common()` now sets `GUI_MODE="yes"`
+- GUI: `MODE` key not set — all modes now set `MODE` in state
+- GUI: mode selection dialog added at startup
+- GUI: LUKS and BTRFS sub‑boxes now properly hidden using `set_no_show_all(True)`
+- GUI: `poweruser_box` visibility fixed with `show_all()`/`hide()` toggles
+- GUI: `ResumeWindow` missing `start_installation()` override
+- GUI: ANSI escape codes stripped from progress log output
+- GUI: main config window hidden during installation to prevent accidental closure
+- GUI: proper cancel/success/failure dialogs after installation
+- GUI: CSS extracted to single `get_global_css()` function in `theme.py` — eliminates 200+ lines of duplication
+- ISO: `buildiso` `useradd` error fixed — profile.conf now includes `username` and `password`
+- ISO: `blank_db` variable typo fixed (`blankdb` → `blank_db`)
+- ISO: `buildiso` flag corrected from `-o` to `-t` for output directory
+- ISO: `ISO_DIR` properly defined in `build_artix_iso()` so script works when called directly
+
+### Changed
+- GUI: all mode windows now follow same pattern: `collect_state()` → `save_state()` → `./install --non-interactive`
+- ISO: `offline.sh` now reads package list from `packages.x86_64` generated by user config instead of hardcoded array
+- ISO: `build.sh` adds first‑boot setup script for non‑repo packages (MangoWM, vxwm, bazzite, tkg)
+- ISO: `tui.sh` extra packages checklist fixed — removed broken `"off"` state strings, uses `tr '\n' ' '`
+- ISO: offline mode now calls `tui_collect_install_config` to let user configure target system packages for bundling
+
+### Removed
+- ISO: hardcoded package list in `offline.sh` — replaced with state‑driven `packages.x86_64`
+- GUI: custom Bash command construction in `recovery.py`, `iso.py`, `migration.py`
+
+## v8.6.0.0 (2026-06-06) — ArtixForge
+
+### Added
+- GUI installer: persistent GTK configuration window (`forge-gui --mode config`) with 12 pages covering all installation options
+- GUI installer: theme preview (Gentoo, Artix, Jet Black, Mono, Retro) with live CSS colour updating
+- GUI installer: LUKS passphrase entry with confirmation and conditional visibility
+- GUI installer: BTRFS layout selector (standard/flat/snapshot) shown only when btrfs filesystem selected
+- GUI installer: Power User mode sub‑page with coreutils selection, fallback kernel toggle, and package checklist
+- GUI installer: Arch repositories and offline mode toggles
+- GUI installer: user and root password fields with visibility hiding
+- GUI installer: summary page with sanity warnings for dangerous combinations (ZFS, glibc source, EFIStub+LUKS)
+- GUI installer: all configuration saved to `/tmp/artix-installer/state.conf` in the same format as the TUI
+- GUI integration: automatic detection of `DISPLAY`/`WAYLAND_DISPLAY` and `forge-gui` presence
+- GUI integration: user prompt at startup to choose GUI over TUI when graphical session detected
+- GUI integration: non‑interactive installer mode (`scripts/noninteractive.sh`) overriding all `tui_*` functions when GUI config is saved
+- GUI integration: full installation pipeline reuses existing stages without UI prompts
+- GUI integration: `forge-gui` added as a git submodule in `forge-gui/`
+- `forge-gui` now installs `jsonschema` and `pygobject` as Python dependencies
+- `preflight.sh` installs GTK3 and system Python bindings when GUI mode is enabled
+- `install` script now supports `--non-interactive` flag (used by GUI after config save)
+- GUI installer: categorized extras page with tabs for System Tools, Editors, Browsers, File Managers, Terminals, Shell & Prompt, Monitoring, and Media – includes "Select All" per category
+- GUI installer: optional black or white background (user‑selectable on Theme page)
+
+### Changed
+- `gartix` package manager renamed to `anvil` – binary, internal scripts, and documentation updated accordingly
+- `forge-gui` repository stripped of all Textual TUI code – now pure GTK3 GUI only
+- `cli.py` extended with `--mode config` to launch persistent configuration window (replaces single‑widget mode for install flow)
+- `tui_yesno` override in `noninteractive.sh` now checks `SIGN_UKI` state variable to answer Secure Boot prompts correctly
+- `state.sh` now includes `GUI_MODE` variable to persist GUI selection across stages
+- `install` script now runs non‑interactive pipeline directly after GUI config saves, without returning to TUI
+- Changelog restructured to separate v8.5 (ISO + migrations) from v8.6 (GUI + integration)
+
+### Fixed
+- `bootloader.sh` Secure Boot prompt no longer blocks non‑interactive installation – reads `SIGN_UKI` from state instead
+- `forge-gui` no longer attempts to run `sudo ./install` on its own – saves config and exits cleanly
+- `forge-gui` theme preview now updates correctly when switching theme options
+
+### Documentation
+- `README.md` updated to describe GUI installer alongside TUI
+- `GUIDE.md` added GUI installation section
+- `forge-gui/README.md` rewritten for pure GTK frontend
+- `poweruser/README.md` updated: all `gartix` references changed to `anvil`
+- `DOCUMENTS/ROADMAP.md` updated: GUI integration moved from think‑tank to v8.6
+
+## v8.5.0.0 (2026-06-05) — ArtixForge
+
+### Added
+- System Migration: init system conversion between all 16 combinations (openrc, runit, dinit, s6, systemd)
+- System Migration: automatic service mapping with hub-chaining through OpenRC for non-direct pairs
+- System Migration: custom service detection and backup to `/root/init-backup-*/`
+- System Migration: desktop environment migration for all 13 supported DEs/WMs with network stack and extras support
+- System Migration: interactive prompts for display manager, display stack, audio stack, and network stack during DE migration
+- System Migration: user config backup (~/.config, ~/.local, ~/.cache) during DE migration
+- System Migration: init-specific package handling (sddm-dinit, lightdm-openrc, etc.)
+- New `migrations/` module structure: `inits/` and `des/` with shared `common.sh` libraries
+- System Migration entry in main installer menu
+- ISO generation: build custom Artix live ISOs from any Quick Profile or full custom configuration
+- ISO generation: Live Desktop mode (full graphical environment) and Installer mode (boots directly into ArtixForge)
+- ISO generation: installer auto-launch overlays for OpenRC, dinit, and runit
+- ISO generation: offline-capable ISOs with bundled package repository that carries over to installed system
+- ISO generation: offline mode auto-detection in `require_internet` when local repo is present
+- ISO generation: init-specific live service overlays for OpenRC, dinit, runit
+- ISO generation: full ArtixForge installer included on every ISO at `/root/ArtixForge/`
+- ISO generation: user-requested extra packages support via `ISO_EXTRA_PACKAGES`
+- ISO generation: build logs saved alongside ISO output
+- New `iso/` module at repo root: `build.sh`, `common.sh`, `offline.sh`, `cleanup.sh`, `tui.sh`
+- "Build ISO" entry in main installer menu
+
 ## v8.4.4.1 (2026-06-04) — ArtixForge
 
 ### Fixed

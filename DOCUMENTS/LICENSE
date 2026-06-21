@@ -1,4 +1,4 @@
-Volk Open License 1.0
+Forge Attribution License 1.0
 
 Copyright (c) 2026 Volk
 
@@ -9,16 +9,27 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-1. The above copyright notice and this permission notice shall be included in
-   all copies of the Software, in whole or in part, and in any modified
-   versions.
+1. Attribution
 
-2. You may not represent the Software, in whole or in part, as your own
-   original creation. Any modified version must clearly indicate that changes
-   have been made, and you must not remove or alter any copyright notices,
-   attributions, or this license text. You are free to fork and to create
-   derivative works, provided you do not claim the unmodified Software as
-   your sole creation.
+   The above copyright notice and this license shall be included in all
+   copies or substantial portions of the Software.
+
+2. Preservation of Authorship
+
+   You may not misrepresent the origin of the Software. You must not claim
+   that the Software was created solely by you or your organization.
+
+3. Modified Versions
+
+   If you modify the Software, you must clearly indicate that changes were
+   made. Modified versions must not be presented as the original Software.
+
+4. Names and Marks
+
+   This license grants no rights to use the names, trademarks, logos, or
+   project branding of Volk or its projects (including but not limited to
+   "ArtixForge", "VFF", "forge-gui", "anvil") except for
+   reasonable attribution and factual reference.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

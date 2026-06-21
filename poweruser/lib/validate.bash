@@ -37,7 +37,7 @@ validate_system() {
     bootloader="$(state_get BOOTLOADER grub)"
 
     local kver
-    kver=$(ls /mnt/lib/modules | grep -v 'artix' | head -n1)
+    kver=$(ls -1 /mnt/lib/modules | grep -v 'artix' | sort -V | tail -1)
     [[ -n "${kver}" ]] || { log_warn "No custom kernel modules found"; return 0; }
 
     local config_file="/mnt/boot/config-${kver}"

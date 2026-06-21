@@ -73,7 +73,7 @@ stage_preflight() {
             command -v "${tool}" &>/dev/null || pkgs+=("${tool}")
         done
     fi
-    
+
     case "$(uname -r)" in
         *lts*)       live_kernel_pkg="linux-lts" ;;
         *zen*)       live_kernel_pkg="linux-zen" ;;
@@ -84,7 +84,6 @@ stage_preflight() {
     case "${fs_type}" in
         xfs)      command_exists mkfs.xfs || pkgs+=(xfsprogs) ;;
         f2fs)     command_exists mkfs.f2fs || pkgs+=(f2fs-tools) ;;
-        exfat)    command_exists mkfs.exfat || pkgs+=(exfatprogs) ;;
         bcachefs)
             if ! command_exists mkfs.bcachefs || ! modprobe bcachefs 2>/dev/null; then
                 log_info "Building bcachefs-tools from source..."
@@ -114,10 +113,6 @@ stage_preflight() {
                 die "ZFS is only supported with linux, linux-lts, linux-zen, or linux-hardened kernels."
             fi
 
-            if [[ "${target_kernel}" != "${live_kernel_pkg}" && "${live_kernel_pkg}" != "linux" ]]; then
-                die "Live ISO kernel (${live_kernel_pkg}) does not match target kernel (${target_kernel}) for ZFS installation."
-            fi
-
             if ! grep -q '^\[archzfs\]' /etc/pacman.conf; then
                 pacman-key --recv-keys F75D9D76 --keyserver hkp://keyserver.ubuntu.com
                 pacman-key --lsign-key F75D9D76
@@ -130,35 +125,29 @@ EOF
                 pacman -Sl archzfs >/dev/null 2>&1 || die "archzfs repository unusable"
             fi
 
-            local zfs_pkg=""
-            case "${target_kernel}" in
-                linux)           zfs_pkg="zfs-linux" ;;
-                linux-lts)       zfs_pkg="zfs-linux-lts" ;;
-                linux-zen)       zfs_pkg="zfs-linux-zen" ;;
-                linux-hardened)  zfs_pkg="zfs-linux-hardened" ;;
-            esac
-
-            if [[ -n "${zfs_pkg}" ]]; then
-                pkgs+=("${zfs_pkg}")
-            fi
+            pkgs+=(archzfs/zfs-dkms archzfs/zfs-utils base-devel)
             ;;
     esac
 
     if [[ ${#pkgs[@]} -gt 0 ]]; then
-        log_info "Installing required tools: ${pkgs[*]}";
+        log_info "Installing required tools: ${pkgs[*]}"
         if ! gum spin --spinner dot --title "Preflight – installing dependencies" -- \
             pacman -S --noconfirm --needed "${pkgs[@]}"; then
-            log_warn "Primary mirror failed – restoring original mirrorlist and retrying."
+            log_warn "Package installation failed — restoring original mirrors and retrying."
             if [[ -f "${original_mirrorlist}" ]]; then
                 cp "${original_mirrorlist}" /etc/pacman.d/mirrorlist
+                pacman -Sy --noconfirm || true
             fi
-            pacman -Sy --noconfirm || true
-            gum spin --spinner dot --title "Preflight – retrying with original mirrors" -- \
-                pacman -S --noconfirm --needed "${pkgs[@]}" || die "Failed to install dependencies"
+            if ! gum spin --spinner dot --title "Preflight – retrying" -- \
+                pacman -S --noconfirm --needed "${pkgs[@]}"; then
+                log_error "Failed to install: ${pkgs[*]}"
+                die "Package installation failed. Check network and mirrorlist."
+            fi
         fi
         log_info "Preflight dependencies installed.";
         for pkg in "${pkgs[@]}"; do
-            pacman -Q "${pkg}" &>/dev/null || die "Failed to install ${pkg}"
+            local pkg_name="${pkg##*/}"
+            pacman -Q "${pkg_name}" &>/dev/null || die "Failed to install ${pkg}"
         done
     fi;
 
@@ -171,13 +160,10 @@ EOF
         depmod -a
 
         if ! modprobe zfs 2>/dev/null; then
-            local expected_kver
-            expected_kver=$(pacman -Qi "${zfs_pkg}" 2>/dev/null | grep -oP 'for kernel \K[\d.]+' || true)
-            if [[ -n "${expected_kver}" ]]; then
-                log_error "Prebuilt ZFS module (${zfs_pkg}) is for kernel ${expected_kver}, but running kernel is $(uname -r)."
-                die "Kernel version mismatch. The archzfs repo has not yet built ZFS for this kernel. Wait for an update or use a different live ISO."
-            fi
-            die "Failed to load ZFS kernel module."
+            log_error "Failed to load ZFS kernel module."
+            log_error "DKMS status:"
+            dkms status 2>/dev/null || true
+            die "ZFS kernel module not available. DKMS build may have failed or kernel $(uname -r) is unsupported."
         fi
         log_info "ZFS kernel module loaded successfully."
     fi

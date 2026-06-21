@@ -13,6 +13,7 @@ ensure_state_dirs() {
 state_save() {
     ensure_state_dirs
     {
+        printf 'MODE=%q\n'                  "${MODE:-auto}"
         printf 'DISK=%q\n'                  "${DISK:-}"
         printf 'FS_TYPE=%q\n'               "${FS_TYPE:-}"
         printf 'INIT=%q\n'                  "${INIT:-}"
@@ -54,6 +55,8 @@ state_save() {
         printf 'POWER_USER=%q\n'            "${POWER_USER:-no}"
         printf 'POWERUSER_PACKAGES=%q\n'    "${POWERUSER_PACKAGES:-}"
         printf 'POWERUSER_PROFILE=%q\n'     "${POWERUSER_PROFILE:-default}"
+        printf 'GUI_MODE=%q\n'               "${GUI_MODE:-no}"
+        printf 'ENABLE_AURIS=%q\n'          "${ENABLE_AURIS:-no}"
     } > "${STATE_FILE}"
     chmod 600 "${STATE_FILE}"
 }
@@ -128,6 +131,7 @@ stage_require_storage() {
         && (
             mountpoint -q /mnt/boot \
             || mountpoint -q /mnt/efi \
+            || mountpoint -q /mnt/boot/efi \
             || [[ -f /mnt/etc/fstab ]]
         )
 }

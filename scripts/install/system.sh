@@ -37,6 +37,25 @@ EOF
 KEYMAP=${keymap}
 EOF
 
+    local wm_de
+    wm_de="$(state_get WM_DE none)"
+    case "${wm_de}" in
+        hyprland|sway|niri|mango)
+            log_info "Wayland compositor detected — skipping X11 keymap (compositor handles layout)"
+            ;;
+        *)
+            log_info "Setting X11 keymap..."
+            mkdir -p /mnt/etc/X11/xorg.conf.d
+            cat > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf <<X11KEY
+Section "InputClass"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "${keymap}"
+EndSection
+X11KEY
+            ;;
+    esac
+
     log_info "Configuring timezone..."
     [[ -e "/mnt/usr/share/zoneinfo/${timezone}" ]] || die 'invalid timezone path'
     ln -sf "/usr/share/zoneinfo/${timezone}" /mnt/etc/localtime

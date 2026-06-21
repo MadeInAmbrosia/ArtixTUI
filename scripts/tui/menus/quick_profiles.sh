@@ -21,6 +21,7 @@ tui_quick_install() {
 
     case "${profile}" in
         *Desktop*)
+            state_set QUICK_PROFILE "Desktop"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux"
@@ -45,6 +46,7 @@ tui_quick_install() {
             state_set EXTRAS "git flatpak fastfetch firewalld bluez zram-tools firefox neovim alacritty fzf zoxide starship eza btop htop tmux mpv"
             ;;
         *Server*)
+            state_set QUICK_PROFILE "Server"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux"
@@ -68,6 +70,7 @@ tui_quick_install() {
             state_set EXTRAS "git firewalld zram-tools tmux"
             ;;
         *Minimal*)
+            state_set QUICK_PROFILE "Minimal"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux"
@@ -91,6 +94,7 @@ tui_quick_install() {
             state_set EXTRAS ""
             ;;
         *Embedded*)
+            state_set QUICK_PROFILE "Embedded"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux-lts"
@@ -115,6 +119,7 @@ tui_quick_install() {
             state_set EXTRAS ""
             ;;
         *Gaming*)
+            state_set QUICK_PROFILE "Gaming"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux-zen"
@@ -139,6 +144,7 @@ tui_quick_install() {
             state_set EXTRAS "git flatpak fastfetch firewalld firefox alacritty fzf zoxide starship eza btop tmux mpv"
             ;;
         *Development*)
+            state_set QUICK_PROFILE "Development"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux"
@@ -162,6 +168,7 @@ tui_quick_install() {
             state_set EXTRAS "git base-devel neovim firefox alacritty tmux fzf zoxide starship eza btop"
             ;;
         *Media*)
+            state_set QUICK_PROFILE "Media"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux"
@@ -186,6 +193,7 @@ tui_quick_install() {
             state_set EXTRAS "git flatpak firefox alacritty mpv feh fzf zoxide starship eza btop tmux"
             ;;
         *Volk*)
+            state_set QUICK_PROFILE "Volk"
             state_set FS_TYPE "ext4"
             state_set BOOTLOADER "grub"
             state_set KERNEL_CHOICE "linux"
@@ -208,10 +216,11 @@ tui_quick_install() {
             state_set AUDIO_STACK "pipewire"
             state_set X_STACK "xlibre"
             state_set USER_SHELL "bash"
-            state_set EXTRAS "git fastfetch tmux htop kitty firewalld flatpak"\
+            state_set EXTRAS "git fastfetch tmux htop kitty firewalld flatpak"
             tui_msg_quick "Volk Profile" "This profile builds a minimal source kernel with auto-detected hardware.\n\nNo VirtIO/VM drivers are included — this system will NOT boot in virtual machines."
             ;;
         *TestingQP*)
+            state_set QUICK_PROFILE "TestingQP"
             state_set FS_TYPE "zfs"
             state_set BOOTLOADER "limine"
             state_set KERNEL_CHOICE "linux-cachyos-bore"

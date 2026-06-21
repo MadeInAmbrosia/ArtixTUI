@@ -21,7 +21,7 @@ tui_select_init() {
 
 tui_select_filesystem() {
     local fs
-    local fs_options=("ext4" "btrfs" "xfs" "zfs" "f2fs" "bcachefs" "exfat")
+    local fs_options=("ext4" "btrfs" "xfs" "zfs" "f2fs" "bcachefs")
 
     local live_kernel_pkg=""
     case "$(uname -r)" in
@@ -39,7 +39,8 @@ tui_select_filesystem() {
     fs=$(tui_menu "Filesystem" "Select filesystem:" "${fs_options[@]}") || return 1
 
     if [[ "${fs}" == "zfs" ]]; then
-        tui_msg_quick "ZFS Selected" "ZFS likes to break. You're on your own. Good luck!"
+        tui_msg "Unavailable" "ZFS is temporarily disabled (Supports only 6.15 kernel)."
+        tui_select_filesystem    
     elif [[ "${fs}" == "bcachefs" ]]; then
         tui_msg "Unavailable" "Bcachefs-tools is temporarily disabled for stability reasons (Rust rewrite W.I.P)."
         tui_select_filesystem
@@ -67,9 +68,38 @@ tui_select_uki() {
 tui_select_kernel() {
     local k
     k=$(tui_menu "Kernel" "Select kernel:" \
-        "linux" "linux-zen" "linux-lts" "linux-hardened" "linux-libre" \
-        "linux-cachyos-bore" "linux-bazzite-bin" "xanmod" "tkg") || return 1
-    state_set KERNEL_CHOICE "${k}"
+        "linux-* (standard)" "linux-cachyos-*" "linux-bazzite-bin" "xanmod" "tkg" \
+        "linux-libre") || return 1
+
+    case "${k}" in
+        "linux-* (standard)")
+            local variant
+            variant=$(tui_menu "Standard Kernel" "Select variant:" \
+                "linux" \
+                "linux-zen" \
+                "linux-lts" \
+                "linux-hardened") || return 1
+            state_set KERNEL_CHOICE "${variant}"
+            ;;
+        "linux-cachyos-*")
+            local variant
+            variant=$(tui_menu "CachyOS Kernel" "Select variant:" \
+                "linux-cachyos (EEVDF)" \
+                "linux-cachyos-bore (BORE)" \
+                "linux-cachyos-eevdf" \
+                "linux-cachyos-bmq (BMQ)" \
+                "linux-cachyos-rt-bore (RT + BORE)" \
+                "linux-cachyos-hardened (BORE + hardening)" \
+                "linux-cachyos-lts (EEVDF, long-term)" \
+                "linux-cachyos-server (EEVDF, server)" \
+                "linux-cachyos-deckify (BORE, Steam Deck)") || return 1
+            variant="${variant%% *}"
+            state_set KERNEL_CHOICE "${variant}"
+            ;;
+        *)
+            state_set KERNEL_CHOICE "${k}"
+            ;;
+    esac
 }
 
 tui_select_theme() {
@@ -130,6 +160,7 @@ tui_collect_install_config() {
     tui_select_priv_escalation
     tui_select_extras
     tui_select_luks
+    tui_select_auris
     tui_select_arch_repos
     tui_select_offline_mode
     tui_select_hostname

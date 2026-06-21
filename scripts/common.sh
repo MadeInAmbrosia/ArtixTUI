@@ -50,6 +50,12 @@ require_efi() {
 }
 
 require_internet() {
+    if [[ -d /mnt/repo || -d /run/artix/repo ]]; then
+        export ALLOW_OFFLINE=yes
+        log_info "Local repository detected – enabling offline mode"
+        return 0
+    fi
+
     if command -v dig &>/dev/null; then
         if dig +short +timeout=3 cloudflare.com &>/dev/null; then
             return 0

@@ -5,21 +5,41 @@ Don’t worry if you don’t know what something means – that’s what this is
 
 ---
 
-## 1. Installation Mode
+## 1. Installation Interface
+
+ArtixForge offers **two interfaces**:
+
+| Interface | When it appears | How to use |
+|-----------|----------------|------------|
+| **Terminal UI (TUI)** | Default in a TTY or when `DISPLAY` is not set | Keyboard only, works on any terminal |
+| **Graphical UI (GUI)** | When a desktop environment (KDE, XFCE, etc.) is detected | Mouse + keyboard, native GTK4 windows |
+
+If you boot an ArtixForge‑generated ISO with a desktop environment, you'll see a desktop icon.
+Double‑click it to launch the GUI installer. Alternatively, run `sudo ./install` in a terminal
+and answer "Yes" when asked if you want to use the GUI.
+
+Both interfaces collect the same configuration and run the same installation backend.
+Choose whichever feels comfortable.
+
+---
+
+## 2. Installation Mode
 
 | Mode | What it does | When to use it |
 |------|-------------|----------------|
 | Automatic | Full guided install, step by step | First time, clean disk |
 | Manual | You partition the disk yourself, installer does the rest | You already know your disk layout |
 | Resume | Continue an interrupted install | The installer crashed or you rebooted |
-| Recovery | Scan /mnt for an existing broken system, auto-detect issues, repair | Fixing a damaged installation with smart detection |
+| Recovery | Scan `/mnt` for an existing system, auto-detect issues, repair | Fixing a damaged installation with smart detection |
 | Power User | Build packages from source, Gentoo‑style | You want full control over compilation |
+| Build ISO | Create a custom Artix live ISO from a profile | You want a personalised rescue or installation disk |
+| System Migration | Convert init system or desktop environment on an installed system | Change your mind after installation without reinstalling |
 
 If you’re new to Linux or Artix, **Automatic** is the simplest way to get a working system.
 
 ---
 
-## 2. Disk Selection
+## 3. Disk Selection
 
 Choose the physical drive where Artix will be installed.
 `/dev/sda` is usually your primary disk, `/dev/nvme0n1` is an NVMe SSD.
@@ -30,7 +50,7 @@ If your disk is an NVMe drive, the installer will automatically enable the `disc
 
 ---
 
-## 3. Init System
+## 4. Init System
 
 The init system is the first program the kernel starts; it manages all other services.
 
@@ -46,7 +66,7 @@ Each init system works well; the choice largely depends on how much control you 
 
 ---
 
-## 4. Filesystem
+## 5. Filesystem
 
 Determines how data is organised on the disk.
 
@@ -57,14 +77,13 @@ Determines how data is organised on the disk.
 | xfs | Excellent for large files, quick recovery | Cannot be shrunk |
 | f2fs | Optimised for flash storage (SSD, eMMC) | Not suitable for HDDs |
 | bcachefs | Modern, advanced features (compression, tiering) | **Experimental** – tools still under heavy development |
-| exfat | Compatible with Windows | Not suitable for a root filesystem |
 | zfs | Data integrity, snapshots, RAID, encryption | High memory usage; **experimental on Artix** |
 
 If you don’t have a specific reason to choose otherwise, ext4 is a reliable, zero‑maintenance option. btrfs is a great choice if you want snapshots and compression.
 
 ---
 
-## 5. Bootloader
+## 6. Bootloader
 
 The software that loads your operating system when you switch on the computer.
 
@@ -73,15 +92,18 @@ The software that loads your operating system when you switch on the computer.
 | GRUB | The most widely‑used bootloader; supports dual‑boot, theming, and encrypted partitions. **If you're unsure, use GRUB.** |
 | rEFInd | A graphical boot manager that auto‑detects installed operating systems. |
 | EFIStub | Boots the Linux kernel directly from your UEFI firmware – no separate bootloader needed. Very fast, but requires compatible firmware and manual setup. |
-| Limine | Modern, portable, multiprotocol bootloader. Clean config syntax, BTRFS snapshot booting, Windows chainloading. UEFI-only on ArtixForge. |
-| UKI (Unified Kernel Image) | Bundles the kernel, initramfs and command line into a single .efi file. Perfect for Secure Boot and very clean, but UEFI‑only. |
+| Limine | Modern, portable, multiprotocol bootloader. Clean config syntax, BTRFS snapshot booting, Windows chainloading. UEFI‑only on ArtixForge. |
 
 All choices work; GRUB is the most forgiving for beginners and the easiest to troubleshoot.
 Limine is a great choice if you want a clean, modern config and BTRFS rollback support.
 
+**UKI (Unified Kernel Image)** is not a bootloader, but an optional feature that bundles the kernel,
+initramfs and command line into a single `.efi` file. It works with GRUB, Limine, or EFIStub.
+Enable it on the Bootloader page if you want a Secure‑Boot‑friendly single file.
+
 ---
 
-## 6. Kernel
+## 7. Kernel
 
 The core of the operating system.
 
@@ -101,7 +123,7 @@ Standard `linux` is a safe choice. If you do a lot of interactive work or gaming
 
 ---
 
-## 7. Desktop Environment
+## 8. Desktop Environment
 
 Your graphical interface.
 
@@ -118,19 +140,20 @@ Your graphical interface.
 | dwm | Tiling window manager | Minimal, configured via source code |
 | IceWM | Stacking window manager | Extremely light, familiar look |
 | MangoWM | Wayland compositor | Lightweight, active development |
+| SonicDE | Full Desktop | Third-party KDE 6.6 X11 fork |
 | none | No desktop | You’ll start from a terminal |
 
 All of these can produce a comfortable environment. KDE and XFCE are the most popular; Hyprland and Sway are great if you like tinkering.
 
 ---
 
-## 8. Display Stack (X11 / Wayland)
+## 9. Display Stack (X11 / Wayland)
 
-Most desktop environments will automatically select the appropriate display stack. If you choose a Wayland compositor (Hyprland, Sway, Niri), the X stack is irrelevant. For XFCE, LXQt, LXDE, or i3/dwm, you’ll usually want `X.Org` (But let's be real - Artix is focused on `xLibre`, so you should probably use that whenever possible).
+Most desktop environments will automatically select the appropriate display stack. If you choose a Wayland compositor (Hyprland, Sway, Niri), the X stack is irrelevant. For XFCE, LXQt, LXDE, or i3/dwm, you’ll usually want `X.Org` (but Artix is focused on `xLibre`, so use that whenever possible).
 
 ---
 
-## 9. Network Stack
+## 10. Network Stack
 
 How your system connects to the internet.
 
@@ -145,7 +168,7 @@ NetworkManager is the easiest to live with on a daily‑use machine.
 
 ---
 
-## 10. Audio Stack
+## 11. Audio Stack
 
 | Stack | Description |
 |-------|-------------|
@@ -157,7 +180,7 @@ PipeWire is now the standard on most distributions and works great.
 
 ---
 
-## 11. Privilege Escalation
+## 12. Privilege Escalation
 
 How you run commands as root.
 
@@ -170,7 +193,7 @@ Both are secure. `sudo` is more familiar; `doas` is loved by minimalists.
 
 ---
 
-## 12. Coreutils (Power User only)
+## 13. Coreutils (Power User only)
 
 The basic command‑line tools (`ls`, `cp`, `cat`, …).
 
@@ -186,7 +209,7 @@ GNU coreutils are the safest choice for compatibility with scripts and existing 
 
 ---
 
-## 13. Disk Encryption (LUKS)
+## 14. Disk Encryption (LUKS)
 
 Encrypts your entire root partition. Requires a passphrase at boot.
 
@@ -194,7 +217,7 @@ LUKS works well with any filesystem. If you also enable LVM, the encryption wrap
 
 ---
 
-## 14. Logical Volume Management (LVM)
+## 15. Logical Volume Management (LVM)
 
 Allows you to resize, move, and combine partitions easily without rebooting.
 
@@ -202,7 +225,7 @@ LVM is especially useful on servers or if you need to resize partitions frequent
 
 ---
 
-## 15. Power User Mode – Source Compilation
+## 16. Power User Mode – Source Compilation
 
 If you selected Power User mode, you can compile packages from source instead of using pre‑built binaries. This gives you:
 
@@ -214,14 +237,14 @@ If you selected Power User mode, you can compile packages from source instead of
 
 ---
 
-## 15.1. Community Recipes
+## 16.1. Community Recipes
 
 ArtixForge can download additional recipes from the community repository at
 [ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes).
 
-Use `gartix sync` to pull the latest recipe list and download new recipes.
+Use `anvil sync` to pull the latest recipe list and download new recipes.
 By default, only tested OFFICIAL recipes are included. You can enable
-COMMUNITY recipes through the "Manage recipe sections" option in `gartix --tui`.
+COMMUNITY recipes through the "Manage recipe sections" option in `anvil --tui`.
 
 To contribute your own recipes, see the [ArtixForge-recipes](https://github.com/realvolk/ArtixForge-recipes) repository.
 
@@ -231,7 +254,7 @@ heal the recipe. Select "Heal recipe" from the build failure menu.
 
 ---
 
-## 16. Quick Install Profiles
+## 17. Quick Install Profiles
 
 Instead of answering every question, you can pick a pre‑made profile:
 
@@ -252,7 +275,73 @@ Select "Load custom profile" from the Quick Profiles menu and provide the file p
 
 ---
 
-## 17. Sanity Warnings
+## 18. ISO Generation (Build ISO mode)
+
+ArtixForge can build a fully customised Artix live ISO.
+
+When you select **Build ISO** from the main menu, you will be asked:
+
+| Option | What it does |
+|--------|-------------|
+| Live Desktop | Includes a full desktop environment (KDE, XFCE, etc.) and the ArtixForge installer on the desktop. Boot into a graphical environment, then double‑click the installer icon. |
+| Installer | Boots directly into the ArtixForge TUI. No desktop, no extra packages. Minimal and fast. |
+
+After choosing the boot mode, you can either:
+
+- **Pick a Quick Profile** – Desktop, Server, Minimal, Embedded, Gaming, Development, Media, or Volk's Personal.
+- **Customise everything** – Same detailed configuration as a normal installation.
+- **Load a saved profile** – Reuse a configuration from a previous installation.
+
+You can also add extra packages to the ISO and choose **Offline ISO** to bundle all packages
+so the installer can run without an internet connection.
+
+The built ISO will be placed in `~/ArtixForge-ISO/` along with a build log.
+You can burn it to a USB stick or boot it in a virtual machine.
+
+**GUI ISO Builder:** includes a file browser for loading saved profiles and a target system configuration page for offline builds.
+
+---
+
+## 19. System Migration (Convert init or desktop)
+
+If you already have Artix installed and want to change your init system or desktop environment
+**without reinstalling**, select **System Migration** from the main menu (run from a live ISO
+or from within the installed system).
+
+### Init Migration
+
+Convert between OpenRC, runit, dinit, s6, and even systemd (if you have Arch repos enabled).
+
+The migration will:
+
+- Back up your current init configuration to `/root/init-backup-*`
+- Detect all enabled services and map them to the new init system
+- Handle custom (non‑package) services by saving them separately
+- Install the new init packages and enable the appropriate services
+
+Not all service names are identical across init systems. ArtixForge includes mapping tables
+for common services; for less common ones, you will receive a warning and the service will
+need to be migrated manually.
+
+### Desktop Migration
+
+Convert between any of the supported desktop environments and window managers.
+
+The migration will:
+
+- Back up your user configurations (`~/.config`, `~/.local`, `~/.cache`)
+- Remove the old desktop packages
+- Install the new desktop and its recommended packages
+- Optionally change the display manager, display stack, audio stack, and network stack
+- Preserve or reinstall your selected extra packages
+
+After migration, reboot to start the new environment.
+
+**GUI Migration:** the current init system and desktop environment are auto-detected and displayed. Desktop migration includes sub-pages for display manager, display stack, audio stack, network stack, and extra package selection.
+
+---
+
+## 20. Sanity Warnings
 
 Before the installation begins, the installer will warn you about potentially unsafe choices, such as:
 
@@ -268,7 +357,7 @@ Read these warnings carefully – they exist because the combination you chose m
 
 ---
 
-## 18. Recovery Mode
+## 21. Recovery Mode
 
 If your system fails to boot or behaves unexpectedly, ArtixForge can help.
 Boot the live ISO, mount your root partition to `/mnt`, and select
@@ -294,15 +383,45 @@ You can then choose:
 | Repair filesystem corruption | Check and optionally repair the root filesystem (safe or destructive) |
 | Untrusted Recovery | Rootkit scan, malware indicator check, optional ClamAV |
 
-After installation, you can also run `gartix recovery` from the installed
+After installation, you can also run `anvil recovery` from the installed
 system to check and repair source‑built packages.
 
 **Filesystem repair** will unmount your root partition and run filesystem-specific
-tools. Choose "Safe" for a non-destructive check; "Destructive" to attempt aggressive
+tools. Choose "Safe" for a non‑destructive check; "Destructive" to attempt aggressive
 repairs that may discard corrupted data. Always back up first.
 
 **Untrusted Recovery** is a read-only threat scan. It does not modify anything,
 but the scans themselves may trigger anti-malware alerts on a running system.
+
+---
+
+## 22. GUI Installer Notes
+
+When you run the GUI installer (from a desktop environment), the configuration
+is collected through a single persistent window with multiple pages.
+At the end, a summary page shows your choices and any safety warnings.
+
+After clicking **Install**, the GUI saves your configuration and starts the
+non‑interactive backend. A progress window will display live logs from the
+installation (partitioning, package downloads, kernel builds, etc.). A progress
+bar fills as each installation stage completes.
+
+The GUI supports five colour themes (ArtixForge, Artix, Jet Black, Mono, Retro)
+with light/dark backgrounds. The theme is applied to the entire window including
+buttons, dropdowns, and tabs.
+
+Passwords are hashed before being saved to the configuration file.
+
+Power User mode includes recipe fetching from the community repository, package
+selection with tooltips showing source URLs, and conditional pages that appear
+only when relevant options are selected.
+
+You can cancel the installation from the progress window. If you do,
+the system will not be modified. You can run the installer again and
+choose **Resume** to continue from where it stopped.
+
+The GUI works exactly like the TUI – it only changes how you answer the
+questions. The actual installation process is identical.
 
 ---
 
@@ -316,6 +435,9 @@ Yes. Use Manual mode, create partitions for Artix alongside your existing OS, an
 
 **What if the installer stops or crashes?**
 Reboot, start the installer again, and pick **Resume** from the main menu. It will continue from the last completed stage.
+
+**Does the GUI work in a virtual machine?**
+Yes, if the VM has graphics acceleration and a desktop environment. For headless VMs, use the TUI.
 
 **Where can I get help?**
 Open an issue on [GitHub](https://github.com/realvolk/ArtixForge/issues) or visit the Artix community forums.
@@ -332,6 +454,7 @@ Open an issue on [GitHub](https://github.com/realvolk/ArtixForge/issues) or visi
 | A headless server | No desktop, dhcpcd+iwd, ext4, doas, possibly LVM |
 | A minimal, embedded system | Power User, BusyBox init, linux-lts, BusyBox coreutils |
 | Total customisation | Power User, build your own kernel, choose every component yourself |
+| A personalised live ISO | Build ISO mode, pick a Quick Profile, enable offline mode |
 
 ---
 

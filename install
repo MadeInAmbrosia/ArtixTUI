@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
-
 set -Eeuo pipefail
 
 SELF_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 BASE_DIR="${SELF_PATH%/*}"
 SCRIPT_DIR="${BASE_DIR}/scripts"
+
+if [[ "${ARTIX_RUNTIME_DIR:-}" != "/tmp/artix-run" && -d /tmp ]]; then
+    mkdir -p /tmp/artix-run
+    cp -a "${BASE_DIR}" /tmp/artix-run/
+    export ARTIX_RUNTIME_DIR=/tmp/artix-run
+    exec "/tmp/artix-run/ArtixForge/install" "$@"
+    exit 0
+fi
 
 _die_early() {
     printf '\n\e[1;31m[!] %s\e[0m\n' "${1:-unknown error}" >&2
@@ -24,7 +31,19 @@ installer_error() {
     clear
     printf '\n[!] Installation failed at line: %s\n' "${line}" >&2
     printf '[!] Exit status: %s\n' "${rc}" >&2
-    printf '[!] The installation was NOT completed.\n' >&2
+    
+    if [[ -f /tmp/artix-installer/install.log ]]; then
+        printf '\n[!] Last 10 lines of install log:\n' >&2
+        tail -10 /tmp/artix-installer/install.log >&2
+    fi
+    
+    if [[ -f /tmp/artix-migration-debug.log ]]; then
+        printf '\n[!] Migration debug log available at: /tmp/artix-migration-debug.log\n' >&2
+        printf '[!] Last 20 lines:\n' >&2
+        tail -20 /tmp/artix-migration-debug.log >&2
+    fi
+    
+    printf '\n[!] The installation was NOT completed.\n' >&2
     exit "${rc}"
 }
 
@@ -77,6 +96,8 @@ verify_installer_layout() {
     for dir in "${required_dirs[@]}"; do [[ -d "${SCRIPT_DIR}/${dir}" ]] || return 1; done
     [[ -d "${SCRIPT_DIR}/tui/menus" ]] || return 1
     [[ -d "${POWERUSER_DIR:-${BASE_DIR}/poweruser}/tui/menup" ]] || return 1
+    [[ -d "${BASE_DIR}/iso" ]] || return 1
+    [[ -d "${BASE_DIR}/migrations" ]] || return 1
     return 0
 }
 
@@ -106,6 +127,7 @@ fi
 source "${SCRIPT_DIR}/common.sh"
 source "${SCRIPT_DIR}/state.sh"
 source "${SCRIPT_DIR}/kernels.sh"
+source "${BASE_DIR}/iso/tui.sh" 2>/dev/null || true
 source_tree tui storage install post stages recovery
 
 MODE=""
@@ -113,20 +135,32 @@ DEBUG="false"
 
 main_menu() {
     local mode
-    mode=$(tui_menu "ArtixForge v8" "Select installation mode:" \
+    mode=$(tui_menu "ArtixForge v9?" "Select installation mode:" \
         "Automatic – guided installation" \
         "Manual – detect existing partitions" \
         "Resume – resume interrupted install" \
-        "Recovery – scan /mnt for existing system" \
-        "Power User – source‑built packages") || exit 1
+        "Advanced – recovery, power user, migration, ISO") || exit 1
 
     case "${mode}" in
         Automatic*) MODE='auto' ;;
         Manual*)    MODE='manual' ;;
         Resume*)    MODE='resume' ;;
-        Recovery*)  MODE='recovery' ;;
-        Power*)     MODE='power' ;;
-        *)          MODE='auto' ;;
+        Advanced*)
+            mode=$(tui_menu "Advanced" "Select advanced mode:" \
+                "Recovery – scan /mnt for existing system" \
+                "Power User – source‑built packages" \
+                "System Migration – convert init or desktop" \
+                "Build ISO – create a custom live ISO" \
+                "Back") || return 1
+            case "${mode}" in
+                Recovery*)          MODE='recovery' ;;
+                Power*)             MODE='power' ;;
+                "System Migration"*) MODE='migrate' ;;
+                "Build ISO"*)       MODE='iso' ;;
+                *)                  return 1 ;;
+            esac
+            ;;
+        *) MODE='auto' ;;
     esac
 
     if tui_yesno "Debug Mode" "Enable debug mode (verbose logging)?"; then
@@ -203,41 +237,73 @@ Attempt recovery and continue installation?"; then
         clear; tui_msg_quick "Recovery Cancelled" "Recovery cancelled by user."; exit 0
     fi
     log_info "Entering recovery mode..."
-    local recovery_choice
-    recovery_choice=$(tui_menu "Recovery Options" "What would you like to do?" \
-        "View system status" \
-        "Repair detected issues" \
-        "Fix everything (kernel, initramfs, GRUB, fstab)" \
-        "Repair filesystem corruption (safe or destructive)" \
-        "Scan for rootkits" \
-        "Untrusted Recovery (rootkit hunt + malware scan)" \
-        "Full reinstall (run installer)" \
-        "Abort") || exit 1
 
-    case "${recovery_choice}" in
-        "View system status")
-            tui_msg "System Status" "$(recovery_get_status)"
-            ;;
-        "Repair detected issues")
-            repair_detected_issues
-            ;;
-        "Fix everything"*)
-            repair_system
-            ;;
-        "Repair filesystem"*)
-            repair_filesystem
-            ;;
-        "Scan for rootkits")
-            detect_rootkits
-            ;;
-        "Untrusted Recovery"*)
-            untrusted_recovery
-            ;;
-        "Full reinstall"*)
-            run_install_pipeline
-            ;;
-        *) exit 0 ;;
-    esac
+    while true; do
+        local recovery_choice
+        recovery_choice=$(tui_menu "Recovery Options" "What would you like to do?" \
+            "View system status" \
+            "Repair detected issues" \
+            "Fix everything (kernel, initramfs, GRUB, fstab)" \
+            "Repair filesystem corruption (safe or destructive)" \
+            "Scan for rootkits" \
+            "Untrusted Recovery (rootkit hunt + malware scan)" \
+            "Full reinstall (run installer)" \
+            "Return to main menu" \
+            "Exit") || exit 1
+
+        case "${recovery_choice}" in
+            "View system status")
+                tui_msg "System Status" "$(recovery_get_status)"
+                ;;
+            "Repair detected issues")
+                repair_detected_issues
+                tui_msg "Repair Complete" "Detected issues have been repaired.\n\nRun 'View system status' to verify."
+                ;;
+            "Fix everything"*)
+                repair_system
+                tui_msg "Repair Complete" "Full system repair completed.\n\nRun 'View system status' to verify."
+                ;;
+            "Repair filesystem"*)
+                repair_filesystem
+                ;;
+            "Scan for rootkits")
+                detect_rootkits
+                tui_msg "Scan Complete" "Rootkit scan finished. Check /tmp/rkhunter.log"
+                ;;
+            "Untrusted Recovery"*)
+                untrusted_recovery
+                ;;
+            "Full reinstall"*)
+                if tui_yesno "Full Reinstall" "This will wipe recovery state and start a fresh installation. Continue?"; then
+                    rm -f /tmp/artix-installer/state.conf
+                    rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
+                    umount -R /mnt 2>/dev/null || true
+                    MODE='auto'
+                    start_auto_install
+                    return
+                fi
+                ;;
+            "Return to main menu")
+                clear
+                main_menu
+                return
+                ;;
+            "Exit")
+                clear
+                tui_msg_quick "Recovery" "Recovery mode exited. System remains at /mnt."
+                exit 0
+                ;;
+        esac
+    done
+}
+
+start_system_migration() {
+    if [[ -f "${BASE_DIR}/migrations/migrate.sh" ]]; then
+        source "${BASE_DIR}/migrations/migrate.sh"
+        tui_migration_menu
+    else
+        tui_msg_quick "Not Available" "Migration module not found at migrations/migrate.sh"
+    fi
 }
 
 main() {
@@ -254,6 +320,163 @@ main() {
                 printf '[!] Failed to install gum. Install it manually and retry.\n' >&2
                 exit 1
             }
+        fi
+    fi
+
+    if [[ "${1:-}" == "--non-interactive" ]]; then
+        source "${SCRIPT_DIR}/noninteractive.sh"
+        state_load
+        MODE="$(state_get MODE auto)"
+        log_info "Non‑interactive mode: ${MODE}"
+        case "${MODE}" in
+            auto|manual)
+                state_set INSTALL_MODE "${MODE}"
+                stage_preflight || die 'preflight stage failed'
+                stage_storage   || die 'storage stage failed'
+                stage_base      || die 'base stage failed'
+                [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || true
+                stage_chroot    || die 'chroot stage failed'
+                stage_init      || die 'init configuration stage failed'
+                stage_post      || die 'post-install stage failed'
+                stage_finalize  || die 'finalization stage failed'
+                ;;
+            resume)
+                resume_install
+                ;;
+            recovery)
+                local action
+                action="$(state_get RECOVERY_ACTION 'View system status')"
+                log_info "Recovery action: ${action}"
+                if ! recovery_detect_install; then
+                    recovery_mount_all || die "Failed to mount target"
+                fi
+                recovery_import_state
+                case "${action}" in
+                    "Repair detected issues") repair_detected_issues ;;
+                    "Fix everything"*)       repair_system ;;
+                    "Repair filesystem"*)    repair_filesystem ;;
+                    "Scan for rootkits")     detect_rootkits ;;
+                    "Untrusted Recovery"*)   untrusted_recovery ;;
+                    "Full reinstall"*)
+                        rm -f /tmp/artix-installer/state.conf
+                        rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
+                        umount -R /mnt 2>/dev/null || true
+                        MODE='auto'
+                        start_auto_install
+                        return
+                        ;;
+                    *)
+                        tui_msg "System Status" "$(recovery_get_status)"
+                        ;;
+                esac
+                log_info "Recovery action completed."
+                ;;
+            power)
+                state_set POWER_USER "yes"
+                stage_preflight || die 'preflight stage failed'
+                stage_storage   || die 'storage stage failed'
+                stage_base      || die 'base stage failed'
+                stage_poweruser || die 'power user stage failed'
+                stage_chroot    || die 'chroot stage failed'
+                stage_init      || die 'init configuration stage failed'
+                stage_post      || die 'post-install stage failed'
+                stage_finalize  || die 'finalization stage failed'
+                ;;
+            iso)
+                if ! command -v buildiso &>/dev/null; then
+                    log_info "Installing artools and iso-profiles..."
+                    pacman -S --noconfirm artools iso-profiles || die "Failed to install artools"
+                    modprobe loop
+                fi
+                source "${BASE_DIR}/iso/tui.sh"
+                local profile_name init kernel offline boot_mode
+                profile_name="$(state_get QUICK_PROFILE 'Desktop')"
+                init="$(state_get INIT 'openrc')"
+                kernel="$(state_get KERNEL_CHOICE 'linux')"
+                offline="$(state_get ALLOW_OFFLINE 'no')"
+                boot_mode="$(state_get ISO_BOOT_MODE 'live')"
+                source "${BASE_DIR}/iso/build.sh"
+                build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
+                ;;
+            migrate)
+                local mig_type mig_src mig_tgt
+                mig_type="$(state_get MIGRATION_TYPE '')"
+                mig_src="$(state_get MIGRATION_SRC '')"
+                mig_tgt="$(state_get MIGRATION_TGT '')"
+                if [[ -z "${mig_type}" || -z "${mig_src}" || -z "${mig_tgt}" ]]; then
+                    die "Migration state incomplete – run GUI configuration first"
+                fi
+                if [[ "${mig_type}" == "init" ]]; then
+                    source "${BASE_DIR}/migrations/inits/common.sh"
+                    run_init_migration "${mig_src}" "${mig_tgt}"
+                else
+                    source "${BASE_DIR}/migrations/des/common.sh"
+                    run_de_migration "${mig_src}" "${mig_tgt}"
+                fi
+                ;;
+            *)
+                log_error "Unknown mode: ${MODE}"
+                exit 1
+                ;;
+        esac
+        log_info "Installation complete. You may now reboot."
+        exit 0
+    fi
+
+    if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
+        if [[ -d "${BASE_DIR}/forge-gui" ]]; then
+            if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
+                clear
+                log_info "Launching GUI configuration window..."
+                export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
+                export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
+                
+                export DISPLAY="${DISPLAY:-:0}"
+                export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
+                command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
+
+                local venv_dir="/tmp/artix-gui-venv"
+                if [[ ! -d "${venv_dir}" ]]; then
+                    log_info "Setting up Python virtual environment for GUI..."
+                    pacman -S --noconfirm --needed python-virtualenv gtk4 libadwaita python-gobject python-jsonschema
+                    python3 -m venv "${venv_dir}" --system-site-packages
+                    "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
+                fi
+                
+                unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
+                cd "${BASE_DIR}/forge-gui" && PYTHONPATH=".:${PYTHONPATH:-}" "${venv_dir}/bin/python3" -m forge_ui.cli --mode config > /tmp/gui-output.log 2>&1 || true
+
+                if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
+                    log_info "GUI configuration complete. Starting installation..."
+                    MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
+                    MODE="${MODE:-auto}"
+                    log_info "Mode: ${MODE}"
+                    exec "$0" --non-interactive
+                    exit 0
+                else
+                    log_error "GUI configuration was not completed. Falling back to TUI."
+                fi
+            fi
+        elif command -v forge-gui &>/dev/null; then
+            if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
+                clear
+                log_info "Launching GUI configuration window from PATH..."
+                export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
+                export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
+                
+                forge-gui --mode config
+                
+                if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
+                    log_info "GUI configuration complete. Starting installation..."
+                    MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
+                    MODE="${MODE:-auto}"
+                    log_info "Mode: ${MODE}"
+                    exec "$0" --non-interactive
+                    exit 0
+                else
+                    log_error "GUI configuration was not completed. Falling back to TUI."
+                fi
+            fi
         fi
     fi
 
@@ -276,6 +499,8 @@ main() {
         resume)   resume_install ;;
         recovery) start_recovery_install ;;
         power)    MODE='power' ; state_set POWER_USER "yes" ; start_auto_install ;;
+        migrate)  start_system_migration ;;
+        iso)      start_iso_build ;;
         *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
 
