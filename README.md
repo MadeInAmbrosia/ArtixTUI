@@ -29,7 +29,7 @@ It walks you through partitioning, filesystem creation, base system installation
 
 * **Two interfaces:** Terminal UI (keyboard‑only, works in any TTY) and Graphical UI (GTK, mouse‑friendly, launches automatically in desktop environments).
 * Built with `gum` for the TUI and `GTK3` + `Python` for the GUI.
-* Custom colour themes (Gentoo Purple, Artix Blue, Jet Black, Mono, Retro) that persist to the installed system.
+* Custom colour themes (ArtixForge, Artix Blue, Jet Black, Mono, Retro) that persist to the installed system.
 * Resilience hardened: automatic pacman lock recovery, exponential backoff retries, mid‑build resume, disk space checks at every stage.
 * **Build custom live ISOs** from any Quick Profile or full configuration – includes offline package bundles.
 * **System Migration:** convert between init systems (openrc, runit, dinit, s6, systemd) or desktop environments without reinstalling.
@@ -57,7 +57,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Recovery             | Smart issue detection, surgical repair, filesystem repair (safe/destructive), untrusted recovery (rootkit/malware scan) |
 | Power User           | Source compilation, custom kernel config, community recipes, recipe self-healing                                        |
 | Quick Profiles       | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal                                         |
-| Theme                | Gentoo, Artix, Jet Black, Mono, Retro                                                                                   |
+| Theme                | ArtixForge, Artix, Jet Black, Mono, Retro                                                                                   |
 
 ---
 
