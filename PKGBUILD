@@ -19,16 +19,16 @@ optdepends=(
 )
 makedepends=('git')
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/realvolk/ArtixForge/archive/refs/tags/v${pkgver}.tar.gz"
-        "forge-gui-${pkgver}.tar.gz::https://github.com/realvolk/forge-gui/archive/refs/tags/v${pkgver}.tar.gz")
+        "forge-gui-0.4.0.tar.gz::https://github.com/realvolk/forge-gui/archive/refs/tags/v0.4.0.tar.gz")
 sha256sums=('7ac9380a5aff33ca9734ca91f3f19ed6dbc512226ae4e3f6378e4f4c1461db99'
             '15d5359c8c8d7666eab6dc7ba7b9c5ec14d04882a440d4dc1bcb5b9bdce9984b')
-            
+
 package() {
     install -dm755 "${pkgdir}/usr/share/artixforge"
     cp -a "${srcdir}/ArtixForge-${pkgver}"/* "${pkgdir}/usr/share/artixforge/"
 
     install -dm755 "${pkgdir}/usr/share/artixforge/forge-gui"
-    cp -a "${srcdir}/forge-gui-${pkgver}"/* "${pkgdir}/usr/share/artixforge/forge-gui/"
+    cp -a "${srcdir}/forge-gui-0.4.0"/* "${pkgdir}/usr/share/artixforge/forge-gui/"
 
     install -dm755 "${pkgdir}/usr/bin"
     ln -sf "/usr/share/artixforge/install" "${pkgdir}/usr/bin/artixforge"
