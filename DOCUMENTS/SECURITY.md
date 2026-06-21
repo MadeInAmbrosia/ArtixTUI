@@ -11,10 +11,8 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v9.x (future) | Yes |
-| v8.9.x (v9-merger) | Best effort |
-| v8.4.x (current main) | Deprecated |
-| < v8.4.0.0 | No |
+| v9.0.0.0   | Yes |
+| < v9.0.0.0 | No |
 
 ## Scope
 
