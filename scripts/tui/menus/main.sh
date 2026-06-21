@@ -106,13 +106,13 @@ tui_select_theme() {
     local theme
     while true; do
         theme=$(tui_menu "Theme" "Select colour scheme:" \
-            "Gentoo (default)" \
+            "Forge (default)" \
             "Artix" \
             "Jet Black" \
             "Mono" \
             "Retro") || break
         case "${theme}" in
-            "Gentoo (default)")
+            "Forge (default)")
                 GUM_TITLE_COLOR=212; GUM_ACCENT_COLOR=34 ;;
             Artix*)
                 GUM_TITLE_COLOR=39; GUM_ACCENT_COLOR=117 ;;

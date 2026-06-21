@@ -15,12 +15,12 @@ _ensure_log_dirs() {
 theme_ansi() {
     local gum_code="${1:-212}"
     case "${gum_code}" in
-        212) printf '\e[38;5;212m' ;;  # gentoo purple
+        212) printf '\e[38;5;212m' ;;  # forge purple
         39)  printf '\e[38;5;39m' ;;   # artix blue
         245) printf '\e[38;5;245m' ;;  # light grey
         250) printf '\e[38;5;250m' ;;  # lighter grey
         3)   printf '\e[38;5;3m' ;;    # amber
-        34)  printf '\e[38;5;34m' ;;   # gentoo green accent
+        34)  printf '\e[38;5;34m' ;;   # forge green accent
         117) printf '\e[38;5;117m' ;;  # baby blue accent
         196) printf '\e[38;5;196m' ;;  # red accent
         255) printf '\e[38;5;255m' ;;  # white accent
