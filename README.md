@@ -61,6 +61,28 @@ It walks you through partitioning, filesystem creation, base system installation
 
 ---
 
+## Screenshots
+
+<details>
+<summary>Click to expand — 14 screenshots</summary>
+
+| | | |
+|:---:|:---:|:---:|
+| ![1](.github/screenshots/1.png) | ![2](.github/screenshots/2.png) | ![3](.github/screenshots/3.png) |
+| Mode Selection | Kernel Selection | Extras Search |
+| ![4](.github/screenshots/4.png) | ![5](.github/screenshots/5.png) | ![6](.github/screenshots/6.png) |
+| Installation Summary | Filesystem Creation | Package List |
+| ![7](.github/screenshots/7.png) | ![8](.github/screenshots/8.png) | ![9](.github/screenshots/9.png) |
+| Build Hooks | Success | LUKS + Migration |
+| ![10](.github/screenshots/10.png) | ![11](.github/screenshots/11.png) | ![12](.github/screenshots/12.png) |
+| Cold Reboot | DE Extras | DE Install |
+| ![13](.github/screenshots/13.png) | ![14](.github/screenshots/14.png) | |
+| Recovery Detection | GRUB Repair | |
+
+</details>
+
+---
+
 # Installation
 
 ## Artix Linux (via future PKGBUILD)
