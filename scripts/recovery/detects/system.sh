@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+detect_boot_mode() {
+    if [[ -d /sys/firmware/efi ]]; then
+        state_set ARTIX_BOOT_MODE "uefi"
+    else
+        state_set ARTIX_BOOT_MODE "bios"
+    fi
+}
+
 detect_init() {
     if [[ -x "${ROOT}/usr/bin/runit" ]]; then
         state_set INIT runit
@@ -37,6 +45,11 @@ detect_lvm() {
 }
 
 detect_bootloader() {
+    if [[ "$(state_get ARTIX_BOOT_MODE uefi)" == "bios" ]]; then
+        state_set BOOTLOADER grub
+        return 0
+    fi
+
     if [[ -d "${ROOT}/boot/grub" ]] || [[ -f "${ROOT}/boot/grub/grub.cfg" ]]; then
         state_set BOOTLOADER grub
     elif [[ -d "${ROOT}/boot/EFI/refind" ]] || [[ -f "${ROOT}/boot/refind_linux.conf" ]]; then
@@ -49,9 +62,13 @@ detect_bootloader() {
 }
 
 detect_uki() {
+    if [[ "$(state_get ARTIX_BOOT_MODE uefi)" == "bios" ]]; then
+        state_set GENERATE_UKI "no"
+        return 0
+    fi
     if [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]] || \
-        compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 || \
-        grep -qE 'default_uki|uki_output' "${ROOT}/etc/mkinitcpio.d/"*.preset 2>/dev/null; then
+       compgen -G "${ROOT}/boot/efi/EFI/Linux/"*.efi >/dev/null 2>&1 || \
+       grep -qE 'default_uki|uki_output' "${ROOT}/etc/mkinitcpio.d/"*.preset 2>/dev/null; then
         state_set GENERATE_UKI yes
     else
         state_set GENERATE_UKI no

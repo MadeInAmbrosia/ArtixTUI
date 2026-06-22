@@ -76,8 +76,6 @@ Determines how data is organised on the disk.
 | btrfs | Snapshots, compression, subvolumes | Can be slightly slower |
 | xfs | Excellent for large files, quick recovery | Cannot be shrunk |
 | f2fs | Optimised for flash storage (SSD, eMMC) | Not suitable for HDDs |
-| bcachefs | Modern, advanced features (compression, tiering) | **Experimental** – tools still under heavy development |
-| zfs | Data integrity, snapshots, RAID, encryption | High memory usage; **experimental on Artix** |
 
 If you don’t have a specific reason to choose otherwise, ext4 is a reliable, zero‑maintenance option. btrfs is a great choice if you want snapshots and compression.
 
@@ -140,7 +138,7 @@ Your graphical interface.
 | dwm | Tiling window manager | Minimal, configured via source code |
 | IceWM | Stacking window manager | Extremely light, familiar look |
 | MangoWM | Wayland compositor | Lightweight, active development |
-| SonicDE | Full Desktop | Third-party KDE 6.6 X11 fork |
+| SonicDE | Full Desktop | Third-party KDE 6.7 X11 fork |
 | none | No desktop | You’ll start from a terminal |
 
 All of these can produce a comfortable environment. KDE and XFCE are the most popular; Hyprland and Sway are great if you like tinkering.
@@ -346,7 +344,6 @@ After migration, reboot to start the new environment.
 Before the installation begins, the installer will warn you about potentially unsafe choices, such as:
 
 - No fallback kernel when building your own
-- Using experimental filesystems (ZFS, bcachefs)
 - No desktop environment selected
 - Non‑GNU coreutils
 - BusyBox init

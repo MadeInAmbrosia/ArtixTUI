@@ -21,43 +21,31 @@ tui_select_init() {
 
 tui_select_filesystem() {
     local fs
-    local fs_options=("ext4" "btrfs" "xfs" "zfs" "f2fs" "bcachefs")
-
-    local live_kernel_pkg=""
-    case "$(uname -r)" in
-        *lts*)       live_kernel_pkg="linux-lts" ;;
-        *zen*)       live_kernel_pkg="linux-zen" ;;
-        *hardened*)  live_kernel_pkg="linux-hardened" ;;
-        *)           live_kernel_pkg="linux" ;;
-    esac
-
-    if grep -q '^\[archzfs\]' /etc/pacman.conf 2>/dev/null \
-        && pacman -Sl archzfs 2>/dev/null | grep -q "zfs-${live_kernel_pkg} "; then
-        fs_options+=("zfs")
-    fi
+    local fs_options=("ext4" "btrfs" "xfs" "f2fs")
 
     fs=$(tui_menu "Filesystem" "Select filesystem:" "${fs_options[@]}") || return 1
-
-    if [[ "${fs}" == "zfs" ]]; then
-        tui_msg "Unavailable" "ZFS is temporarily disabled (Supports only 6.15 kernel)."
-        tui_select_filesystem    
-    elif [[ "${fs}" == "bcachefs" ]]; then
-        tui_msg "Unavailable" "Bcachefs-tools is temporarily disabled for stability reasons (Rust rewrite W.I.P)."
-        tui_select_filesystem
-        return
-    fi
 
     state_set FS_TYPE "${fs}"
 }
 
 tui_select_bootloader() {
     local bl
-    bl=$(tui_menu "Bootloader" "Select bootloader:" \
-        "GRUB" "rEFInd" "EFIStub" "Limine") || return 1
-    state_set BOOTLOADER "${bl,,}"
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        bl="grub"
+        tui_msg_quick "BIOS Bootloader" "BIOS/Legacy boot detected. Only GRUB is supported."
+    else
+        bl=$(tui_menu "Bootloader" "Select bootloader:" \
+            "GRUB" "rEFInd" "EFIStub" "Limine") || return 1
+        bl="${bl,,}"
+    fi
+    state_set BOOTLOADER "${bl}"
 }
 
 tui_select_uki() {
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        state_set GENERATE_UKI "no"
+        return 0
+    fi
     if tui_yesno "UKI" "Generate a Unified Kernel Image (UKI)?"; then
         state_set GENERATE_UKI "yes"
     else
@@ -135,6 +123,9 @@ tui_select_theme() {
 }
 
 tui_collect_install_config() {
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        tui_msg_quick "BIOS Mode" "Legacy BIOS boot detected. UEFI features (UKI, EFIStub, rEFInd, Limine) are disabled."
+    fi
     tui_select_theme
     tui_select_disk
     if tui_quick_install; then

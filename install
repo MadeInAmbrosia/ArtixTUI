@@ -31,18 +31,15 @@ installer_error() {
     clear
     printf '\n[!] Installation failed at line: %s\n' "${line}" >&2
     printf '[!] Exit status: %s\n' "${rc}" >&2
-    
     if [[ -f /tmp/artix-installer/install.log ]]; then
         printf '\n[!] Last 10 lines of install log:\n' >&2
         tail -10 /tmp/artix-installer/install.log >&2
     fi
-    
     if [[ -f /tmp/artix-migration-debug.log ]]; then
         printf '\n[!] Migration debug log available at: /tmp/artix-migration-debug.log\n' >&2
         printf '[!] Last 20 lines:\n' >&2
         tail -20 /tmp/artix-migration-debug.log >&2
     fi
-    
     printf '\n[!] The installation was NOT completed.\n' >&2
     exit "${rc}"
 }
@@ -132,20 +129,48 @@ source_tree tui storage install post stages recovery
 
 MODE=""
 DEBUG="false"
+ARTIX_BOOT_MODE=""
+
+detect_boot_mode() {
+    if [[ -d /sys/firmware/efi ]]; then
+        ARTIX_BOOT_MODE="uefi"
+        log_info "UEFI boot detected"
+    else
+        ARTIX_BOOT_MODE="bios"
+        log_info "BIOS/Legacy boot detected – UEFI features disabled"
+    fi
+    export ARTIX_BOOT_MODE
+    state_set ARTIX_BOOT_MODE "${ARTIX_BOOT_MODE}"
+}
 
 main_menu() {
     while true; do
+        local -a menu_items=(
+            "Automatic – guided installation"
+            "Manual – detect existing partitions"
+        )
+
+        if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
+            menu_items+=("Resume Migration – continue interrupted migration")
+        fi
+        if [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
+            menu_items+=("Resume ISO Build – continue interrupted ISO build")
+        fi
+        if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
+            menu_items+=("Resume Installation – continue interrupted install")
+        fi
+
+        menu_items+=("Advanced – recovery, power user, migration, ISO")
+
         local mode
-        mode=$(tui_menu "ArtixForge v9" "Select installation mode:" \
-            "Automatic – guided installation" \
-            "Manual – detect existing partitions" \
-            "Resume – resume interrupted install" \
-            "Advanced – recovery, power user, migration, ISO") || exit 1
+        mode=$(tui_menu "ArtixForge v9" "Select installation mode:" "${menu_items[@]}") || exit 1
 
         case "${mode}" in
             Automatic*) MODE='auto' ; break ;;
             Manual*)    MODE='manual' ; break ;;
-            Resume*)    MODE='resume' ; break ;;
+            *Migration*) MODE='migrate' ; break ;;
+            *ISO*)      MODE='iso' ; break ;;
+            *Installation*) MODE='resume' ; break ;;
             Advanced*)
                 mode=$(tui_menu "Advanced" "Select advanced mode:" \
                     "Recovery – scan /mnt for existing system" \
@@ -205,6 +230,14 @@ start_manual_install() {
 }
 
 resume_install() {
+    if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
+        log_info "Resuming migration..."
+        return 0
+    fi
+    if [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
+        log_info "Resuming ISO build..."
+        return 0
+    fi
     if [[ ! -f "${STATE_FILE}" ]]; then die 'no saved installer state found'; fi
     state_load
     [[ -n "${DISK:-}" ]] || die 'saved installer state is incomplete'
@@ -309,7 +342,7 @@ start_system_migration() {
 main() {
     ensure_dirs
     require_root
-    require_efi
+    detect_boot_mode
 
     if ! command -v gum &>/dev/null; then
         if [[ -f "${BASE_DIR}/bin/gum" ]]; then
@@ -341,7 +374,36 @@ main() {
                 stage_finalize  || die 'finalization stage failed'
                 ;;
             resume)
-                resume_install
+                if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
+                    local mig_type mig_src mig_tgt
+                    state_load
+                    mig_type="$(state_get MIGRATION_TYPE '')"
+                    mig_src="$(state_get MIGRATION_SRC '')"
+                    mig_tgt="$(state_get MIGRATION_TGT '')"
+                    if [[ -n "${mig_type}" && -n "${mig_src}" && -n "${mig_tgt}" ]]; then
+                        log_info "Resuming migration: ${mig_type} ${mig_src} → ${mig_tgt}"
+                        if [[ "${mig_type}" == "init" ]]; then
+                            source "${BASE_DIR}/migrations/inits/common.sh"
+                            run_init_migration "${mig_src}" "${mig_tgt}"
+                        else
+                            source "${BASE_DIR}/migrations/des/common.sh"
+                            run_de_migration "${mig_src}" "${mig_tgt}"
+                        fi
+                    fi
+                elif [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
+                    local profile_name init kernel offline boot_mode
+                    state_load
+                    profile_name="$(state_get QUICK_PROFILE 'Desktop')"
+                    init="$(state_get INIT 'openrc')"
+                    kernel="$(state_get KERNEL_CHOICE 'linux')"
+                    offline="$(state_get ALLOW_OFFLINE 'no')"
+                    boot_mode="$(state_get ISO_BOOT_MODE 'live')"
+                    log_info "Resuming ISO build: ${profile_name}"
+                    source "${BASE_DIR}/iso/build.sh"
+                    build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
+                else
+                    resume_install
+                fi
                 ;;
             recovery)
                 local action
@@ -430,7 +492,6 @@ main() {
                 log_info "Launching GUI configuration window..."
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
-                
                 export DISPLAY="${DISPLAY:-:0}"
                 export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
                 command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
@@ -442,7 +503,6 @@ main() {
                     python3 -m venv "${venv_dir}" --system-site-packages
                     "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
                 fi
-                
                 unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
                 cd "${BASE_DIR}/forge-gui" && PYTHONPATH=".:${PYTHONPATH:-}" "${venv_dir}/bin/python3" -m forge_ui.cli --mode config > /tmp/gui-output.log 2>&1 || true
 
@@ -463,9 +523,7 @@ main() {
                 log_info "Launching GUI configuration window from PATH..."
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
-                
                 forge-gui --mode config
-                
                 if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
                     MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
@@ -503,7 +561,6 @@ main() {
         iso)      start_iso_build ;;
         *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
-
 }
 
 main "$@"

@@ -6,6 +6,11 @@ prepare_handoff() {
     script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
     kernel_choice="$(state_get KERNEL_CHOICE linux)"
 
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        log_info "BIOS mode – skipping UKI and EFI detection"
+        state_set GENERATE_UKI "no"
+    fi
+
     log_info "Detecting boot artifacts..."
     case "${kernel_choice}" in
         linux)               kernel_image='/mnt/boot/vmlinuz-linux' ; initramfs_image='/mnt/boot/initramfs-linux.img' ;;
@@ -103,6 +108,10 @@ POWER_USER="$(state_get POWER_USER)"
 POWERUSER_PACKAGES="$(state_get POWERUSER_PACKAGES)"
 POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
 ENABLE_AURIS="$(state_get ENABLE_AURIS)"
+ARTIX_BOOT_MODE="$(state_get ARTIX_BOOT_MODE)"
+LUKS_KEYFILE="$(state_get LUKS_KEYFILE)"
+LUKS_KEYFILE_PATH="$(state_get LUKS_KEYFILE_PATH)"
+ISO_ARCH_REPOS="$(state_get ISO_ARCH_REPOS)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
@@ -139,6 +148,9 @@ EXTRAS="$(state_get EXTRAS)"
 POWER_USER="$(state_get POWER_USER)"
 POWERUSER_PACKAGES="$(state_get POWERUSER_PACKAGES)"
 POWERUSER_PROFILE="$(state_get POWERUSER_PROFILE)"
+ARTIX_BOOT_MODE="$(state_get ARTIX_BOOT_MODE)"
+LUKS_KEYFILE="$(state_get LUKS_KEYFILE)"
+ISO_ARCH_REPOS="$(state_get ISO_ARCH_REPOS)"
 PROFILE
         chmod 644 /mnt/etc/artixforge-profile.conf
     fi

@@ -17,25 +17,6 @@ tui_select_desktop() {
         state_set KDE_PROFILE "none"
     fi
 
-    if [[ "${d}" == "sonicde" ]]; then
-        tui_msg_quick "SonicDE Warning" \
-            "SonicDE is a third-party KDE replacement.\n\n" \
-            "!!! Their package signing key infrastructure is incomplete.\n" \
-            "SonicDE will be installed with signature verification DISABLED\n" \
-            "(SigLevel = Never) because the required key 70B4B1EF0FF2A94E\n" \
-            "is not published by the SonicDE project.\n\n" \
-            "I discovered this very recently.\n\n" \
-            "Shoutout to Joseph (smokexjc) for reminding me about\n" \
-            "rule #1 after I called his community member a parrot\n" \
-            "for telling me to 'check the documentation' —\n" \
-            "which I had already read multiple times."
-        if ! tui_yesno "Continue with SonicDE?" "Install SonicDE with signature verification disabled?"; then
-            tui_select_desktop
-            return 0
-        fi
-    fi
-}
-
 tui_select_display_manager() {
     local wm dm
     wm="$(state_get WM_DE none)"

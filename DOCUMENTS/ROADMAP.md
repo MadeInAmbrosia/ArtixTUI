@@ -9,8 +9,6 @@ This roadmap is updated regularly based on:
 
 *Version numbers are not strict release targets. Features may ship earlier or later depending on development pace, tester feedback, and available time. This roadmap reflects general direction, not fixed deadlines.*
 
-## v8.9
-
 ## v9.0
 - CODE_INDENTS.md (A file that explains every weird hack and slash and weird thing avaliable in the code)
 - Polishing the GUI until it's squeaky clean (Thank you GTK4)

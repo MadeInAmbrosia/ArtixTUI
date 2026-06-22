@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Override all tui_* functions to return defaults (no user interaction)
 tui_msg() { return 0; }
 
 tui_yesno() {
     local title="$1"
     case "${title}" in
-        "Mirror Ranking")
-            return 1  # Skipping, until I find a better solution
-            ;;
-        "Secure Boot")
-            [[ "$(state_get SIGN_UKI no)" == "yes" ]] && return 0 || return 1
-            ;;
-        *)
-            return 0  # default to Yes for everything else
-            ;;
+        "Mirror Ranking")   return 1 ;;
+        "Secure Boot")      [[ "$(state_get SIGN_UKI no)" == "yes" ]] && return 0 || return 1 ;;
+        *)                  return 0 ;;
     esac
 }
 
@@ -44,15 +37,14 @@ tui_password_confirm() {
     return 0
 }
 
-tui_menu() {
-    printf '%s' "${1:-}"
-    return 0
-}
-
+tui_menu() { printf '%s' "${1:-}"; return 0; }
 tui_checklist() { return 0; }
-
-tui_spin() {
-    bash -c "$2"
-}
-
+tui_spin() { bash -c "$2"; }
 tui_show_file() { return 0; }
+
+require_efi() {
+    if [[ "${ARTIX_BOOT_MODE:-}" == "bios" ]]; then
+        return 0
+    fi
+    [[ -d /sys/firmware/efi ]] || die 'system is not booted in UEFI mode'
+}

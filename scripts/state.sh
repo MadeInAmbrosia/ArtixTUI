@@ -57,6 +57,10 @@ state_save() {
         printf 'POWERUSER_PROFILE=%q\n'     "${POWERUSER_PROFILE:-default}"
         printf 'GUI_MODE=%q\n'               "${GUI_MODE:-no}"
         printf 'ENABLE_AURIS=%q\n'          "${ENABLE_AURIS:-no}"
+        printf 'LUKS_KEYFILE=%q\n'         "${LUKS_KEYFILE:-no}"
+        printf 'LUKS_KEYFILE_PATH=%q\n'    "${LUKS_KEYFILE_PATH:-}"
+        printf 'ISO_ARCH_REPOS=%q\n'       "${ISO_ARCH_REPOS:-no}"
+        printf 'ARTIX_BOOT_MODE=%q\n'      "${ARTIX_BOOT_MODE:-uefi}"
     } > "${STATE_FILE}"
     chmod 600 "${STATE_FILE}"
 }

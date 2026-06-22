@@ -1,5 +1,54 @@
 # Changelog
 
+## v9.1.0.0 (2026-06-22) — ArtixForge
+
+### Added
+- **BIOS/Legacy boot support** — MBR partitioning, GRUB `i386-pc` install, conditional ESP and EFI handling across all storage, bootloader, GUI, recovery, and TUI modules ( ͡° ͜ʖ ͡°)
+- **ISO and Migration resume support** — interrupted ISO builds and init/desktop migrations can be resumed from the last completed stage, with option to start fresh by cleaning orphaned packages
+- **Migration failure recovery** — interrupted migrations offer resume or clean slate option, removing both orphaned init systems or desktop environments with human-readable stage names
+- LUKS keyfile toggle (GUI + TUI) — avoids double password prompt at boot, embedded in initramfs via `FILES=(/crypto_keyfile.bin)`
+- `--pbkdf pbkdf2` on all LUKS format calls — GRUB compatibility for LUKS2
+- Conditional `artix-grub-theme` skip — prevents double insmod bug on encrypted installs
+- Parted version check — warns and offers downgrade for BIOS+GRUB compatibility
+- Arch repo ISO toggle — GUI checkbox passes `-R arch` to all `buildiso` calls
+- GUI BIOS awareness — bootloader dropdown limited to GRUB, UKI hidden, `ARTIX_BOOT_MODE` saved to state
+- TUI BIOS awareness — bootloader locked to GRUB, UKI skipped, sanity warnings added for legacy boot
+- TUI boot mode notification — informational message displayed when BIOS mode is detected
+- GUI logo — header thumbnail and background watermark
+- GUI welcome page system info — CPU, RAM, disks detected at startup
+- GUI conditional pages system — lambda-based visibility with revealer support
+- State persistence for new keys — `LUKS_KEYFILE`, `LUKS_KEYFILE_PATH`, `ISO_ARCH_REPOS`, `ARTIX_BOOT_MODE` saved and restored
+- Recovery detection for BIOS mode, keyfile, and bootloader — detection and repair functions BIOS-aware, UKI and EFI checks skipped on legacy systems
+- Preflight VFAT kernel module check — ensures EFI partition support before partitioning, falls back to installing `linux` package, gives clear error if ISO kernel lacks VFAT
+- `CODE_INDENTS.md` — To be written
+
+### Changed
+- `require_efi` replaced with `detect_boot_mode` — BIOS or UEFI auto-detected at startup
+- `main_menu()` dynamically shows Resume Migration/ISO options when stage files exist
+- `resume_install()` and non-interactive dispatch detect migration and ISO stage files for correct resume
+- Storage modules dual-path — `partition.sh`, `filesystem.sh`, `mount.sh` handle BIOS (MBR, no ESP) and UEFI (GPT, ESP)
+- Bootloader dual-path — BIOS `i386-pc` and UEFI `x86_64-efi` with auto-detection
+- Basestrap package list conditional — `efibootmgr dosfstools` only on UEFI, bootloader packages per selection
+- Handoff and chroot validation — BIOS skips UKI and EFI boot entry checks
+- Recovery detection — boot mode, bootloader, boot health, and repair all BIOS-aware
+- Non-interactive mode — `require_efi` override checks `ARTIX_BOOT_MODE`
+- `install` script — `exec` path uses `${BASE_DIR##*/}` for pacman-installed compatibility
+- Filesystem TUI menu — ZFS and bcachefs removed
+- ISO builder — `build_artix_iso` reads `ISO_ARCH_REPOS` from state, passes `-R arch` to all build phases, supports stage-based resume
+- `run_init_migration()` and `run_de_migration()` — stage-based resume with failure recovery, orphan cleanup, and human-readable stage names
+- TUI UKI selection — skipped on BIOS systems
+- TUI sanity warnings — ZFS and bcachefs warnings removed, BIOS mode warning added
+- TUI LUKS selection — keyfile toggle added after passphrase confirmation
+- TUI config collection — boot mode notification shown when BIOS detected
+- SonicDE — `SigLevel = Never` replaced with proper signing key `72AAA51726BC3C29`, official repo URL `sonicde-artix.github.io`, warnings removed from TUI, Privacy Policy, and Security docs
+- Quick Profiles — TestingQP profile ZFS changed to XFS
+- README — installation modes table updated for resume support
+
+### Removed
+- ZFS filesystem option — kernel 6.19+ incompatibility
+- bcachefs filesystem option — Rust rewrite W.I.P.
+- Dead ZFS partition layout from `partition.sh`
+
 ## v9.0.0.0 (2026-06-21) — ArtixForge
 
 It's finally here. I'm done.

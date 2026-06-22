@@ -9,6 +9,28 @@ mount_filesystems() {
     bootloader="$(state_get BOOTLOADER grub)"
     btrfs_layout="$(state_get BTRFS_LAYOUT standard)"
 
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        local root_part
+        if [[ "${swap_enabled}" == 'yes' ]]; then
+            root_part=$(get_partition_name "${disk}" 3)
+        else
+            root_part=$(get_partition_name "${disk}" 2)
+        fi
+
+        if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+            cryptsetup close cryptroot 2>/dev/null || true
+            log_info "Opening LUKS container..."
+            printf '%s' "$(state_get LUKS_PASS)" | cryptsetup luksOpen "${root_part}" cryptroot -
+            root_part="/dev/mapper/cryptroot"
+        fi
+
+        mkdir -p /mnt
+        mount "${root_part}" /mnt || die "failed to mount root"
+        mkdir -p /mnt/boot
+        log_info "Mount setup completed (BIOS)."
+        return 0
+    fi
+
     local efi_part root_part efi_mount='/mnt/boot/efi'
 
     if [[ -n "$(state_get EFI_PART '')" ]]; then
@@ -16,14 +38,10 @@ mount_filesystems() {
         root_part="$(state_get ROOT_PART)"
     else
         efi_part=$(get_partition_name "${disk}" 1)
-        if [[ "${fs_type}" == "zfs" ]]; then
+        if [[ "${swap_enabled}" == 'yes' ]]; then
             root_part=$(get_partition_name "${disk}" 3)
         else
-            if [[ "${swap_enabled}" == 'yes' ]]; then
-                root_part=$(get_partition_name "${disk}" 3)
-            else
-                root_part=$(get_partition_name "${disk}" 2)
-            fi
+            root_part=$(get_partition_name "${disk}" 2)
         fi
     fi
 
@@ -39,7 +57,6 @@ mount_filesystems() {
         ext4)  modprobe ext4 2>/dev/null || true ;;
         xfs)   modprobe xfs 2>/dev/null || true ;;
         f2fs)  modprobe f2fs 2>/dev/null || true ;;
-        zfs)   modprobe zfs 2>/dev/null || true ;;
     esac
     command -v mount >/dev/null || die 'mount unavailable (util-linux missing)'
 
@@ -57,36 +74,6 @@ mount_filesystems() {
     umount -R /mnt/boot 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     mkdir -p /mnt
-
-    if [[ "${fs_type}" == "zfs" ]]; then
-        if ! mountpoint -q /mnt; then
-            local INST_UUID
-            INST_UUID="$(state_get ZFS_UUID)"
-            [[ -n "${INST_UUID}" ]] || die "ZFS UUID not found in state — was filesystem.sh run?"
-
-            log_info "Importing ZFS pools..."
-            zpool import -N -R /mnt "rpool_${INST_UUID}" 2>/dev/null || true
-            zpool import -N -R /mnt "bpool_${INST_UUID}" 2>/dev/null || true
-
-            if [[ "$(state_get ZFS_PASSPHRASE '')" != "" ]]; then
-                log_info "Loading ZFS encryption key..."
-                printf '%s\n' "$(state_get ZFS_PASSPHRASE)" | zfs load-key "rpool_${INST_UUID}" || die "Failed to load ZFS key"
-            fi
-
-            zfs mount "rpool_${INST_UUID}/ROOT/default"
-            mkdir -p /mnt/boot
-            mount -t zfs "bpool_${INST_UUID}/BOOT/default" /mnt/boot
-            zfs mount -a
-        fi
-        mountpoint -q /mnt || die 'failed to mount ZFS root'
-
-        log_info "Mounting EFI partition..."
-        mount -t vfat --mkdir "${efi_part}" "${efi_mount}"
-        mountpoint -q "${efi_mount}" || die 'failed to mount EFI partition'
-
-        log_info "ZFS mount setup completed."
-        return 0
-    fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Activating LVM volumes..."
@@ -152,16 +139,13 @@ mount_filesystems() {
                     ;;
             esac
             ;;
-        ext4|xfs|f2fs|bcachefs)
+        ext4|xfs|f2fs)
             local mount_opts="defaults"
             if [[ "$(lsblk -dno ROTA "${root_part}" 2>/dev/null)" == "0" ]]; then
                 mount_opts="${mount_opts},discard"
             fi
             mount -t "${fs_type}" -o "${mount_opts}" "${root_part}" /mnt
             mountpoint -q /mnt || die 'failed to mount root filesystem'
-            ;;
-        *)
-            die "unsupported filesystem: ${fs_type}"
             ;;
     esac
 

@@ -118,14 +118,14 @@ get_luks_raw_uuid() {
             break
         fi
     done
-    
+
     local luks_dev
     luks_dev=$(blkid -o device -t TYPE=crypto_LUKS 2>/dev/null | head -n1)
     if [[ -n "$luks_dev" ]]; then
         blkid -s UUID -o value "$luks_dev" 2>/dev/null || echo ""
         return 0
     fi
-    
+
     echo ""
 }
 
@@ -142,6 +142,19 @@ configure_bootloader() {
         recoverable_error 'No initramfs image was created – updating ArtixForge may fix this'
     fi
     log_info "Initramfs generation complete"
+
+    if [[ "$(state_get LUKS_KEYFILE no)" == "yes" ]]; then
+        local keyfile_path="$(state_get LUKS_KEYFILE_PATH /crypto_keyfile.bin)"
+        if [[ -f "${keyfile_path}" ]]; then
+            log_info "Embedding LUKS keyfile in initramfs..."
+            cp "${keyfile_path}" /mnt/crypto_keyfile.bin
+            chmod 000 /mnt/crypto_keyfile.bin
+            if ! grep -q '/crypto_keyfile.bin' /mnt/etc/mkinitcpio.conf; then
+                sed -i "s|^FILES=(|FILES=(/crypto_keyfile.bin |" /mnt/etc/mkinitcpio.conf
+            fi
+            artix-chroot /mnt mkinitcpio -P || true
+        fi
+    fi
 
     local root_device
     root_device=$(artix-chroot /mnt findmnt -n -o SOURCE /) || true
@@ -180,6 +193,14 @@ configure_bootloader() {
                 die "cryptdevice= required but no LUKS partition found"
             fi
         fi
+    fi
+
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        log_info "Installing GRUB for BIOS..."
+        artix-chroot /mnt grub-install --target=i386-pc --boot-directory=/boot "$(state_get DISK)" || die 'grub-install failed'
+        artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg || die 'grub-mkconfig failed'
+        log_info "Bootloader setup complete (BIOS)."
+        return 0
     fi
 
     for esp_mount in /mnt/boot/efi /mnt/efi /mnt/boot; do

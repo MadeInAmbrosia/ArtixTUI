@@ -7,6 +7,10 @@ tui_select_luks() {
         local pass
         pass=$(tui_password_confirm "LUKS Passphrase" "Enter passphrase:" "Confirm passphrase:") || return 1
         state_set LUKS_PASS "${pass}"
+        
+        if tui_yesno "LUKS Keyfile" "Use a keyfile to avoid typing your password twice at boot?"; then
+            state_set LUKS_KEYFILE "yes"
+        fi
     else
         state_set USE_LUKS "no"
     fi

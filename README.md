@@ -11,12 +11,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v9.0.0.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v9.1.0.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Artix-[galaxy] *pending*-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy">
 </p>
 
 ---
@@ -42,7 +42,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Category             | Options                                                                                                                 |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Init system          | OpenRC, runit, dinit, s6, BusyBox init                                                                                  |
-| Filesystem | ext4, btrfs, xfs, f2fs, ~~bcachefs~~, ~~zfs~~ |                                                                  |
+| Filesystem | ext4, btrfs, xfs, f2fs |                                                                  |
 | Storage              | Standard partitions, LVM, LUKS, LVM-on-LUKS                                                                             |
 | Boot method          | UKI, GRUB, rEFInd, EFIStub, Limine                                                                                      |
 | Kernel               | linux, zen, lts, hardened, libre, cachyos-*, bazzite, xanmod, tkg                                                    |
@@ -53,7 +53,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Display stack        | X.Org, xLibre                                                                                                           |
 | Coreutils            | GNU, BusyBox, uutils, ArtixForge minimal, Custom                                                                        |
 | Privilege escalation | sudo, doas                                                                                                              |
-| Encryption           | LUKS full-disk encryption, LUKS-on-LVM, ZFS native encryption                                                           |                                                                           |
+| Encryption           | LUKS full-disk encryption, LUKS-on-LVM                                                   |                                                                           |
 | Recovery             | Smart issue detection, surgical repair, filesystem repair (safe/destructive), untrusted recovery (rootkit/malware scan) |
 | Power User           | Source compilation, custom kernel config, community recipes, recipe self-healing                                        |
 | Quick Profiles       | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal                                         |
@@ -85,7 +85,7 @@ It walks you through partitioning, filesystem creation, base system installation
 
 # Installation
 
-## Artix Linux (via future PKGBUILD)
+## Artix Linux (via galaxy-gremlins)
 
 ```bash
 sudo pacman -S artixforge
@@ -107,6 +107,8 @@ You'll be greeted by a main menu where you choose your installation mode.
 
 **If you booted a desktop environment (KDE, XFCE, etc.)**, you will be asked whether you want to use the **Graphical UI (GTK4)** instead of the terminal interface. Answer `Yes` to launch a persistent configuration window with mouse support.
 
+**FAIR WARNING: THE GUI IS EXPERIMENTAL.**
+
 ---
 
 # Installation Modes
@@ -115,14 +117,14 @@ You'll be greeted by a main menu where you choose your installation mode.
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | 🟢 Automatic     | Guided installation with full configuration flow.                                                                                       |
 | 🔵 Manual        | Detect existing setup progress and continue manually.                                                                                   |
-| 🟡 Resume        | Continue from the last saved installation stage.                                                                                        |
+| 🟡 Resume        | Continue from the last saved installation, migration, or ISO build stage.                                                               |
 | 🟠 Recovery      | Auto-detect full system config, smart issue detection, surgical repair, filesystem repair (safe/destructive), rootkit/malware scanning. |
 | 🔴 Power User    | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control.                                                    |
 | ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal, and custom profile loading.                           |
-| 🧩 Build ISO     | Create a custom Artix live ISO from any Quick Profile or full configuration – includes offline package bundles.                         |
-| 🔄 System Migration | Convert init system (openrc ↔ runit ↔ dinit ↔ s6 ↔ systemd) or desktop environment without reinstalling.                             |
+| 🧩 Build ISO     | Create a custom Artix live ISO from any Quick Profile or full configuration – includes offline package bundles and resumable builds.    |
+| 🔄 System Migration | Convert init system (openrc ↔ runit ↔ dinit ↔ s6 ↔ systemd) or desktop environment without reinstalling. Resumable on failure.      |
 
-A debug toggle is available for every mode from the same menu.
+A debug toggle is available for every mode from the same menu. If you encounter errors, it's a great way to see what actually went wrong (e.g. Debug mode + Resume for automatic installations) if the error itself is not descriptive enough.
 
 ---
 

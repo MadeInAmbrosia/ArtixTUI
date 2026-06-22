@@ -2,19 +2,26 @@
 set -Eeuo pipefail
 
 install_sonicde() {
-    log_info "Setting up INSECURE SonicDE repository..."
+    log_info "Setting up SonicDE repository..."
+    
     sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
+    
     cat <<'EOF' >> /etc/pacman.conf
 [sonicde]
-SigLevel = Never
 Server = https://sonicde-artix.github.io/$arch
 EOF
+
+    log_info "Importing SonicDE signing key..."
     curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
     pacman-key --add /tmp/sonicde.asc
+    pacman-key --finger 72AAA51726BC3C29
     pacman-key --lsign-key 72AAA51726BC3C29
     rm -f /tmp/sonicde.asc
+    
     pacman -Syy --noconfirm
     yes | pacman -S --needed sonicde-meta 2>/dev/null || true
+    
+    log_info "SonicDE repository configured with proper signature verification."
 }
 
 install_mango() {

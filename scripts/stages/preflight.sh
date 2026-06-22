@@ -35,8 +35,20 @@ stage_preflight() {
     fi;
 
     require_root;
-    require_efi;
     require_internet;
+
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "uefi" ]]; then
+        modprobe fat 2>/dev/null || true
+        modprobe vfat 2>/dev/null || true
+        if ! grep -q 'vfat' /proc/filesystems 2>/dev/null; then
+            log_warn "VFAT kernel module unavailable — attempting to install linux kernel modules..."
+            pacman -Sy --noconfirm --needed linux 2>/dev/null || true
+            modprobe vfat 2>/dev/null || true
+            if ! grep -q 'vfat' /proc/filesystems 2>/dev/null; then
+                die "VFAT kernel support is required for EFI partition. Your live ISO's kernel lacks VFAT support. Try a different ISO."
+            fi
+        fi
+    fi
 
     local original_mirrorlist="/etc/pacman.d/mirrorlist.orig"
     if [[ ! -f "${original_mirrorlist}" ]]; then
@@ -178,6 +190,17 @@ EOF
                     log_warn "bcachefs-tools version ${bcachefs_ver} may be older than kernel ${kernel_ver}."
                     log_warn "Update the live ISO or bcachefs-tools to avoid superblock errors."
                 fi
+            fi
+        fi
+    fi
+
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        local parted_ver
+        parted_ver=$(parted --version | head -1 | awk '{print $NF}')
+        if [[ "${parted_ver}" > "3.4" ]]; then
+            log_warn "parted ${parted_ver} may create partitions GRUB cannot read."
+            if tui_yesno "Downgrade parted" "Downgrade parted to 3.4-2 for compatibility?"; then
+                pacman -U --noconfirm "https://archive.artixlinux.org/packages/p/parted/parted-3.4-2-x86_64.pkg.tar.zst" || log_warn "Downgrade failed – continuing"
             fi
         fi
     fi

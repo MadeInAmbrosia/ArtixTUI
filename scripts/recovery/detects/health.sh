@@ -58,15 +58,19 @@ detect_boot_health() {
     fi
 
     if [[ "$(state_get GENERATE_UKI no)" == "yes" ]]; then
-        if ! compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 && \
-           ! [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]]; then
+        if [[ "$(state_get ARTIX_BOOT_MODE uefi)" == "bios" ]]; then
+            state_set GENERATE_UKI "no"
+        elif ! compgen -G "${ROOT}/boot/efi/EFI/Linux/artix-*.efi" >/dev/null 2>&1 && \
+             ! [[ -f "${ROOT}/boot/efi/EFI/Artix/linux-custom.efi" ]]; then
             log_info "UKI enabled but no UKI file found — system will boot via bootloader"
         fi
     fi
 
-    if command -v efibootmgr &>/dev/null; then
-        if ! efibootmgr 2>/dev/null | grep -qi 'Artix'; then
-            issues+="no-efi-entry "
+    if [[ "$(state_get ARTIX_BOOT_MODE uefi)" == "uefi" ]]; then
+        if command -v efibootmgr &>/dev/null; then
+            if ! efibootmgr 2>/dev/null | grep -qi 'Artix'; then
+                issues+="no-efi-entry "
+            fi
         fi
     fi
 

@@ -213,11 +213,11 @@ _prepare_target_repo() {
                     sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
                     cat >> /etc/pacman.conf <<'REPO_EOF'
 [sonicde]
-SigLevel = Never
 Server = https://sonicde-artix.github.io/\$arch
 REPO_EOF
                     curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
                     pacman-key --add /tmp/sonicde.asc
+                    pacman-key --finger 72AAA51726BC3C29
                     pacman-key --lsign-key 72AAA51726BC3C29
                     rm -f /tmp/sonicde.asc
                     pacman -Syy --noconfirm
@@ -226,11 +226,11 @@ REPO_EOF
                 sed -i '/^\[sonicde\]/,/^\[/d' /etc/pacman.conf
                 cat >> /etc/pacman.conf <<'REPO_EOF'
 [sonicde]
-SigLevel = Never
 Server = https://sonicde-artix.github.io/$arch
 REPO_EOF
                 curl -sL https://sonicde-artix.github.io/sonicde-artixlinux.asc -o /tmp/sonicde.asc
                 pacman-key --add /tmp/sonicde.asc
+                pacman-key --finger 72AAA51726BC3C29
                 pacman-key --lsign-key 72AAA51726BC3C29
                 rm -f /tmp/sonicde.asc
                 pacman -Syy --noconfirm
@@ -462,6 +462,41 @@ run_de_migration() {
     local source_de="${1}" target_de="${2}"
     [[ "$source_de" != "$target_de" ]] || die "Source and target DE are the same: $source_de"
 
+    local migration_stage_file="/tmp/artix-installer/migration-stage.conf"
+    local migration_stage
+    migration_stage="$(cat "${migration_stage_file}" 2>/dev/null || echo "init")"
+    log_info "Migration stage: ${migration_stage}"
+
+    local -A stage_names=(
+        ["init"]="Starting"
+        ["backup"]="User configs backed up"
+        ["repos"]="Repositories configured"
+        ["remove"]="Old desktop removed"
+        ["install"]="New desktop installed"
+        ["apply"]="Display/audio/network choices applied"
+        ["finalize"]="Finalizing"
+    )
+
+    if [[ "${migration_stage}" != "init" && "${migration_stage}" != "finalize" ]]; then
+        tui_msg "Failed Migration Detected" \
+            "A previous migration attempt was interrupted at stage: ${migration_stage}.\n\n
+You can:\n
+  • Resume – continue from where it stopped\n
+  • Start Fresh – remove both desktop environments and perform a clean migration"
+        
+        if ! tui_yesno "Resume Migration?" "Resume the interrupted migration?"; then
+            log_info "User chose to start fresh — removing both desktop environments..."
+            if [[ "$source_de" != "none" ]]; then
+                remove_packages "${DE_PACKAGES[$source_de]:-}" 2>/dev/null || true
+            fi
+            if [[ "$target_de" != "none" ]]; then
+                remove_packages "${DE_PACKAGES[$target_de]:-}" 2>/dev/null || true
+            fi
+            rm -f "${migration_stage_file}"
+            migration_stage="init"
+            log_info "Both desktop environments removed. Starting clean migration."
+        fi
+    fi
     _repair_pacman_db
 
     if [[ "$target_de" == "kde" ]]; then
@@ -487,65 +522,92 @@ run_de_migration() {
         fi
     fi
 
-    log_info "Backing up user configs..."
-    backup_de_config
-
-    if [[ "$target_de" == "sonicde" || "$target_de" == "mango" ]]; then
-        _prepare_target_repo "$target_de"
-    fi
-
-    if [[ "$(state_get DE_MIG_DM '')" != "" ]]; then
-        log_info "Using GUI-specified migration choices"
+    if [[ "${migration_stage}" == "init" || "${migration_stage}" == "backup" ]]; then
+        log_info "Backing up user configs..."
+        backup_de_config
+        echo "backup" > "${migration_stage_file}"
     else
-        prompt_migration_choices
+        log_info "Skipping backup (already done)"
     fi
 
-    if [[ "$source_de" == "none" ]]; then
-        local default_dm="${DE_DISPLAY_MANAGER[$target_de]:-none}"
-        state_set DE_MIG_DM "$default_dm"
-        state_set DE_MIG_X "$(detect_current_x)"
-        state_set DE_MIG_AUDIO "$(detect_current_audio)"
-        state_set DE_MIG_NETWORK "$(detect_current_network)"
-        state_set DE_MIG_EXTRAS ""
+    if [[ "${migration_stage}" == "backup" || "${migration_stage}" == "repos" ]]; then
+        if [[ "$target_de" == "sonicde" || "$target_de" == "mango" ]]; then
+            _prepare_target_repo "$target_de"
+        fi
+        echo "repos" > "${migration_stage_file}"
     else
-        prompt_migration_choices
+        log_info "Skipping repo setup (already done)"
     fi
 
-    if [[ "$source_de" != "none" ]]; then
-        log_info "Removing $source_de packages..."
-        remove_packages "${DE_PACKAGES[$source_de]:-}"
-        if [[ -n "${MIG_ROOT}" ]]; then
-            local orphan
-            orphan=$(artix-chroot "${MIG_ROOT}" pacman -Qtdq 2>/dev/null || true)
-            if [[ -n "$orphan" ]]; then
-                log_info "Removing orphaned packages..."
-                artix-chroot "${MIG_ROOT}" pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
-            fi
+    if [[ "${migration_stage}" == "repos" || "${migration_stage}" == "backup" || "${migration_stage}" == "init" ]]; then
+        if [[ "$source_de" == "none" ]]; then
+            local default_dm="${DE_DISPLAY_MANAGER[$target_de]:-none}"
+            state_set DE_MIG_DM "$default_dm"
+            state_set DE_MIG_X "$(detect_current_x)"
+            state_set DE_MIG_AUDIO "$(detect_current_audio)"
+            state_set DE_MIG_NETWORK "$(detect_current_network)"
+            state_set DE_MIG_EXTRAS ""
         else
-            local orphan
-            orphan=$(pacman -Qtdq 2>/dev/null || true)
-            if [[ -n "$orphan" ]]; then
-                log_info "Removing orphaned packages..."
-                pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
-            fi
+            prompt_migration_choices
         fi
     fi
 
-    if [[ "$target_de" != "none" ]]; then
-        log_info "Installing $target_de packages..."
-        install_packages "${DE_PACKAGES[$target_de]:-}"
+    if [[ "${migration_stage}" == "repos" || "${migration_stage}" == "backup" || "${migration_stage}" == "remove" ]]; then
+        if [[ "$source_de" != "none" ]]; then
+            log_info "Removing $source_de packages..."
+            remove_packages "${DE_PACKAGES[$source_de]:-}"
+            if [[ -n "${MIG_ROOT}" ]]; then
+                local orphan
+                orphan=$(artix-chroot "${MIG_ROOT}" pacman -Qtdq 2>/dev/null || true)
+                if [[ -n "$orphan" ]]; then
+                    log_info "Removing orphaned packages..."
+                    artix-chroot "${MIG_ROOT}" pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
+                fi
+            else
+                local orphan
+                orphan=$(pacman -Qtdq 2>/dev/null || true)
+                if [[ -n "$orphan" ]]; then
+                    log_info "Removing orphaned packages..."
+                    pacman -Rns --noconfirm $orphan 2>/dev/null || log_warn "Some orphans could not be removed"
+                fi
+            fi
+        fi
+        echo "remove" > "${migration_stage_file}"
+    else
+        log_info "Skipping source removal (already done)"
     fi
 
-    log_info "MIG_ROOT=${MIG_ROOT:-empty}"
-    apply_migration_choices
-
-    if [[ "$target_de" == "sonicde" ]]; then
-        _cleanup_target_repo "$target_de"
+    if [[ "${migration_stage}" == "remove" || "${migration_stage}" == "install" ]]; then
+        if [[ "$target_de" != "none" ]]; then
+            log_info "Installing $target_de packages..."
+            install_packages "${DE_PACKAGES[$target_de]:-}"
+        fi
+        echo "install" > "${migration_stage_file}"
+    else
+        log_info "Skipping target install (already done)"
     fi
 
-    if [[ -x "${MIG_ROOT}/usr/bin/mkinitcpio" ]]; then
-        _chroot mkinitcpio -P 2>/dev/null || true
+    if [[ "${migration_stage}" == "install" || "${migration_stage}" == "apply" ]]; then
+        log_info "MIG_ROOT=${MIG_ROOT:-empty}"
+        apply_migration_choices
+        echo "apply" > "${migration_stage_file}"
+    else
+        log_info "Skipping choice application (already done)"
     fi
+
+    if [[ "${migration_stage}" == "apply" || "${migration_stage}" == "finalize" ]]; then
+        if [[ "$target_de" == "sonicde" ]]; then
+            _cleanup_target_repo "$target_de"
+        fi
+        if [[ -x "${MIG_ROOT}/usr/bin/mkinitcpio" ]]; then
+            _chroot mkinitcpio -P 2>/dev/null || true
+        fi
+        echo "finalize" > "${migration_stage_file}"
+    else
+        log_info "Skipping finalization (already done)"
+    fi
+
+    rm -f "${migration_stage_file}"
 
     log_info "Desktop migration complete."
     log_info "You should reboot for all changes to take effect."

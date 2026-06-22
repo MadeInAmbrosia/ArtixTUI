@@ -174,7 +174,7 @@ recovery_get_status() {
 
 reconstruct_state_from_system() {
     validate_recovery_root
-
+    detect_boot_mode
     detect_disk
     detect_init
     detect_filesystem

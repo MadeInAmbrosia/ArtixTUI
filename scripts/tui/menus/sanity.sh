@@ -4,15 +4,16 @@ set -Eeuo pipefail
 tui_show_sanity_warnings() {
     local warnings=()
 
-    [[ "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("ZFS is experimental — DKMS rebuilds may be required")
-    [[ "$(state_get FS_TYPE)" == "bcachefs" ]] && warnings+=("bcachefs is experimental — tools may be unstable")
-    [[ "$(state_get FS_TYPE)" == "zfs" && "$(state_get BOOTLOADER)" != "grub" ]] && warnings+=("ZFS boot without GRUB is untested — consider using GRUB for ZFS systems")
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        warnings+=("BIOS/Legacy boot mode — UEFI features (UKI, EFIStub, rEFInd, Limine) are disabled")
+    fi
+
+    [[ "$(state_get BOOTLOADER)" == "efistub" && "${ARTIX_BOOT_MODE:-uefi}" != "bios" ]] && warnings+=("EFIStub needs compatible UEFI firmware")
+    [[ "$(state_get BOOTLOADER)" == "uki" ]] && warnings+=("UKI is UEFI-only — BIOS systems not supported")
 
     [[ "$(state_get KERNEL_CHOICE)" == "linux-libre" ]] && warnings+=("linux-libre removes non-free firmware — hardware may not work")
     [[ "$(state_get KERNEL_CHOICE)" == "tkg" ]] && warnings+=("TKG kernel is compiled from source during installation — may take 20–30 minutes")
 
-    [[ "$(state_get BOOTLOADER)" == "efistub" ]] && warnings+=("EFIStub needs compatible UEFI firmware")
-    [[ "$(state_get BOOTLOADER)" == "uki" ]] && warnings+=("UKI is UEFI-only — BIOS systems not supported")
     [[ "$(state_get BOOTLOADER)" == "grub" && "$(state_get FS_TYPE)" == "xfs" ]] && warnings+=("GRUB + XFS: ensure bigtime is disabled for compatibility")
     [[ "$(state_get BOOTLOADER)" == "uki" && "$(state_get USE_LUKS)" == "yes" ]] && warnings+=("UKI + LUKS: ensure initramfs includes encrypt hook")
 
@@ -25,7 +26,6 @@ tui_show_sanity_warnings() {
     [[ "$(state_get USE_LVM)" == "yes" && "$(state_get USE_LUKS)" == "yes" ]] && warnings+=("LVM on LUKS: correct crypt device order is critical")
 
     [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get BOOTLOADER)" == "refind" ]] && warnings+=("LUKS + rEFInd: may require manual boot config")
-    [[ "$(state_get USE_LUKS)" == "yes" && "$(state_get FS_TYPE)" == "zfs" ]] && warnings+=("LUKS + ZFS: complex setup, test thoroughly before relying on it")
 
     [[ "$(state_get COREUTILS)" == "busybox" ]] && warnings+=("BusyBox coreutils — some scripts may need GNU extensions")
     [[ "$(state_get COREUTILS)" == "uutils" ]] && warnings+=("uutils coreutils — Rust-based, may have compatibility gaps")

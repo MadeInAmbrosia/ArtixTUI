@@ -508,6 +508,44 @@ run_init_migration() {
     local source_init="${1}" target_init="${2}"
     validate_migration "$source_init" "$target_init"
 
+    local migration_stage_file="/tmp/artix-installer/migration-stage.conf"
+    local migration_stage
+    migration_stage="$(cat "${migration_stage_file}" 2>/dev/null || echo "init")"
+    log_info "Migration stage: ${migration_stage}"
+
+    local -A stage_names=(
+        ["init"]="Starting"
+        ["backup"]="Configuration backed up"
+        ["cache"]="Packages cached"
+        ["remove"]="Old init removed"
+        ["install"]="New init installed"
+        ["services"]="Services migrated"
+        ["finalize"]="Finalizing"
+    )
+    local stage_display="${stage_names[${migration_stage}]:-${migration_stage}}"
+
+    if [[ "${migration_stage}" != "init" && "${migration_stage}" != "finalize" ]]; then
+        tui_msg "Failed Migration Detected" \
+            "A previous migration attempt was interrupted after: ${stage_display}.\n\n
+You can:\n
+  • Resume – continue from where it stopped\n
+  • Start Fresh – remove both init systems and perform a clean migration"
+        
+        if ! tui_yesno "Resume Migration?" "Resume the interrupted migration?"; then
+            log_info "User chose to start fresh — removing both init systems..."
+            remove_source_init "$source_init" 2>/dev/null || true
+            remove_source_init "$target_init" 2>/dev/null || true
+            local backup_dir
+            backup_dir="$(state_get MIGRATION_BACKUP_DIR '')"
+            if [[ -n "${backup_dir}" && -d "${backup_dir}" ]]; then
+                rm -rf "${backup_dir}" 2>/dev/null || true
+            fi
+            rm -f "${migration_stage_file}"
+            migration_stage="init"
+            log_info "Both init systems removed. Starting clean migration."
+        fi
+    fi
+
     if [[ "$source_init" == "systemd" ]]; then
         if [[ -n "${MIG_ROOT}" ]]; then
             die "Systemd→Artix migration must be run from the installed system, not the live ISO."
@@ -529,63 +567,97 @@ run_init_migration() {
             rsync lsb-release esysusers etmpfiles artix-branding-base
         reinstall_artix_packages
     else
-        local backup_dir="${MIG_ROOT}/root/init-backup-${source_init}-$(date +%Y%m%d-%H%M%S)"
-        backup_init_config "$source_init" "$backup_dir"
+        if [[ "${migration_stage}" == "init" || "${migration_stage}" == "backup" ]]; then
+            local backup_dir="${MIG_ROOT}/root/init-backup-${source_init}-$(date +%Y%m%d-%H%M%S)"
+            backup_init_config "$source_init" "$backup_dir"
 
-        local -a custom_services
-        mapfile -t custom_services < <(detect_custom_services "$source_init")
-        if [[ ${#custom_services[@]} -gt 0 ]]; then
-            log_warn "Custom services detected: ${custom_services[*]}"
-            mkdir -p "$backup_dir/custom"
-            for svc in "${custom_services[@]}"; do
-                case "$source_init" in
-                    openrc) cp -a "${MIG_ROOT}/etc/init.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
-                    runit)  cp -a "${MIG_ROOT}/etc/runit/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
-                    dinit)  cp -a "${MIG_ROOT}/etc/dinit.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
-                    s6)     cp -a "${MIG_ROOT}/etc/s6/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
-                esac
-            done
-            log_info "Custom services saved to $backup_dir/custom/"
-        fi
-
-        cache_target_init_packages "$source_init" "$target_init"
-
-        local enabled_svcs
-        enabled_svcs=$(list_enabled_services "$source_init")
-        local svc_pkgs=""
-        while IFS= read -r svc; do
-            [[ -z "$svc" ]] && continue
-            local mapped
-            mapped=$(map_service "$source_init" "$target_init" "$svc" 2>/dev/null || true)
-            if [[ -n "$mapped" ]]; then
-                svc_pkgs+=" ${mapped}-${target_init}"
+            local -a custom_services
+            mapfile -t custom_services < <(detect_custom_services "$source_init")
+            if [[ ${#custom_services[@]} -gt 0 ]]; then
+                log_warn "Custom services detected: ${custom_services[*]}"
+                mkdir -p "$backup_dir/custom"
+                for svc in "${custom_services[@]}"; do
+                    case "$source_init" in
+                        openrc) cp -a "${MIG_ROOT}/etc/init.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                        runit)  cp -a "${MIG_ROOT}/etc/runit/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                        dinit)  cp -a "${MIG_ROOT}/etc/dinit.d/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                        s6)     cp -a "${MIG_ROOT}/etc/s6/sv/$svc" "$backup_dir/custom/" 2>/dev/null || true ;;
+                    esac
+                done
+                log_info "Custom services saved to $backup_dir/custom/"
             fi
-        done <<< "$enabled_svcs"
-        if [[ -n "$svc_pkgs" ]]; then
-            log_info "Installing service packages: ${svc_pkgs}"
-            _pacman -S --noconfirm --needed ${svc_pkgs} 2>/dev/null || log_warn "Some service packages could not be installed"
+            state_set MIGRATION_BACKUP_DIR "${backup_dir}"
+            echo "backup" > "${migration_stage_file}"
+        else
+            log_info "Skipping backup (already done)"
         fi
 
-        remove_source_init "$source_init"
-        install_target_init "$source_init" "$target_init"
+        if [[ "${migration_stage}" == "backup" || "${migration_stage}" == "cache" ]]; then
+            cache_target_init_packages "$source_init" "$target_init"
+
+            local enabled_svcs
+            enabled_svcs=$(list_enabled_services "$source_init")
+            local svc_pkgs=""
+            while IFS= read -r svc; do
+                [[ -z "$svc" ]] && continue
+                local mapped
+                mapped=$(map_service "$source_init" "$target_init" "$svc" 2>/dev/null || true)
+                if [[ -n "$mapped" ]]; then
+                    svc_pkgs+=" ${mapped}-${target_init}"
+                fi
+            done <<< "$enabled_svcs"
+            if [[ -n "$svc_pkgs" ]]; then
+                log_info "Installing service packages: ${svc_pkgs}"
+                _pacman -S --noconfirm --needed ${svc_pkgs} 2>/dev/null || log_warn "Some service packages could not be installed"
+            fi
+            echo "cache" > "${migration_stage_file}"
+        else
+            log_info "Skipping package cache (already done)"
+        fi
+
+        if [[ "${migration_stage}" == "cache" || "${migration_stage}" == "remove" ]]; then
+            remove_source_init "$source_init"
+            echo "remove" > "${migration_stage_file}"
+        else
+            log_info "Skipping source init removal (already done)"
+        fi
+
+        if [[ "${migration_stage}" == "remove" || "${migration_stage}" == "install" ]]; then
+            install_target_init "$source_init" "$target_init"
+            echo "install" > "${migration_stage_file}"
+        else
+            log_info "Skipping target init install (already done)"
+        fi
     fi
 
-    if has_direct_table "$source_init" "$target_init"; then
-        log_info "Direct migration: $source_init → $target_init"
-        _run_single_migration "$source_init" "$target_init"
-    elif [[ "$source_init" != "$HUB_INIT" && "$target_init" != "$HUB_INIT" ]]; then
-        log_info "Chaining through $HUB_INIT"
-        _run_single_migration "$source_init" "$HUB_INIT"
-        _run_single_migration "$HUB_INIT" "$target_init"
-    elif [[ "$source_init" != "$HUB_INIT" && "$target_init" == "$HUB_INIT" ]]; then
-        _run_single_migration "$source_init" "$HUB_INIT"
-    elif [[ "$source_init" == "$HUB_INIT" && "$target_init" != "$HUB_INIT" ]]; then
-        _run_single_migration "$HUB_INIT" "$target_init"
+    if [[ "${migration_stage}" == "install" || "${migration_stage}" == "services" || "${migration_stage}" == "cache" || "${migration_stage}" == "remove" ]]; then
+        if has_direct_table "$source_init" "$target_init"; then
+            log_info "Direct migration: $source_init → $target_init"
+            _run_single_migration "$source_init" "$target_init"
+        elif [[ "$source_init" != "$HUB_INIT" && "$target_init" != "$HUB_INIT" ]]; then
+            log_info "Chaining through $HUB_INIT"
+            _run_single_migration "$source_init" "$HUB_INIT"
+            _run_single_migration "$HUB_INIT" "$target_init"
+        elif [[ "$source_init" != "$HUB_INIT" && "$target_init" == "$HUB_INIT" ]]; then
+            _run_single_migration "$source_init" "$HUB_INIT"
+        elif [[ "$source_init" == "$HUB_INIT" && "$target_init" != "$HUB_INIT" ]]; then
+            _run_single_migration "$HUB_INIT" "$target_init"
+        fi
+        echo "services" > "${migration_stage_file}"
+    else
+        log_info "Skipping service migration (already done)"
     fi
 
-    enable_lvm_services
-    [[ "$source_init" == "systemd" ]] && cleanup_systemd_junk
-    update_bootloader
+    if [[ "${migration_stage}" == "services" || "${migration_stage}" == "finalize" ]]; then
+        enable_lvm_services
+        [[ "$source_init" == "systemd" ]] && cleanup_systemd_junk
+        update_bootloader
+        echo "finalize" > "${migration_stage_file}"
+    else
+        log_info "Skipping finalization (already done)"
+    fi
+
+    rm -f "${migration_stage_file}"
 
     log_info "Init migration complete."
 

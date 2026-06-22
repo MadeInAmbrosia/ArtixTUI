@@ -37,92 +37,43 @@ _kernel_pkg() {
 }
 
 repair_boot() {
-    local issues
-    issues=$(state_get BOOT_ISSUES none)
-
+    local issues=$(state_get BOOT_ISSUES none)
     if [[ "${issues}" =~ no-kernel ]]; then
-        log_warn "Kernel image missing from /boot."
-        local kernel_choice kernel_pkgs
-        kernel_choice=$(state_get KERNEL_CHOICE linux)
-        kernel_pkgs=$(_kernel_pkg "${kernel_choice}")
-        if [[ -n "${kernel_pkgs}" ]]; then
-            if tui_yesno "Reinstall kernel" "Reinstall ${kernel_choice} kernel?"; then
-                artix-chroot /mnt pacman -S --noconfirm ${kernel_pkgs}
-            fi
-        else
-            log_warn "No binary package for kernel ${kernel_choice} — skipping."
+        if tui_yesno "Reinstall kernel" "Reinstall kernel?"; then
+            local kpkg=$(_kernel_pkg "$(state_get KERNEL_CHOICE)")
+            [[ -n "${kpkg}" ]] && pkg_install ${kpkg}
         fi
     fi
-
+    if [[ "${issues}" =~ no-initramfs ]]; then
+        if tui_yesno "Regenerate initramfs" "Run mkinitcpio?"; then
+            artix-chroot "${ROOT}" mkinitcpio -P
+        fi
+    fi
     if [[ "${issues}" =~ no-init ]]; then
         log_warn "/sbin/init missing."
-        local init
-        init=$(detect_init 2>/dev/null || state_get INIT openrc)
+        local init=$(detect_init 2>/dev/null || state_get INIT openrc)
         if tui_yesno "Repair init" "Create /sbin/init symlink to ${init}?"; then
-            artix-chroot /mnt ln -sf "/usr/bin/${init}" /sbin/init
+            artix-chroot "${ROOT}" ln -sf "/usr/bin/${init}" /sbin/init
             log_info "Init symlink created."
         fi
     fi
-
-    if [[ "${issues}" =~ no-initramfs ]]; then
-        log_warn "Initramfs missing."
-        if tui_yesno "Regenerate initramfs" "Run mkinitcpio?"; then
-            artix-chroot /mnt mkinitcpio -P
-        fi
-    fi
-
-    if [[ "${issues}" =~ no-efi-entry ]]; then
-        log_warn "No EFI boot entry for Artix."
-        local bootloader
-        bootloader=$(state_get BOOTLOADER grub)
-        if tui_yesno "Reinstall bootloader" "Reinstall ${bootloader}?"; then
-            case "${bootloader}" in
-                grub)
-                    artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX
-                    artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
-                    ;;
-                limine)
-                    artix-chroot /mnt pacman -S --noconfirm limine
-                    mkdir -p /mnt/boot/efi/EFI/BOOT
-                    cp /mnt/usr/share/limine/BOOTX64.EFI /mnt/boot/efi/EFI/BOOT/
-                    local esp_disk esp_part
-                    esp_disk="$(lsblk -no PKNAME "$(findmnt -no SOURCE /mnt/boot/efi 2>/dev/null)" 2>/dev/null || true)"
-                    esp_part="$(lsblk -no PARTN "$(findmnt -no SOURCE /mnt/boot/efi 2>/dev/null)" 2>/dev/null || true)"
-                    if [[ -n "${esp_disk}" && -n "${esp_part}" ]]; then
-                        artix-chroot /mnt efibootmgr --create --disk "/dev/${esp_disk}" --part "${esp_part}" \
-                            --label 'Limine' --loader '\EFI\BOOT\BOOTX64.EFI' --verbose || true
-                    else
-                        log_warn "Could not detect EFI partition — skipping EFI entry creation"
-                    fi
-                    ;;
-                refind)
-                    artix-chroot /mnt refind-install
-                    ;;
-                efistub)
-                    log_warn "EFIStub repair not implemented — please re-run the installer or manually configure."
-                    ;;
-            esac
-        fi
-    fi
-
-    if [[ "${issues}" =~ no-uki ]]; then
-        log_warn "UKI file missing."
-        repair_uki
-    fi
-
-    if [[ "${issues}" =~ missing-cryptdevice ]]; then
-        log_warn "Bootloader config is missing cryptdevice= parameter."
-        if tui_yesno "Repair cmdline" "Regenerate bootloader configuration with correct cryptdevice?"; then
-            source "${SCRIPT_DIR}/install/bootloader.sh"
+    if [[ "${issues}" =~ no-efi-entry ]] && [[ "$(state_get ARTIX_BOOT_MODE uefi)" == "uefi" ]]; then
+        if tui_yesno "Reinstall bootloader" "Reinstall $(state_get BOOTLOADER)?"; then
             configure_bootloader
         fi
     fi
-
+    if [[ "${issues}" =~ no-uki ]] && [[ "$(state_get ARTIX_BOOT_MODE uefi)" == "uefi" ]]; then
+        repair_uki
+    fi
+    if [[ "${issues}" =~ missing-cryptdevice ]]; then
+        if tui_yesno "Repair cmdline" "Regenerate bootloader config?"; then
+            configure_bootloader
+        fi
+    fi
     if [[ "${issues}" =~ missing-encrypt-hook ]]; then
-        log_warn "mkinitcpio.conf is missing the encrypt hook."
-        if tui_yesno "Repair hooks" "Add encrypt hook to mkinitcpio.conf and regenerate initramfs?"; then
-            artix-chroot /mnt sed -i 's/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
-            artix-chroot /mnt mkinitcpio -P
+        if tui_yesno "Repair hooks" "Add encrypt hook?"; then
+            artix-chroot "${ROOT}" sed -i '/^HOOKS=/s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+            artix-chroot "${ROOT}" mkinitcpio -P
         fi
     fi
 }

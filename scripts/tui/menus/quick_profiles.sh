@@ -16,7 +16,7 @@ tui_quick_install() {
         "Development – XFCE, base-devel, git, neovim, development tools" \
         "Media – KDE minimal, mpv, feh, media extras" \
         "Volk's Personal – dinit, KDE minimal, source-built kernel" \
-        "TestingQP – ZFS, LUKS, LVM, Limine, UKI, s6, CachyOS, MangoWM, BusyBox coreutils" \
+        "TestingQP – XFS, LUKS, LVM, Limine, UKI, s6, CachyOS, MangoWM, BusyBox coreutils" \
         "Load custom profile – source a saved configuration file") || return 1
 
     case "${profile}" in
@@ -221,7 +221,7 @@ tui_quick_install() {
             ;;
         *TestingQP*)
             state_set QUICK_PROFILE "TestingQP"
-            state_set FS_TYPE "zfs"
+            state_set FS_TYPE "xfs"
             state_set BOOTLOADER "limine"
             state_set KERNEL_CHOICE "linux-cachyos-bore"
             state_set INIT "s6"

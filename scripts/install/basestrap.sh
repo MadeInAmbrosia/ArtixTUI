@@ -49,8 +49,20 @@ install_base_system() {
 
     local pkgs=(
         base base-devel linux-firmware bash nano vim "${priv_esc}"
-        git curl wget pciutils "${init_pkg}" dbus efibootmgr dosfstools mkinitcpio
+        git curl wget pciutils "${init_pkg}" dbus mkinitcpio
     )
+
+    case "${bootloader}" in
+        grub)    pkgs+=(grub os-prober) ;;
+        refind)  pkgs+=(refind) ;;
+        efistub) ;;
+        limine)  pkgs+=(limine) ;;
+    esac
+
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "uefi" ]]; then
+        pkgs+=(efibootmgr dosfstools)
+    fi
+
     [[ -n "${ucode}" ]] && pkgs+=("${ucode}")
 
     case "${wm_de}" in
@@ -110,29 +122,12 @@ install_base_system() {
         ext4)      pkgs+=(e2fsprogs) ;;
         xfs)       pkgs+=(xfsprogs) ;;
         f2fs)      pkgs+=(f2fs-tools) ;;
-        bcachefs)  pkgs+=(bcachefs-tools bcachefs-dkms) ;;
-        zfs)
-            log_info "Setting up OpenZFS repository..."
-            if ! grep -q '^\[archzfs\]' /etc/pacman.conf; then
-                cat <<'EOF' >> /etc/pacman.conf
-[archzfs]
-Server = https://archzfs.com/$repo/x86_64
-EOF
-            fi
-            pacman-key --recv-keys F75D9D76 --keyserver hkp://keyserver.ubuntu.com
-            pacman-key --lsign-key F75D9D76
-            pkgs+=(dkms zfs-dkms zfs-utils zfs-initramfs)
-            log_warn "ZFS support is experimental. DKMS rebuilds may be required."
-            ;;
         *) die "unsupported filesystem: ${fs_type}" ;;
     esac
 
-    case "${bootloader}" in
-        grub)    pkgs+=(grub os-prober) ;;
-        refind)  pkgs+=(refind) ;;
-        efistub) ;;
-        limine)  pkgs+=(limine) ;;
-    esac
+    if [[ "$(state_get USE_LUKS no)" != "yes" ]]; then
+        pkgs+=(artix-grub-theme)
+    fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         pkgs+=(lvm2 "lvm2-${init}")
@@ -260,13 +255,6 @@ EOF
 
     if [[ "${fs_type}" == 'zfs' ]]; then
         basestrap_zfs_setup
-    fi
-
-    if [[ "${fs_type}" == 'bcachefs' ]]; then
-        log_info "Adding Bcachefs hook to mkinitcpio..."
-        if ! artix-chroot /mnt grep -q 'bcachefs' /etc/mkinitcpio.conf; then
-            artix-chroot /mnt sed -i '/^HOOKS=/s/\(filesystems\)/bcachefs \1/' /etc/mkinitcpio.conf
-        fi
     fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
