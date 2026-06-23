@@ -101,6 +101,8 @@ find_initramfs_image() {
 
 get_luks_raw_uuid() {
     local dev="$1"
+    local disk
+    disk="$(state_get DISK)"
     local current="$dev"
 
     while [[ -n "$current" ]]; do
@@ -120,7 +122,14 @@ get_luks_raw_uuid() {
     done
 
     local luks_dev
-    luks_dev=$(blkid -o device -t TYPE=crypto_LUKS 2>/dev/null | head -n1)
+    luks_dev=$(blkid -o device -t TYPE=crypto_LUKS 2>/dev/null | while read -r candidate; do
+        local cand_disk
+        cand_disk="/dev/$(lsblk -no PKNAME "$candidate" 2>/dev/null | head -n1)"
+        if [[ "${cand_disk}" == "${disk}" ]]; then
+            echo "${candidate}"
+            break
+        fi
+    done)
     if [[ -n "$luks_dev" ]]; then
         blkid -s UUID -o value "$luks_dev" 2>/dev/null || echo ""
         return 0
@@ -197,6 +206,22 @@ configure_bootloader() {
 
     if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
         log_info "Installing GRUB for BIOS..."
+
+        local bios_cmdline
+        bios_cmdline=$(generate_root_cmdline "${fs_type}" "${crypt_uuid}" "${mapper_name}" "${root_uuid}" "no")
+        if [[ -n "${bios_cmdline}" ]]; then
+            log_info "Setting GRUB cmdline: ${bios_cmdline}"
+            if grep -q '^GRUB_CMDLINE_LINUX=' /mnt/etc/default/grub; then
+                artix-chroot /mnt sed -i "s|^GRUB_CMDLINE_LINUX=\"\(.*\)\"|GRUB_CMDLINE_LINUX=\"\1 ${bios_cmdline}\"|" /etc/default/grub
+            else
+                printf 'GRUB_CMDLINE_LINUX="%s"\n' "${bios_cmdline}" >> /mnt/etc/default/grub
+            fi
+        fi
+
+        if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
+            echo 'GRUB_ENABLE_CRYPTODISK=y' >> /mnt/etc/default/grub
+        fi
+
         artix-chroot /mnt grub-install --target=i386-pc --boot-directory=/boot "$(state_get DISK)" || die 'grub-install failed'
         artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg || die 'grub-mkconfig failed'
         log_info "Bootloader setup complete (BIOS)."

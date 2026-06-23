@@ -72,7 +72,9 @@ tui_select_shell() {
 
 tui_select_microcode() {
     local detected='amd-ucode'
-    grep -q 'GenuineIntel' /proc/cpuinfo && detected='intel-ucode'
+    if [[ "$(< /proc/cpuinfo)" == *GenuineIntel* ]]; then
+        detected='intel-ucode'
+    fi
 
     if tui_yesno "CPU Microcode" "Detected ${detected}. Use automatically?"; then
         state_set MICROCODE_OVERRIDE "${detected}"

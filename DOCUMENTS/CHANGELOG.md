@@ -1,5 +1,21 @@
 # Changelog
 
+## v9.1.1.0 (2026-06-23) — ArtixForge
+
+### Fixed
+- **Resume after reboot** — storage stage now remounts filesystems when stage was marked complete but `/mnt` is empty, preventing silent failure on all modes after power cycle
+- **BIOS + LUKS/LVM boot** — GRUB kernel command line (`cryptdevice=`, `root=/dev/mapper/`, LVM paths) now injected into `/etc/default/grub` before `grub-mkconfig` on BIOS installs, matching the UEFI code path
+- **LUKS UUID cross-disk contamination** — `get_luks_raw_uuid()` fallback restricted to partitions on the target disk only, preventing random LUKS partition from being selected
+- **Silent VFAT creation failure** — EFI partition now verified with a mount/unmount test after `mkfs.fat`, catching corruption before it cascades into bootloader failure
+- **TUI `/dev/tty` fallback** — all `gum` calls now resolve a usable TTY through `/dev/tty` → `tty` → `/dev/tty1` → `/dev/console` chain, preventing silent menu failure on dinit and framebuffer consoles
+- **Quick profile state contamination** — declining a quick profile now wipes all pre-set state variables before falling through to manual configuration, preventing Frankenstein configs
+- **Microcode selection crash** — `grep` replaced with bash builtin pattern match in `tui_select_microcode()`, eliminating possible 127 on dinit live ISOs with broken `grep` symlink
+- **Manual partition validation** — missing EFI/root partitions now show descriptive error with `cfdisk`/`fdisk` hint instead of cryptic "does not exist" message
+
+### Changed
+- Storage resume path logs "remounting filesystems for resume" for visibility
+- Manual partition prompt lists required partition types (EFI System, Linux filesystem)
+
 ## v9.1.0.0 (2026-06-22) — ArtixForge
 
 ### Added

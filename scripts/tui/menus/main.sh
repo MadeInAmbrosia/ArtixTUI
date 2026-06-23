@@ -134,6 +134,20 @@ tui_collect_install_config() {
         fi
         return
     fi
+
+    local quick_vars=(
+        QUICK_PROFILE FS_TYPE BOOTLOADER KERNEL_CHOICE INIT PRIV_ESCALATION
+        USE_LUKS USE_LVM GENERATE_UKI ALLOW_OFFLINE ENABLE_ARCH_REPOS
+        MICROCODE_OVERRIDE KEEP_BINARY_KERNEL COREUTILS KERNEL_CONFIG_DEPTH
+        WM_DE KDE_PROFILE DISPLAY_MANAGER NETWORK_STACK AUDIO_STACK X_STACK
+        USER_SHELL EXTRAS POWER_USER POWERUSER_PACKAGES POWERUSER_PROFILE
+        SWAP_ENABLED SWAP_SIZE LUKS_KEYFILE LUKS_KEYFILE_PATH LUKS_PASS
+    )
+    for var in "${quick_vars[@]}"; do
+        state_set "${var}" ""
+    done
+    state_set QUICK_INSTALL "no"
+
     tui_select_init
     tui_select_filesystem
     tui_select_btrfs_layout

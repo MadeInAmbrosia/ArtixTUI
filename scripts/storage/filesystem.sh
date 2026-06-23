@@ -120,9 +120,19 @@ create_filesystems() {
     mkfs.fat -F32 "${efi_part}" || recoverable_error 'Failed to create FAT32 EFI filesystem'
     partprobe "${disk}" || true
     udevadm settle || true
+
     if ! blkid -o value -s TYPE "${efi_part}" | grep -qi 'vfat'; then
         die "EFI partition ${efi_part} does not have a vfat signature — mkfs.fat may have failed silently"
     fi
+
+    local tmp_efi_mount="/tmp/efi-check.$$"
+    mkdir -p "${tmp_efi_mount}"
+    if ! mount -t vfat "${efi_part}" "${tmp_efi_mount}"; then
+        rmdir "${tmp_efi_mount}" 2>/dev/null || true
+        die "EFI partition ${efi_part} cannot be mounted — mkfs.fat failed, check kernel VFAT support"
+    fi
+    umount "${tmp_efi_mount}"
+    rmdir "${tmp_efi_mount}"
 
     if [[ "${swap_enabled}" == 'yes' && -n "${swap_part:-}" ]]; then
         log_info "Initializing swap..."

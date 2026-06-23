@@ -7,11 +7,13 @@
 
 <p align="center">
   <strong>This is the official branch for v9.</strong><br>
-  Any bugs found and reported are welcome.
+  Find a bug? Make an issue.
 </p>
 
+
+
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v9.1.0.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v9.1.1.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
