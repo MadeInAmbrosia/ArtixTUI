@@ -17,7 +17,6 @@
 - **BIOS + LUKS/LVM boot** — GRUB kernel command line (`cryptdevice=`, `root=/dev/mapper/`, LVM paths) now injected into `/etc/default/grub` before `grub-mkconfig` on BIOS installs, matching the UEFI code path
 - **LUKS UUID cross-disk contamination** — `get_luks_raw_uuid()` fallback restricted to partitions on the target disk only, preventing random LUKS partition from being selected
 - **Silent VFAT creation failure** — EFI partition now verified with a mount/unmount test after `mkfs.fat`, catching corruption before it cascades into bootloader failure
-- **TUI `/dev/tty` fallback** — all `gum` calls now resolve a usable TTY through `/dev/tty` → `tty` → `/dev/tty1` → `/dev/console` chain, preventing silent menu failure on dinit and framebuffer consoles
 - **Microcode selection crash** — `grep` replaced with bash builtin pattern match in `tui_select_microcode()`, eliminating possible 127 on dinit live ISOs with broken `grep` symlink
 - **Manual partition validation** — missing EFI/root partitions now show descriptive error with `cfdisk`/`fdisk` hint instead of cryptic "does not exist" message
 
