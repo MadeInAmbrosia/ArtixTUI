@@ -16,6 +16,7 @@ tui_select_desktop() {
     else
         state_set KDE_PROFILE "none"
     fi
+}
 
 tui_select_display_manager() {
     local wm dm
