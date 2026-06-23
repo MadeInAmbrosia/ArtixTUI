@@ -42,7 +42,6 @@ partition_disk() {
         log_info "Creating MBR partition layout..."
         parted -s "${disk}" mklabel msdos
         parted -s "${disk}" mkpart primary 1MiB 2MiB
-        parted -s "${disk}" set 1 bios_grub on
         if [[ "${swap_enabled}" == 'yes' ]]; then
             parted -s "${disk}" mkpart primary linux-swap 2MiB "${swap_size}"
             parted -s "${disk}" mkpart primary "${swap_size}" 100%

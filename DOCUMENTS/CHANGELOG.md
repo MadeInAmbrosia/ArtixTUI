@@ -1,5 +1,10 @@
 # Changelog
 
+## v9.1.1.2 (2026-06-23) — ArtixForge
+
+### Fixed
+- **BIOS partition error** — removed invalid `bios_grub` flag from MBR partition layout; the flag is GPT-only and `parted` correctly rejected it on `msdos` labels
+
 ## v9.1.1.1 (2026-06-23) — ArtixForge
 
 ### Fixed
