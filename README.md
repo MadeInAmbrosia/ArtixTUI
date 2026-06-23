@@ -99,7 +99,7 @@ sudo artixforge
 For the latest development version or if the package is not yet available in your mirrors:
 
 ```bash
-git clone https://github.com/realvolk/ArtixForge.git
+git clone --recursive https://github.com/realvolk/ArtixForge.git
 cd ArtixForge
 chmod +x install
 sudo ./install
