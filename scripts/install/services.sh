@@ -15,6 +15,12 @@ service_exists() {
 
 enable_service() {
     local svc="${1}" init="${INIT:-openrc}"
+    
+    case "${init}:${svc}" in
+        dinit:logind) svc="elogind" ;;
+        dinit:dbus)   svc="dbus" ;;
+    esac
+    
     if ! service_exists "${svc}"; then
         log_warn "Service not found for ${init}: ${svc}"
         return 1
@@ -29,6 +35,11 @@ enable_service() {
 
 enable_service_boot() {
     local svc="${1}" init="${INIT:-openrc}"
+    
+    case "${init}:${svc}" in
+        dinit:logind) svc="elogind" ;;
+    esac
+    
     if ! service_exists "${svc}"; then
         log_warn "Service not found for ${init}: ${svc}"
         return 1

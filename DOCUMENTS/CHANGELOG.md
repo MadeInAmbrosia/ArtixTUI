@@ -1,5 +1,10 @@
 # Changelog
 
+## v9.1.1.3 (2026-06-23) — ArtixForge
+
+### Fixed
+- **dinit `elogind` service** — `enable_service` and `enable_service_boot` now map `logind` → `elogind` on dinit systems, preventing missing symlink that caused XFCE and other DEs to crash after login
+
 ## v9.1.1.2 (2026-06-23) — ArtixForge
 
 ### Fixed
