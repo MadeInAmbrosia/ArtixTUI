@@ -166,19 +166,17 @@ main_menu() {
         mode=$(tui_menu "ArtixForge v9" "Select installation mode:" "${menu_items[@]}") || exit 1
 
         case "${mode}" in
-            Automatic*) MODE='auto' ; break ;;
-            Manual*)    MODE='manual' ; break ;;
-            *Migration*) MODE='migrate' ; break ;;
-            *ISO*)      MODE='iso' ; break ;;
-            *Installation*) MODE='resume' ; break ;;
+            Automatic*)     MODE='auto' ; break ;;
+            Manual*)        MODE='manual' ; break ;;
             Advanced*)
-                mode=$(tui_menu "Advanced" "Select advanced mode:" \
+                local advanced_choice
+                advanced_choice=$(tui_menu "Advanced" "Select advanced mode:" \
                     "Recovery – scan /mnt for existing system" \
                     "Power User – source‑built packages" \
                     "System Migration – convert init or desktop" \
                     "Build ISO – create a custom live ISO" \
                     "Back") || continue
-                case "${mode}" in
+                case "${advanced_choice}" in
                     Recovery*)          MODE='recovery' ; break ;;
                     Power*)             MODE='power' ; break ;;
                     "System Migration"*) MODE='migrate' ; break ;;
@@ -186,7 +184,10 @@ main_menu() {
                     *)                  continue ;;
                 esac
                 ;;
-            *) MODE='auto' ; break ;;
+            *Migration*)    MODE='migrate' ; break ;;
+            *ISO*)          MODE='iso' ; break ;;
+            *Installation*) MODE='resume' ; break ;;
+            *)              MODE='auto' ; break ;;
         esac
     done
 

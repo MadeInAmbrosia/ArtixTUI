@@ -76,6 +76,8 @@ repair_boot() {
             artix-chroot "${ROOT}" mkinitcpio -P
         fi
     fi
+
+    repair_seat_manager
 }
 
 repair_uki() {
@@ -158,5 +160,55 @@ repair_kernel() {
         fi
     else
         log_error "Kernel rebuild may have failed – check logs."
+    fi
+}
+
+repair_seat_manager() {
+    local detected seat_pkg service_name
+    detected="$(state_get SEAT_MANAGER elogind)"
+    
+    if [[ "${detected}" == "seatd" ]]; then
+        seat_pkg="seatd"
+        service_name="seatd"
+    else
+        seat_pkg="elogind"
+        service_name="logind"
+    fi
+    
+    if ! pacman_root_has "${seat_pkg}"; then
+        log_warn "${seat_pkg} is not installed — desktop sessions will fail."
+        if tui_yesno "Repair Seat Manager" "Install ${seat_pkg} and enable the service?"; then
+            artix-chroot /mnt pacman -S --noconfirm "${seat_pkg}" || {
+                log_error "Failed to install ${seat_pkg}"
+                return 1
+            }
+            enable_service "${service_name}"
+            log_info "${seat_pkg} installed and enabled."
+        fi
+        return 0
+    fi
+    
+    if ! service_exists "${service_name}"; then
+        log_warn "${service_name} service not found for init: $(state_get INIT openrc)"
+        return 0
+    fi
+    
+    local init
+    init="$(state_get INIT openrc)"
+    local service_ok=0
+    
+    case "${init}" in
+        openrc) [[ -L /mnt/etc/runlevels/default/${service_name} ]] || [[ -L /mnt/etc/runlevels/boot/${service_name} ]] && service_ok=1 ;;
+        runit)  [[ -L /mnt/etc/runit/runsvdir/default/${service_name} ]] && service_ok=1 ;;
+        dinit)  [[ -L /mnt/etc/dinit.d/boot.d/elogind ]] || [[ -L /mnt/etc/dinit.d/boot.d/logind ]] && service_ok=1 ;;
+        s6)     [[ -d /mnt/etc/s6/sv/${service_name} ]] && service_ok=1 ;;
+    esac
+    
+    if [[ ${service_ok} -eq 0 ]]; then
+        log_warn "${service_name} service is not enabled — desktop sessions will fail."
+        if tui_yesno "Enable Service" "Enable ${service_name} service for ${init}?"; then
+            enable_service "${service_name}"
+            log_info "${service_name} enabled."
+        fi
     fi
 }

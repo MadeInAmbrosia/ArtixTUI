@@ -120,3 +120,46 @@ detect_kernel() {
         *)          state_set KERNEL_CHOICE linux ;;
     esac
 }
+
+detect_seat_manager() {
+    if pacman_root_has seatd; then
+        state_set SEAT_MANAGER seatd
+    else
+        state_set SEAT_MANAGER elogind
+    fi
+
+    local init seat_svc
+    init="$(state_get INIT openrc)"
+    local seat_mgr
+    seat_mgr="$(state_get SEAT_MANAGER elogind)"
+    
+    case "${seat_mgr}" in
+        seatd) seat_svc="seatd" ;;
+        *)     seat_svc="logind" ;;
+    esac
+
+    local enabled=0
+    case "${init}" in
+        openrc) [[ -L "${ROOT}/etc/runlevels/default/${seat_svc}" ]] || [[ -L "${ROOT}/etc/runlevels/boot/${seat_svc}" ]] && enabled=1 ;;
+        runit)  [[ -L "${ROOT}/etc/runit/runsvdir/default/${seat_svc}" ]] && enabled=1 ;;
+        dinit)
+            if [[ -L "${ROOT}/etc/dinit.d/boot.d/elogind" ]] || [[ -L "${ROOT}/etc/dinit.d/boot.d/logind" ]]; then
+                enabled=1
+            fi
+            ;;
+        s6)     [[ -d "${ROOT}/etc/s6/sv/${seat_svc}" ]] && enabled=1 ;;
+    esac
+
+    if [[ ${enabled} -eq 0 ]]; then
+        local boot_issues
+        boot_issues="$(state_get BOOT_ISSUES none)"
+        if [[ "${boot_issues}" == "none" ]]; then
+            boot_issues=""
+        fi
+        boot_issues+="seat-manager-disabled "
+        state_set BOOT_ISSUES "${boot_issues}"
+        state_set SEAT_MANAGER_DISABLED "yes"
+    else
+        state_set SEAT_MANAGER_DISABLED "no"
+    fi
+}

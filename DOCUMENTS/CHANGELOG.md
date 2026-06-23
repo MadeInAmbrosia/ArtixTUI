@@ -1,5 +1,17 @@
 # Changelog
 
+## v9.1.1.4 (2026-06-23) — ArtixForge
+
+### Fixed
+- **Advanced menu skipped** — `Advanced*)` case moved above `*ISO*)` in main menu pattern matching; the string "Advanced – recovery, power user, migration, ISO" was incorrectly matching `*ISO*)` first, bypassing the submenu entirely and launching ISO mode
+
+### Added
+- **Seat manager detection** — `detect_seat_manager` now verifies the service is actually enabled for the detected init system, flagging `seat-manager-disabled` in `BOOT_ISSUES` when misconfigured
+- **Seat manager repair** — `repair_seat_manager` installs missing `elogind`/`seatd`, enables the service for the correct init, and handles dinit `logind` → `elogind` mapping
+
+### Changed
+- `repair_boot` now calls `repair_seat_manager`, so "Fix everything" and "Repair detected issues" both catch and fix desktop session failures automatically
+
 ## v9.1.1.3 (2026-06-23) — ArtixForge
 
 ### Fixed
