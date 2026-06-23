@@ -12,24 +12,6 @@ _ensure_log_dirs() {
     [[ -d /mnt ]] && mkdir -p "$(dirname "${CHROOT_LOG}")" 2>/dev/null || true
 }
 
-_gum_tty() {
-    local tty
-    tty=$(ps -o tty= -p $$ 2>/dev/null | tr -d ' ')
-    if [[ -n "${tty}" && -c "/dev/${tty}" ]]; then
-        printf '/dev/%s' "${tty}"
-        return 0
-    fi
-    if [[ -c /dev/tty && -r /dev/tty && -w /dev/tty ]]; then
-        printf '/dev/tty'
-        return 0
-    fi
-    if [[ -t 0 ]]; then
-        printf '/dev/stdin'
-        return 0
-    fi
-    return 1
-}
-
 theme_ansi() {
     local gum_code="${1:-212}"
     case "${gum_code}" in
@@ -72,38 +54,32 @@ log_error() {
 }
 
 tui_msg() {
-    local title="${1}" msg="${2}" tty
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for gum — tui_msg failed\n' >&2; return 1; }
+    local title="${1}" msg="${2}"
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
     gum format "${msg}"
-    gum confirm "Press Enter to continue" --affirmative="OK" --timeout=0 <"${tty}" 2>/dev/null || true
+    gum confirm "Press Enter to continue" --affirmative="OK" --timeout=0 </dev/tty 2>/dev/null || true
 }
 
 tui_yesno() {
-    local title="${1}" msg="${2}" tty rc
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for gum — tui_yesno returning 1\n' >&2; return 1; }
+    local title="${1}" msg="${2}"
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
     gum format "${msg}"
-    gum confirm <"${tty}" 2>/dev/null
-    rc=$?
-    return ${rc}
+    gum confirm </dev/tty
 }
 
 tui_input() {
-    local title="${1}" msg="${2}" default="${3:-}" result tty
-    tty=$(_gum_tty) || { printf '%s\n' "${default}"; return 0; }
+    local title="${1}" msg="${2}" default="${3:-}" result
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum input --value "${default}" --prompt "> " <"${tty}" 2>/dev/null) || true
+    result=$(gum input --value "${default}" --prompt "> " </dev/tty) || true
     printf '%s' "${result}"
 }
 
 tui_password() {
-    local title="${1}" msg="${2}" tty
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for password prompt\n' >&2; return 1; }
+    local title="${1}" msg="${2}"
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum input --password --prompt "> " <"${tty}" 2>/dev/null || true
+    gum input --password --prompt "> " </dev/tty || true
 }
 
 tui_msg_quick() {
@@ -114,13 +90,12 @@ tui_msg_quick() {
 
 tui_password_confirm() {
     local title="${1:-Password}" prompt="${2:-Enter password:}" confirm_prompt="${3:-Confirm password:}"
-    local pass confirm tty
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for password prompt\n' >&2; return 1; }
+    local pass confirm
     while true; do
         gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-        pass=$(gum input --password --prompt "${prompt}: " <"${tty}" 2>/dev/null) || true
+        pass=$(gum input --password --prompt "${prompt}: " </dev/tty) || true
         [[ -n "${pass}" ]] || return 1
-        confirm=$(gum input --password --prompt "${confirm_prompt}: " <"${tty}" 2>/dev/null) || true
+        confirm=$(gum input --password --prompt "${confirm_prompt}: " </dev/tty) || true
         [[ -n "${confirm}" ]] || return 1
         if [[ "${pass}" == "${confirm}" ]]; then
             printf '%s\n' "${pass}"
@@ -131,43 +106,36 @@ tui_password_confirm() {
 }
 
 tui_menu() {
-    local title="${1}" msg="${2}" result tty
+    local title="${1}" msg="${2}"
     shift 2
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for gum — tui_menu failed\n' >&2; return 1; }
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum choose --height=15 "$@" <"${tty}" 2>/dev/null) || return 1
-    printf '%s' "${result}"
+    gum choose --height=15 "$@" </dev/tty
 }
 
 tui_menu_custom() {
-    local title="${1}" msg="${2}" height="${3:-15}" result tty
+    local title="${1}" msg="${2}"
+    local height="${3:-15}"
     shift 3
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for gum — tui_menu_custom failed\n' >&2; return 1; }
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum choose --height="${height}" "$@" <"${tty}" 2>/dev/null) || return 1
-    printf '%s' "${result}"
+    gum choose --height="${height}" "$@" </dev/tty
 }
 
 tui_checklist() {
-    local title="${1}" msg="${2}" result tty
+    local title="${1}" msg="${2}"
     shift 2
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for gum — tui_checklist failed\n' >&2; return 1; }
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum choose --no-limit --height=15 "$@" <"${tty}" 2>/dev/null) || return 1
-    printf '%s' "${result}"
+    gum choose --no-limit --height=15 "$@" </dev/tty
 }
 
 tui_filter() {
-    local title="${1}" msg="${2}" result tty
+    local title="${1}" msg="${2}"
     shift 2
-    tty=$(_gum_tty) || { printf '[!] No usable TTY for gum — tui_filter failed\n' >&2; return 1; }
     gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
     [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum filter --height=20 "$@" <"${tty}" 2>/dev/null) || return 1
-    printf '%s' "${result}"
+    gum filter --height=20 "$@"
 }
 
 tui_radiolist() {
