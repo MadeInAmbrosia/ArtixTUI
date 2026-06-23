@@ -25,9 +25,34 @@ The installer runs entirely on your local machine. It does not:
 | Build logs (Power User) | `/mnt/artix-poweruser/build/logs/` | Remains on the installed system for debugging |
 | Recipe database | `/mnt/usr/share/artix-poweruser/db/local.db` | Remains on the installed system |
 | Recovery detection data | `/tmp/artix-installer/state.conf` (reconstructed) | Deleted on reboot (tmpfs) |
+| ATA migration backup | `/arch-migration-backup-YYYYMMDD-HHMMSS/` | Stays on disk (root-only, chmod 700); user must delete manually |
 
 The installed system itself contains no ArtixForge-specific data collection. The installer
 removes its own configuration from the target before finishing.
+
+### ATA (Arch to Artix) Migration
+
+The ATA migration performs a full system audit and backup before converting an
+Arch Linux installation to Artix. The following data is handled:
+
+| Data | Location | Fate |
+|------|----------|------|
+| System audit lists | `/tmp/ata-*.txt` | Deleted on reboot (tmpfs) |
+| Full system backup | `/arch-migration-backup-YYYYMMDD-HHMMSS/` | Remains on disk (root-only, chmod 700) |
+| Network credentials (WiFi PSKs, NM connections) | Backup subdirectory, then restored to `/etc/NetworkManager/`, `/var/lib/iwd/`, `/etc/wpa_supplicant/` | Credential files on target are chmod 600; raw backup retained in backup dir |
+| systemd journal export | Backup directory | Plaintext journal retained in backup dir |
+| systemd-homed user data | Decrypted and migrated to `/home/<user>/` | Original LUKS home images left in place; user must delete manually |
+| AUR package list | Backup directory lists | Retained for reference |
+| Flatpak app list | Backup directory lists | Retained for reference |
+
+The ATA backup directory is created with `chmod 700` (root access only). Network
+credential subdirectories within the backup are also `chmod 700`. When credentials
+are restored to the target system, files are written with `chmod 600`. The raw
+backup is retained so the user can verify what was migrated and delete it manually.
+
+No data leaves the local machine during ATA migration. The package mapping feature
+queries only the local pacman database and configured repositories — no external
+API calls are made for system audit or conversion.
 
 ## Network access
 

@@ -13,7 +13,7 @@
 
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v9.1.1.4-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v9.2.0.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/TUI-gum-FFB6C1?style=flat-square" alt="gum">
@@ -34,7 +34,7 @@ It walks you through partitioning, filesystem creation, base system installation
 * Custom colour themes (ArtixForge, Artix Blue, Jet Black, Mono, Retro) that persist to the installed system.
 * Resilience hardened: automatic pacman lock recovery, exponential backoff retries, mid‑build resume, disk space checks at every stage.
 * **Build custom live ISOs** from any Quick Profile or full configuration – includes offline package bundles.
-* **System Migration:** convert between init systems (openrc, runit, dinit, s6, systemd) or desktop environments without reinstalling.
+* **System Migration:** convert between init systems (openrc, runit, dinit, s6, systemd), desktop environments, or Arch Linux → Artix without reinstalling.
 * Over 9 trillion system configurations in a standard install, over 1 quintillion with Power User mode.
 
 ---
@@ -143,7 +143,7 @@ These will tell you exactly what went wrong. Include them in any GitHub issue.
 | 🔴 Power User    | Gentoo-style source builds, BusyBox init, custom coreutils, advanced system control.                                                    |
 | ⚡ Quick Profiles | Desktop, Server, Minimal, Embedded, Gaming, Development, Media, Volk's Personal, and custom profile loading.                           |
 | 🧩 Build ISO     | Create a custom Artix live ISO from any Quick Profile or full configuration – includes offline package bundles and resumable builds.    |
-| 🔄 System Migration | Convert init system (openrc ↔ runit ↔ dinit ↔ s6 ↔ systemd) or desktop environment without reinstalling. Resumable on failure.      |
+| 🔄 System Migration | Convert init system (openrc ↔ runit ↔ dinit ↔ s6 ↔ systemd), desktop environment, or Arch Linux → Artix without reinstalling. Resumable on failure. |
 
 A debug toggle is available for every mode from the same menu. If you encounter errors, it's a great way to see what actually went wrong (e.g. Debug mode + Resume for automatic installations) if the error itself is not descriptive enough.
 
@@ -189,6 +189,9 @@ A debug toggle is available for every mode from the same menu. If you encounter 
 * **Desktop migration:** convert between any of the 13 supported desktop environments/window managers.
 * Migrates display manager, display stack, audio stack, and network stack alongside the desktop.
 * User configurations (`~/.config`, `~/.local`, `~/.cache`) are backed up before migration.
+* **ATA (Arch to Artix):** experimental full-system conversion from Arch Linux to Artix.
+* Preserves user data, credentials, configurations, packages, and AUR packages.
+* Converts systemd services, timers, PAM, hooks, network configs, and bootloader automatically.
 
 ## Power User Mode
 

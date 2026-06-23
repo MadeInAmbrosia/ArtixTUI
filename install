@@ -8,7 +8,7 @@ SCRIPT_DIR="${BASE_DIR}/scripts"
 
 if [[ "${ARTIX_RUNTIME_DIR:-}" != "/tmp/artix-run" && -d /tmp ]]; then
     mkdir -p /tmp/artix-run
-    cp -a "${BASE_DIR}" /tmp/artix-run/
+    cp -a "${BASE_DIR}" /tmp/artix-run/ 2>/dev/null || cp -r "${BASE_DIR}" /tmp/artix-run/
     export ARTIX_RUNTIME_DIR=/tmp/artix-run
     exec "/tmp/artix-run/${BASE_DIR##*/}/install" "$@"
     exit 0
@@ -383,13 +383,25 @@ main() {
                     mig_tgt="$(state_get MIGRATION_TGT '')"
                     if [[ -n "${mig_type}" && -n "${mig_src}" && -n "${mig_tgt}" ]]; then
                         log_info "Resuming migration: ${mig_type} ${mig_src} → ${mig_tgt}"
-                        if [[ "${mig_type}" == "init" ]]; then
-                            source "${BASE_DIR}/migrations/inits/common.sh"
-                            run_init_migration "${mig_src}" "${mig_tgt}"
-                        else
-                            source "${BASE_DIR}/migrations/des/common.sh"
-                            run_de_migration "${mig_src}" "${mig_tgt}"
-                        fi
+                        case "${mig_type}" in
+                            ata)
+                                if [[ -f "${BASE_DIR}/migrations/ata/ata-migrate.sh" ]]; then
+                                    source "${BASE_DIR}/migrations/ata/ata-migrate.sh"
+                                    ata_migrate_main
+                                else
+                                    die "ATA migration module not found"
+                                fi
+                                ;;
+                            init)
+                                source "${BASE_DIR}/migrations/inits/common.sh"
+                                run_init_migration "${mig_src}" "${mig_tgt}"
+                                ;;
+                            desktop)
+                                source "${BASE_DIR}/migrations/des/common.sh"
+                                run_de_migration "${mig_src}" "${mig_tgt}"
+                                ;;
+                            *) die "Unknown migration type: ${mig_type}" ;;
+                        esac
                     fi
                 elif [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
                     local profile_name init kernel offline boot_mode
@@ -469,13 +481,25 @@ main() {
                 if [[ -z "${mig_type}" || -z "${mig_src}" || -z "${mig_tgt}" ]]; then
                     die "Migration state incomplete – run GUI configuration first"
                 fi
-                if [[ "${mig_type}" == "init" ]]; then
-                    source "${BASE_DIR}/migrations/inits/common.sh"
-                    run_init_migration "${mig_src}" "${mig_tgt}"
-                else
-                    source "${BASE_DIR}/migrations/des/common.sh"
-                    run_de_migration "${mig_src}" "${mig_tgt}"
-                fi
+                case "${mig_type}" in
+                    ata)
+                        if [[ -f "${BASE_DIR}/migrations/ata/ata-migrate.sh" ]]; then
+                            source "${BASE_DIR}/migrations/ata/ata-migrate.sh"
+                            ata_migrate_main
+                        else
+                            die "ATA migration module not found"
+                        fi
+                        ;;
+                    init)
+                        source "${BASE_DIR}/migrations/inits/common.sh"
+                        run_init_migration "${mig_src}" "${mig_tgt}"
+                        ;;
+                    desktop)
+                        source "${BASE_DIR}/migrations/des/common.sh"
+                        run_de_migration "${mig_src}" "${mig_tgt}"
+                        ;;
+                    *) die "Unknown migration type: ${mig_type}" ;;
+                esac
                 ;;
             *)
                 log_error "Unknown mode: ${MODE}"
@@ -507,7 +531,7 @@ main() {
                 unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
                 cd "${BASE_DIR}/forge-gui" && PYTHONPATH=".:${PYTHONPATH:-}" "${venv_dir}/bin/python3" -m forge_ui.cli --mode config > /tmp/gui-output.log 2>&1 || true
 
-                if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
+                if [[ -f "${STATE_FILE}" ]] && grep -q '^MODE=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
                     MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
                     MODE="${MODE:-auto}"
@@ -525,7 +549,7 @@ main() {
                 export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
                 export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
                 forge-gui --mode config
-                if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
+                if [[ -f "${STATE_FILE}" ]] && grep -q '^MODE=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
                     MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
                     MODE="${MODE:-auto}"

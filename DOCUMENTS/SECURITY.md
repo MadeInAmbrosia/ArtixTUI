@@ -41,6 +41,12 @@ Security concerns include, but are not limited to:
 - Filesystem repair: unmounting and modifying the root partition with fsck/xfs_repair/btrfs check
 - Third-party repositories (SonicDE, Chaotic-AUR, CachyOS) used during installation — packages are verified where possible
 - **GUI installer (`forge-gui`):** runs as root, handles LUKS passphrases and user passwords, must not leak sensitive data to logs or crash in a way that exposes memory contents
+- ATA migration backup directory (`/arch-migration-backup-*`) containing full system state, credentials, and journal exports — must be root-only
+- ATA network credential handling — WiFi passwords and NM connections extracted from systemd-networkd, restored with proper 600 permissions
+- ATA systemd-homed LUKS images — unlocked with user password, data migrated, original images left in place
+- ATA AUR batch reinstall — packages reinstalled from AUR via third-party helper; untrusted PKGBUILDs may execute arbitrary code
+- ATA package mapping queries — local pacman database only; no external API calls for version comparison
+- ATA systemd-boot → GRUB conversion — EFI boot entries modified; old entries removed via efibootmgr
 
 ## Best Practices
 
@@ -57,3 +63,29 @@ Security concerns include, but are not limited to:
 - The installer's state directory (`/tmp/artix-installer/`) lives on a tmpfs and is lost on reboot. The target configuration file (`/mnt/etc/artix-installer.conf`) is shredded or removed during the finalize stage.
 - Recovery mode requires explicit user confirmation before modifying any system files. Detection is read‑only until the user chooses a repair action.
 - **GUI installer (`forge-gui`):** runs in a separate Python process. User and root passwords are hashed with `openssl passwd -6` in the GUI process before being written to `state.conf` — plaintext passwords never touch the state file or disk. LUKS passphrases are held in memory only and cleared when the config window closes. The GUI makes no network connections of its own (extras search uses local pacman cache; Power User recipe list is fetched once at startup).
+
+### ATA Migration Security
+
+- The ATA backup directory is created with `chmod 700`. Only root can access it.
+- Network credentials extracted from systemd-networkd, NetworkManager, iwd, and
+  wpa_supplicant configs are stored in an isolated subdirectory with `chmod -R 700`
+  during the backup phase. When restored to the target system, credential files
+  receive `chmod 600`.
+- systemd-homed LUKS images are unlocked with the user's password (provided at
+  migration time), mounted temporarily, and data is copied to standard `/home`.
+  The mapper is closed and the temporary mount removed. Original LUKS home images
+  are not deleted — the user must remove them manually.
+- systemd journal exports are written as plaintext to the backup directory. Users
+  should delete the backup after verifying the migration if journal contents are
+  sensitive.
+- AUR batch reinstall uses the chosen AUR helper (paru/yay) in `--noconfirm` mode.
+  This downloads and executes PKGBUILDs from the AUR. Users should only opt into
+  this if they trust their installed AUR packages.
+- systemd-boot EFI entries are removed via `efibootmgr` only after GRUB is
+  successfully installed and `grub.cfg` is generated. The old `systemd-boot`
+  binaries on the ESP are left in place (inert without the EFI entry) for manual
+  cleanup.
+- The ATA migration does not transmit any data over the network beyond standard
+  pacman operations (package downloads from Artix mirrors) and AUR helper
+  operations (if opted in). The system audit and package mapping use only local
+  queries.

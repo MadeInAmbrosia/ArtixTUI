@@ -300,7 +300,7 @@ You can burn it to a USB stick or boot it in a virtual machine.
 
 ---
 
-## 19. System Migration (Convert init or desktop)
+## 19. System Migration (Convert init, desktop, or Arch Linux)
 
 If you already have Artix installed and want to change your init system or desktop environment
 **without reinstalling**, select **System Migration** from the main menu (run from a live ISO
@@ -336,6 +336,48 @@ The migration will:
 After migration, reboot to start the new environment.
 
 **GUI Migration:** the current init system and desktop environment are auto-detected and displayed. Desktop migration includes sub-pages for display manager, display stack, audio stack, network stack, and extra package selection.
+
+### ATA (Arch to Artix) — Experimental
+
+Convert an existing Arch Linux installation to Artix Linux without reinstalling.
+
+**This feature is experimental.** Make a full system backup before proceeding.
+
+The migration will:
+
+- Audit your entire system (packages, services, users, configs, credentials)
+- Back up everything to `/arch-migration-backup-YYYYMMDD-HHMMSS/`
+- Convert systemd-specific components:
+  - Services → init-specific equivalents
+  - Timers → cron jobs (OnCalendar and basic monotonic)
+  - PAM modules (`pam_systemd.so` → `pam_elogind.so`)
+  - mkinitcpio hooks (`systemd` → `udev`, `sd-encrypt` → `encrypt`)
+  - DNS resolver (stub replaced)
+  - pacman hooks (systemd-dependent ones quarantined)
+  - crypttab entries → kernel command line parameters
+  - systemd-boot → GRUB (auto-install)
+  - systemd-homed users → standard `/home` users
+  - systemd `--user` services → XDG autostart entries
+- Preserve and restore:
+  - All user files and home directories
+  - WiFi passwords and network configurations
+  - SSH keys and host configs
+  - Firewall rules and cron jobs
+  - Flatpaks, AppImages, and Docker containers
+- Reinstall all packages from Artix repositories
+- Reinstall your desktop environment from Artix repos
+- Attempt batch reinstall of AUR packages with your chosen helper
+- Rebuild DKMS modules and initramfs
+
+**What does NOT migrate automatically:**
+
+- Snap packages (require systemd — will not function on Artix)
+- Complex monotonic systemd timers (best-effort loop script used)
+- Custom systemd unit files (backed up, not converted)
+- systemd-networkd configurations (backed up, manual NM/ConnMan conversion)
+
+After migration, reboot to start Artix. AUR packages that failed to reinstall
+are listed in the backup directory for manual follow-up.
 
 ---
 

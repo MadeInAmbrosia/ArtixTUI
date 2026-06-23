@@ -1,5 +1,41 @@
 # Changelog
 
+## v9.2.0.0 (2026-06-24) — I can't believe I'm migrating from arch edition
+
+### Added
+- **ATA (Arch to Artix) migration** — experimental full-system conversion from Arch Linux to Artix, preserving user data, credentials, configurations, and installed software
+- **ATA system audit** — detects systemd units, timers, homed users, network credentials, PAM modules, pacman hooks, crypttab entries, DKMS modules, flatpaks, snaps, AppImages, Docker containers, and AUR packages
+- **ATA package mapping** — dynamic repo comparison between Arch (core/extra/multilib) and Artix (system/world/lib32) with version mismatch warnings and TUI checklist
+- **ATA credential security** — network passwords and WiFi PSKs isolated with `chmod 700`, restored to target with proper 600 permissions
+- **ATA systemd timer conversion** — OnCalendar → cron, OnBootSec → `@reboot sleep N`, OnUnitActiveSec → background loop scripts
+- **ATA PAM conversion** — `pam_systemd.so` → `pam_elogind.so`, `pam_systemd_home.so` removal
+- **ATA mkinitcpio conversion** — `systemd`→`udev`, `sd-encrypt`→`encrypt`, `sd-vconsole`→`consolefont`, `sd-lvm2`→`lvm2`, `fsck` insertion
+- **ATA pacman hook quarantine** — systemd-dependent hooks moved to `/etc/pacman.d/hooks.bak/`
+- **ATA crypttab conversion** — entries converted to kernel command line parameters
+- **ATA DNS fix** — `systemd-resolved` stub replaced with real `/etc/resolv.conf`
+- **ATA timesyncd replacement** — `ntp` installed and enabled with init-appropriate suffix
+- **ATA homed user migration** — LUKS-encrypted systemd-homed images unlocked and migrated to standard `/home`
+- **ATA user service conversion** — systemd `--user` services (pipewire, wireplumber, etc.) → XDG autostart `.desktop` files
+- **ATA systemd-boot replacement** — GRUB auto-installed to ESP, old boot entries removed
+- **ATA AUR batch reinstall** — opt-in reinstall of all AUR packages via paru/yay with per-package failure reporting
+- **ATA DKMS rebuild** — `dkms autoinstall` triggered after kernel installation
+- **ATA flatpak preservation** — remotes and app list saved for post-migration restoration
+- **ATA resume support** — stage-based progress tracking with resume-from-failure or fresh-start options
+- **ATA experimental warning** — `tui_yesno` confirmation gate before entering migration
+- **ATA GUI integration** — dedicated ATA configuration page in GTK4 frontend with init selection, Arch repos toggle, AUR helper choice, capabilities checklist, and ATA summary page
+- `CODE_INDENTS.md` — hack diary covering every deliberate weirdness, workaround, and design quirk across the entire codebase
+
+### Changed
+- `tui_migration_menu` — third option "Arch Linux → Artix" with experimental warning gate
+- `forge-gui` migration window — new ATA config and summary pages, flow routing for all three migration types
+- Non-interactive dispatch — `resume` and `migrate` cases now handle `ata` migration type alongside `init` and `desktop`
+- GUI launch detection — checks for `^MODE=` in state file instead of `^DISK=`, enabling migration and ISO modes from GUI
+- Runtime self-copy — `cp -a` falls back to `cp -r` when `.git` pack files are read-only
+- README migration section updated with ATA capabilities, limitations, and warnings
+- GUIDE.md section 19 expanded with full ATA documentation
+- Feature table and summaries updated to reflect ATA availability
+- SECURITY.md and PRIVACY_POLICY.md updated with ATA credential handling, backup security, and data flow documentation
+
 ## v9.1.1.4 (2026-06-23) — ArtixForge
 
 ### Fixed
