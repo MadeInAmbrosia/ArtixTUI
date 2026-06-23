@@ -111,6 +111,25 @@ You'll be greeted by a main menu where you choose your installation mode.
 
 **FAIR WARNING: THE GUI IS EXPERIMENTAL.**
 
+### Logs
+If the installer fails, check the logs before reporting:
+
+```bash
+cat /tmp/artix-installer/install.log
+```
+
+When debug mode is enabled (prompted after mode selection):
+```bash
+cat ~/ArtixForge/artix-debug.log
+```
+
+When migration fails:
+```bash
+cat /tmp/artix-migration-debug.log
+```
+
+These will tell you exactly what went wrong. Include them in any GitHub issue.
+
 ---
 
 # Installation Modes
