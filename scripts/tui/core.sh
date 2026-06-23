@@ -13,22 +13,20 @@ _ensure_log_dirs() {
 }
 
 _gum_tty() {
+    local tty
+    tty=$(ps -o tty= -p $$ 2>/dev/null | tr -d ' ')
+    if [[ -n "${tty}" && -c "/dev/${tty}" ]]; then
+        printf '/dev/%s' "${tty}"
+        return 0
+    fi
     if [[ -c /dev/tty && -r /dev/tty && -w /dev/tty ]]; then
         printf '/dev/tty'
         return 0
     fi
-    local tty
-    tty=$(tty 2>/dev/null || true)
-    if [[ -n "${tty}" && -c "${tty}" ]]; then
-        printf '%s' "${tty}"
+    if [[ -t 0 ]]; then
+        printf '/dev/stdin'
         return 0
     fi
-    for console in /dev/tty1 /dev/tty2 /dev/tty3 /dev/tty0 /dev/console; do
-        if [[ -c "${console}" && -r "${console}" && -w "${console}" ]]; then
-            printf '%s' "${console}"
-            return 0
-        fi
-    done
     return 1
 }
 
