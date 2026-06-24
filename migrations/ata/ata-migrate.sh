@@ -32,6 +32,13 @@ ata_migrate_main() {
         return 0
     fi
 
+    if [[ ! -f /etc/resolv.conf || -L /etc/resolv.conf || ! -s /etc/resolv.conf ]]; then
+        systemctl stop systemd-resolved 2>/dev/null || true
+        printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf.tmp
+        mv -f /etc/resolv.conf.tmp /etc/resolv.conf
+        log_info "DNS resolver created (was missing or broken)"
+    fi
+
     if ! ping -c 1 -W 3 1.1.1.1 &>/dev/null && ! curl -s --max-time 5 https://1.1.1.1 &>/dev/null; then
         tui_msg "No Network" "Internet connection required for migration.\n\nFix your network and retry."
         return 0
@@ -48,6 +55,7 @@ ata_migrate_main() {
     if [[ -f /etc/resolv.conf ]]; then
         resolv_backup="$(cat /etc/resolv.conf)"
     fi
+    export resolv_backup
 
     local migration_stage="init"
     if [[ -f "${MIGRATION_STAGE_FILE}" ]]; then
@@ -56,6 +64,11 @@ ata_migrate_main() {
             "A previous ATA migration was interrupted at stage: ${migration_stage}.\n\nYou can resume or start fresh."
         if tui_yesno "Resume Migration?" "Resume the interrupted migration?"; then
             log_info "Resuming ATA migration from stage: ${migration_stage}"
+            state_load
+            target_init="$(state_get INIT '')"
+            aur_helper="$(state_get ATA_AUR_HELPER '')"
+            backup_dir="$(state_get MIGRATION_BACKUP_DIR '')"
+            de="$(state_get WM_DE none)"
         else
             log_info "Starting fresh – removing partial state..."
             remove_systemd 2>/dev/null || true
@@ -162,6 +175,8 @@ WHAT WILL BE BACKED UP:
             return 0
         fi
 
+        # Persist all state before moving to the next stage
+        state_save
         echo "backup" > "${MIGRATION_STAGE_FILE}"
         migration_stage="backup"
     fi
@@ -175,8 +190,6 @@ WHAT WILL BE BACKED UP:
         echo "convert" > "${MIGRATION_STAGE_FILE}"
         migration_stage="convert"
     fi
-
-    export resolv_backup
 
     if [[ "${migration_stage}" == "convert" ]]; then
         ata_convert_all
@@ -219,6 +232,11 @@ WHAT WILL BE BACKED UP:
     fi
 
     if [[ "${migration_stage}" == "install" ]]; then
+        if [[ ! -s /etc/resolv.conf ]]; then
+            printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
+            log_info "DNS resolver created for install stage"
+        fi
+
         log_info "Clearing pacman cache to avoid corrupted downloads..."
         _pacman -Scc --noconfirm 2>/dev/null || true
 

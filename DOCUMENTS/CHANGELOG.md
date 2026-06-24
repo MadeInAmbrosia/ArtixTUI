@@ -1,5 +1,22 @@
 # Changelog
 
+## v9.2.2.4 (2026-06-24) — ATA resume state persistence + DNS hardening
+
+### Added
+- **ATA universal DNS safety net** — working resolver guaranteed before any stage logic runs, even when resuming from an interrupted migration after reboot
+- **ATA install-stage DNS guard** — resolver checked and created if missing before package downloads in the install stage
+- **ATA service map empty-line filtering** — empty lines and non-service/target/socket/timer units excluded from migration checklist
+
+### Changed
+- `state_save` now called at the end of the `init` stage to persist `INIT`, `ATA_AUR_HELPER`, `WM_DE`, `ENABLE_ARCH_REPOS` and all other configuration to disk
+- `ata_migrate_main` explicitly reloads state on resume to populate `target_init`, `backup_dir`, and `de` from saved configuration
+- DNS resolver creation uses atomic `.tmp` write + `mv -f` to eliminate any window where `/etc/resolv.conf` doesn't exist
+
+### Fixed
+- Resume from `install` stage no longer fails with "No init system was selected" — `target_init` now correctly loaded from persisted state
+- DNS resolution failures after reboot no longer block resumed migrations — resolver created before any network operations
+- Service migration checklist no longer shows version numbers or empty entries from malformed package map lines
+
 ## v9.2.2.3 (2026-06-24) — ArtixForge
 
 ### Added

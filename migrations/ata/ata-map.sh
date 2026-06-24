@@ -149,11 +149,16 @@ ata_build_package_map() {
     )
 
     while IFS= read -r unit; do
+        # Skip empty lines
+        [[ -z "${unit}" ]] && continue
+
         [[ -n "${skip_units[${unit}]:-}" ]] && continue
 
-        # Generic catch‑all for any remaining systemd‑ish names
+        if [[ ! "${unit}" =~ \.(service|target|socket|timer)$ ]]; then
+            continue
+        fi
+
         if [[ "${unit}" =~ ^systemd- ]] || \
-           [[ "${unit}" =~ \.(target|socket|timer|mount|automount|path|slice|scope)$ ]] || \
            [[ "${unit}" == "getty@.service" ]] || \
            [[ "${unit}" == "serial-getty@.service" ]]; then
             continue
@@ -228,6 +233,7 @@ ata_show_migration_list() {
 
     local items=()
     while IFS='|' read -r unit pkg arch_ver artix_pkg artix_ver status; do
+        [[ -z "${unit}" ]] && continue
         local label="${unit} → ${artix_pkg}"
         case "${status}" in
             version-mismatch) label+=" [ARCH: ${arch_ver} / ARTIX: ${artix_ver}]" ;;
