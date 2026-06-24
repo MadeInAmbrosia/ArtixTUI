@@ -253,12 +253,15 @@ WHAT WILL BE BACKED UP:
         log_info "Clearing pacman cache to avoid corrupted downloads..."
         rm -rf /var/cache/pacman/pkg/* 2>/dev/null || true
         rm -rf /var/lib/pacman/sync/* 2>/dev/null || true
-
-        # Remove known-problematic cached packages
-        rm -f /var/cache/pacman/pkg/mkinitcpio-*.pkg.tar.zst
+        rm -f /var/cache/pacman/pkg/mkinitcpio-*.pkg.tar.zst 2>/dev/null || true
 
         retry_command "base system install" \
             _pacman -S --noconfirm base base-devel grub linux linux-headers mkinitcpio rsync artix-branding-base
+
+        if [[ ! -f /boot/vmlinuz-linux ]]; then
+            log_warn "Kernel missing after base install — forcing reinstall"
+            _pacman -S --noconfirm linux linux-headers
+        fi
 
         retry_command "target init install" \
             install_target_init "systemd" "${target_init}"
@@ -271,12 +274,43 @@ WHAT WILL BE BACKED UP:
         _pacman -S --noconfirm --needed util-linux e2fsprogs coreutils findutils grep sed gawk
 
         _pacman -S --noconfirm --needed artix-keyring 2>/dev/null || true
+        _chroot pacman-key --init 2>/dev/null || true
+        _chroot pacman-key --populate artix 2>/dev/null || true
 
         if [[ "$(state_get ENABLE_ARCH_REPOS yes)" == "yes" ]]; then
             _pacman -S --noconfirm --needed archlinux-keyring 2>/dev/null || true
             _chroot pacman-key --populate archlinux 2>/dev/null || true
         fi
         log_info "Keyrings reinstalled and populated"
+
+        local -a critical_pkgs=( base linux linux-headers mkinitcpio grub util-linux e2fsprogs coreutils findutils pacman dbus )
+        case "${target_init}" in
+            openrc) critical_pkgs+=( openrc elogind-openrc ) ;;
+            runit)  critical_pkgs+=( runit elogind-runit ) ;;
+            dinit)  critical_pkgs+=( dinit elogind-dinit ) ;;
+            s6)     critical_pkgs+=( s6 elogind-s6 ) ;;
+        esac
+        
+        local net_stack
+        net_stack="$(state_get NETWORK_STACK networkmanager)"
+        case "${net_stack}" in
+            networkmanager) critical_pkgs+=( networkmanager "networkmanager-${target_init}" ) ;;
+            dhcpcd+iwd)     critical_pkgs+=( dhcpcd iwd "dhcpcd-${target_init}" "iwd-${target_init}" ) ;;
+            connman)        critical_pkgs+=( connman "connman-${target_init}" ) ;;
+        esac
+
+        for pkg in "${critical_pkgs[@]}"; do
+            if ! _pacman -Q "${pkg}" &>/dev/null; then
+                log_warn "${pkg} missing — installing"
+                _pacman -S --noconfirm --needed "${pkg}" || log_error "Failed to install ${pkg}"
+            fi
+        done
+        log_info "Minimum viable system verified"
+
+        if [[ ! -f /boot/vmlinuz-linux ]]; then
+            log_error "Kernel still missing after all install attempts"
+            _pacman -S --noconfirm linux linux-headers
+        fi
 
         [[ "${de}" != "none" ]] && run_de_migration "none" "${de}"
 

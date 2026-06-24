@@ -1,5 +1,28 @@
 # Changelog
 
+## v9.2.3.0 (2026-06-24) — ArtixForge
+
+### Added
+- **ATA minimum viable system check** — verifies kernel, init, session manager, coreutils, dbus, pacman, and network stack are installed after package replacement; installs any missing critical packages with init-appropriate suffixes
+- **ATA boot chain verification** — checks for `/boot/vmlinuz-linux` existence after all install phases and forces kernel reinstall if missing
+- **ATA resume init fallback** — if state file is missing `INIT` on resume, prompts user to re-select init system instead of aborting
+
+### Changed
+- `ata_build_package_map` — `pacman -Si` queries now use `head -n1` to prevent multi-line output from packages in multiple repos, fixing ghost version-mismatch entries in the service checklist
+- `ata_convert_mkinitcpio_presets` — now uncomments default/fallback image lines instead of leaving them commented out from Arch's preset format
+- `ata_restore_user_data` — uses `realpath` comparison to skip copy when backup and live paths resolve to the same location, eliminating "cannot copy directory into itself" warnings
+- Cache clearing now uses direct `rm -rf` on `/var/cache/pacman/pkg/*` and `/var/lib/pacman/sync/*` instead of `_pacman -Scc`, preventing interactive prompt hangs
+- `ata_convert_timesyncd` — cascading fallback from `ntp-*` to `chrony-*` packages with proper error handling
+- Network packages in critical check include init-specific suffixes (`networkmanager-dinit`, `dhcpcd-openrc`, etc.)
+- `state_save` called at end of `init` stage to persist all configuration for resume
+
+### Fixed
+- Interactive `[Y/n]` prompts during cache cleaning no longer hang the migration indefinitely
+- `mkinitcpio` preset files no longer left fully commented-out after migration, allowing initramfs generation
+- `cp: cannot copy a directory into itself` warnings eliminated during user data restore
+- Ghost checklist entries like `1.56.1-1 →` removed from service migration menu
+- System no longer boots without network stack or session manager installed
+
 ## v9.2.2.5 (2026-06-24) — ArtixForge
 
 ### Added
