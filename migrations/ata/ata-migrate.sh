@@ -262,9 +262,11 @@ WHAT WILL BE BACKED UP:
         retry_command "full package replacement" \
             reinstall_artix_packages
 
+        log_info "Replacing systemd-linked base packages..."
+        _pacman -Rdd --noconfirm systemd-libs 2>/dev/null || true
+        _pacman -S --noconfirm --needed util-linux e2fsprogs coreutils findutils grep sed gawk
+
         _pacman -S --noconfirm --needed artix-keyring 2>/dev/null || true
-        _chroot pacman-key --init 2>/dev/null || true
-        _chroot pacman-key --populate artix 2>/dev/null || true
 
         if [[ "$(state_get ENABLE_ARCH_REPOS yes)" == "yes" ]]; then
             _pacman -S --noconfirm --needed archlinux-keyring 2>/dev/null || true

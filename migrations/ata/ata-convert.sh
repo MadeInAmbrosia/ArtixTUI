@@ -6,6 +6,7 @@ ata_convert_all() {
     ata_convert_timers
     ata_convert_pam
     ata_convert_mkinitcpio
+    ata_convert_mkinitcpio_presets
     ata_convert_resolv_conf
     ata_convert_pacman_hooks
     ata_convert_crypttab
@@ -49,6 +50,17 @@ WPA
     fi
 
     [[ $found -eq 1 ]] && log_info "Network credentials converted."
+}
+
+ata_convert_mkinitcpio_presets() {
+    log_info "Converting mkinitcpio presets..."
+    local preset
+    for preset in /etc/mkinitcpio.d/*.preset; do
+        [[ -f "${preset}" ]] || continue
+        sed -i '/default_uki\|uki_output\|fallback_uki\|--splash\|--uefi/d' "${preset}"
+        sed -i 's|/boot/EFI/Linux/.*\.efi||g' "${preset}"
+        log_info "  Cleaned ${preset}"
+    done
 }
 
 ata_convert_timers() {
