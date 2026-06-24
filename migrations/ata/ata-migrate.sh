@@ -32,6 +32,13 @@ ata_migrate_main() {
         return 0
     fi
 
+    local target_init aur_helper backup_dir has_homed de
+    target_init="$(state_get INIT '')"
+    aur_helper="$(state_get ATA_AUR_HELPER '')"
+    backup_dir="$(state_get MIGRATION_BACKUP_DIR '')"
+    has_homed=0
+    de="$(state_get WM_DE none)"
+
     local migration_stage="init"
     if [[ -f "${MIGRATION_STAGE_FILE}" ]]; then
         migration_stage=$(cat "${MIGRATION_STAGE_FILE}")
@@ -42,11 +49,13 @@ ata_migrate_main() {
         else
             log_info "Starting fresh – removing partial state..."
             remove_systemd 2>/dev/null || true
-            local old_backup
-            old_backup="$(state_get MIGRATION_BACKUP_DIR '')"
-            [[ -n "${old_backup}" && -d "${old_backup}" ]] && rm -rf "${old_backup}"
+            [[ -n "${backup_dir}" && -d "${backup_dir}" ]] && rm -rf "${backup_dir}"
             rm -f "${MIGRATION_STAGE_FILE}"
             migration_stage="init"
+            backup_dir=""
+            target_init=""
+            aur_helper=""
+            de="none"
         fi
     fi
 
@@ -89,7 +98,6 @@ WHAT WILL BE BACKED UP:
 
         ata_detect_all
 
-        local target_init
         target_init=$(tui_menu "Choose Init System" "Select your new init:" \
             "openrc" "runit" "dinit" "s6") || return 0
         state_set INIT "${target_init}"
@@ -98,7 +106,7 @@ WHAT WILL BE BACKED UP:
         tui_yesno "Arch Repositories" "Keep access to Arch repositories for AUR helpers?" || use_arch_repos="no"
         state_set ENABLE_ARCH_REPOS "${use_arch_repos}"
 
-        local aur_helper=""
+        aur_helper=""
         if [[ -s /tmp/ata-aur.txt ]]; then
             local aur_count
             aur_count=$(wc -l < /tmp/ata-aur.txt)
@@ -107,15 +115,16 @@ WHAT WILL BE BACKED UP:
                 [[ "${aur_helper}" == "Skip" ]] && aur_helper=""
             fi
         fi
+        state_set ATA_AUR_HELPER "${aur_helper}"
 
-        local has_homed=0
+        has_homed=0
         if [[ -s /tmp/ata-homed.txt ]]; then
             has_homed=1
             tui_msg "systemd-homed Detected" "Users with systemd-homed were found.\n\nTheir home directories will be unlocked and migrated to standard /home if you provide their passwords."
         fi
 
-        local de aur_count flatpak_count snap_count
         de=$(state_get WM_DE none)
+        local aur_count flatpak_count snap_count
         aur_count=$(wc -l < /tmp/ata-aur.txt 2>/dev/null || echo 0)
         flatpak_count=$(wc -l < /tmp/ata-flatpak.txt 2>/dev/null || echo 0)
         snap_count=$(wc -l < /tmp/ata-snap.txt 2>/dev/null || echo 0)
@@ -136,23 +145,24 @@ WHAT WILL BE BACKED UP:
         fi
 
         echo "backup" > "${MIGRATION_STAGE_FILE}"
+        migration_stage="backup"
     fi
 
     if [[ "${migration_stage}" == "backup" ]]; then
-        local backup_dir="/arch-migration-backup-$(date +%Y%m%d-%H%M%S)"
+        backup_dir="/arch-migration-backup-$(date +%Y%m%d-%H%M%S)"
         mkdir -p "${backup_dir}"
         chmod 700 "${backup_dir}"
         state_set MIGRATION_BACKUP_DIR "${backup_dir}"
         ata_backup_all "${backup_dir}"
         echo "convert" > "${MIGRATION_STAGE_FILE}"
+        migration_stage="convert"
     fi
 
     if [[ "${migration_stage}" == "convert" ]]; then
         ata_convert_all
-        local has_homed
-        has_homed=$(if [[ -s /tmp/ata-homed.txt ]]; then echo 1; else echo 0; fi)
         [[ ${has_homed} -eq 1 ]] && ata_migrate_homed_users "${backup_dir}"
         echo "repos" > "${MIGRATION_STAGE_FILE}"
+        migration_stage="repos"
     fi
 
     if [[ "${migration_stage}" == "repos" ]]; then
@@ -167,6 +177,7 @@ WHAT WILL BE BACKED UP:
         install_artix_keyring
         remove_systemd
         echo "install" > "${MIGRATION_STAGE_FILE}"
+        migration_stage="install"
     fi
 
     if [[ "${migration_stage}" == "install" ]]; then
@@ -182,11 +193,10 @@ WHAT WILL BE BACKED UP:
         retry_command "full package replacement" \
             reinstall_artix_packages
 
-        local de
-        de=$(state_get WM_DE none)
         [[ "${de}" != "none" ]] && run_de_migration "none" "${de}"
 
         echo "services" > "${MIGRATION_STAGE_FILE}"
+        migration_stage="services"
     fi
 
     if [[ "${migration_stage}" == "services" ]]; then
@@ -204,8 +214,6 @@ WHAT WILL BE BACKED UP:
         ata_restore_flatpaks "${backup_dir}"
         ata_restore_network_credentials "${backup_dir}"
 
-        local aur_helper
-        aur_helper=$(state_get ATA_AUR_HELPER "")
         if [[ -n "${aur_helper}" && -s /tmp/ata-aur.txt ]]; then
             ata_reinstall_aur "${aur_helper}"
         fi
@@ -225,6 +233,7 @@ WHAT WILL BE BACKED UP:
         update_bootloader
 
         echo "finalize" > "${MIGRATION_STAGE_FILE}"
+        migration_stage="finalize"
     fi
 
     rm -f /tmp/ata-*.txt /tmp/ata-pkg-map.txt
