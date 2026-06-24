@@ -153,14 +153,18 @@ ata_parse_time_seconds() {
 
 ata_oncalendar_to_cron() {
     local expr="${1}"
-    # systemd.time expressions: day-of-week YYYY-MM-DD HH:MM:SS, daily, hourly, weekly, monthly, *-*-* HH:MM:SS
     case "${expr}" in
-        daily|*-*-* 00:00:00)   echo "0 0 * * *" ;;
-        hourly|*-*-* *:00:00)   echo "0 * * * *" ;;
-        weekly|Mon *-*-* 00:00:00) echo "0 0 * * 1" ;;
-        monthly|*-*-01 00:00:00)   echo "0 0 1 * *" ;;
-        *-*-*\ *:*:*)   local time="${expr##* }"; local hour="${time%%:*}"; local min="${time#*:}"; min="${min%%:*}"; echo "${min} ${hour} * * *" ;;
-        *)              echo "" ;;  # can't convert
+        daily|"*-*-* 00:00:00")       echo "0 0 * * *" ;;
+        hourly|"*-*-* *:00:00")       echo "0 * * * *" ;;
+        weekly|"Mon *-*-* 00:00:00")  echo "0 0 * * 1" ;;
+        monthly|"*-*-01 00:00:00")    echo "0 0 1 * *" ;;
+        "*-*-* *:*:*")
+            local time="${expr##* }"
+            local hour="${time%%:*}"
+            local min="${time#*:}"; min="${min%%:*}"
+            echo "${min} ${hour} * * *"
+            ;;
+        *)  echo "" ;;
     esac
 }
 
