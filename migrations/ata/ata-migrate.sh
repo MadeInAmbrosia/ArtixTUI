@@ -219,13 +219,23 @@ WHAT WILL BE BACKED UP:
         clean_pacman_cache
         install_artix_keyring
 
+        _chroot pacman-key --init 2>/dev/null || true
+        if ! _chroot pacman-key --populate artix 2>/dev/null; then
+            log_warn "Key population failed — retrying with SigLevel = Never"
+            sed -i 's/^SigLevel.*/SigLevel = Never/' /etc/pacman.conf
+            _pacman -S --noconfirm artix-keyring
+            _chroot pacman-key --init
+            _chroot pacman-key --populate artix
+            sed -i 's/^SigLevel = Never/SigLevel = Required DatabaseOptional/' /etc/pacman.conf
+            log_info "Keyring forcibly reinstalled and populated"
+        fi
+
         if [[ "$(state_get ENABLE_ARCH_REPOS yes)" == "yes" ]]; then
             _pacman -S --noconfirm --needed archlinux-keyring 2>/dev/null || true
             _chroot pacman-key --populate archlinux 2>/dev/null || true
             log_info "Arch Linux keyring preserved and populated"
         fi
 
-        # Build package map AFTER Artix repos are available
         ata_build_package_map
         ata_show_migration_list
 
