@@ -166,15 +166,16 @@ WHAT WILL BE BACKED UP:
     fi
 
     if [[ "${migration_stage}" == "repos" ]]; then
-        ata_build_package_map
-        ata_show_migration_list
-
         log_info "Pre-downloading Artix base packages..."
         cache_artix_packages "${target_init}"
 
         prepare_artix_repos
         clean_pacman_cache
         install_artix_keyring
+
+        ata_build_package_map
+        ata_show_migration_list
+
         remove_systemd
         echo "install" > "${MIGRATION_STAGE_FILE}"
         migration_stage="install"
