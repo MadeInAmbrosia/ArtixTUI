@@ -15,7 +15,7 @@ tui_migration_menu() {
     choice=$(tui_menu "System Migration" "What would you like to migrate?" \
         "Init System – convert OpenRC ↔ runit ↔ dinit ↔ s6" \
         "Desktop Environment – swap KDE ↔ XFCE ↔ Sway etc." \
-        "Arch Linux -> Artix" "Migrate from Arch to Artix" \
+        "Arch Linux → Artix (EXPERIMENTAL)" \
         "Abort") || return 1
 
     case "${choice}" in
@@ -35,9 +35,9 @@ tui_migration_menu() {
                 tui_msg_quick "Not Available" "Desktop migration module not found."
             fi
             ;;
-        "Arch Linux -> Artix"*)
+        "Arch Linux → Artix"*)
             if ! tui_yesno "EXPERIMENTAL FEATURE" \
-"Arch -> Artix migration is EXPERIMENTAL.
+"Arch → Artix migration is EXPERIMENTAL.
 
 It will attempt to convert your entire Arch Linux system
 to Artix, preserving user data, configs, and credentials.
