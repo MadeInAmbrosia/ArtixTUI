@@ -9,7 +9,7 @@ This roadmap is updated regularly based on:
 
 *Version numbers are not strict release targets. Features may ship earlier or later depending on development pace, tester feedback, and available time. This roadmap reflects general direction, not fixed deadlines.*
 
-## v9.0
+## v9.?
 - Polishing the GUI until it's squeaky clean (Thank you GTK4)
 
 # The think-tank
