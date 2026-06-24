@@ -10,7 +10,9 @@ detect_boot_mode() {
 }
 
 detect_init() {
-    if [[ -x "${ROOT}/usr/bin/runit" ]]; then
+    if [[ -f "${ROOT}/usr/lib/systemd/systemd" ]] || [[ -f "${ROOT}/usr/bin/systemctl" ]]; then
+        state_set INIT systemd
+    elif [[ -x "${ROOT}/usr/bin/runit" ]]; then
         state_set INIT runit
     elif [[ -x "${ROOT}/usr/bin/dinit" ]]; then
         state_set INIT dinit
