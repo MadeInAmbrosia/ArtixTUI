@@ -47,6 +47,10 @@ DE_PACKAGES=(
     ["vxwm"]="vxwm"
     ["icewm"]="icewm"
     ["mango"]="mangowm"
+    ["cinnamon"]="cinnamon lightdm lightdm-gtk-greeter"
+    ["budgie"]="budgie-desktop budgie-screensaver budgie-control-center lightdm lightdm-gtk-greeter"
+    ["moksha"]="moksha enlightenment terminology lightdm lightdm-gtk-greeter"
+    ["cosmic"]="cosmic cosmic-terminal cosmic-text-editor cosmic-files cosmic-settings cosmic-launcher lightdm lightdm-gtk-greeter"
     ["none"]=""
 )
 
@@ -65,6 +69,10 @@ DE_DISPLAY_MANAGER=(
     ["vxwm"]="none"
     ["icewm"]="lightdm"
     ["mango"]="none"
+    ["cinnamon"]="lightdm"
+    ["budgie"]="lightdm"
+    ["moksha"]="lightdm"
+    ["cosmic"]="lightdm"
     ["none"]="none"
 )
 

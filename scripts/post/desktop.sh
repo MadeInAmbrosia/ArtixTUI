@@ -143,6 +143,23 @@ install_desktop() {
             install_mango
             pkgs+=(foot waybar wofi xdg-desktop-portal-hyprland seatd "seatd-${init}" base-devel git cjson xorg-xwayland)
             ;;
+
+        cinnamon)
+            pkgs+=(cinnamon lightdm lightdm-gtk-greeter "lightdm-${init}" xdg-desktop-portal-gtk)
+            ;;
+
+        budgie)
+            pkgs+=(budgie-desktop budgie-screensaver budgie-control-center lightdm lightdm-gtk-greeter "lightdm-${init}" xdg-desktop-portal-gtk)
+            ;;
+
+        moksha)
+            pkgs+=(moksha enlightenment terminology lightdm lightdm-gtk-greeter "lightdm-${init}")
+            ;;
+
+        cosmic)
+            pkgs+=(cosmic cosmic-terminal cosmic-text-editor cosmic-files cosmic-settings cosmic-launcher lightdm lightdm-gtk-greeter "lightdm-${init}")
+            log_warn "COSMIC is alpha software — expect bugs and missing features"
+            ;;
     esac
 
     case "${display_manager}" in
@@ -186,7 +203,7 @@ install_desktop() {
     esac
 
     case "${wm_de}" in
-        hyprland|mango|niri|sway)
+        hyprland|mango|niri|sway|cosmic)
             log_info "Verifying seatd service..."
             service_exists seatd || { log_error "seatd service missing for init: ${init}"; return 1; }
             enable_service seatd || log_warn "Failed to enable seatd" ;;

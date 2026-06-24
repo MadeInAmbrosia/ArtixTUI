@@ -131,6 +131,10 @@ Your graphical interface.
 | XFCE | Full desktop | Lightweight, traditional |
 | LXQt | Full desktop | Very lightweight, modular |
 | LXDE | Full desktop | Even lighter, older |
+| Cinnamon | Full desktop | Traditional, Windows-like |
+| Budgie | Full desktop | Modern, clean design |
+| Moksha | Full desktop | Enlightenment-based, community |
+| COSMIC | Full desktop | Rust-based, alpha software |
 | Hyprland | Wayland compositor | Modern, eye‑candy, requires Arch repos |
 | Sway | Wayland compositor | i3‑compatible, stable |
 | Niri | Wayland compositor | Scrollable tiling, experimental |
@@ -139,10 +143,9 @@ Your graphical interface.
 | IceWM | Stacking window manager | Extremely light, familiar look |
 | MangoWM | Wayland compositor | Lightweight, active development |
 | SonicDE | Full Desktop | Third-party KDE 6.7 X11 fork |
-| none | No desktop | You’ll start from a terminal |
+| none | No desktop | You'll start from a terminal |
 
 All of these can produce a comfortable environment. KDE and XFCE are the most popular; Hyprland and Sway are great if you like tinkering.
-
 ---
 
 ## 9. Display Stack (X11 / Wayland)

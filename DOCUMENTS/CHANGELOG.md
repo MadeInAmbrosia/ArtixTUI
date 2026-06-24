@@ -1,5 +1,27 @@
 # Changelog
 
+## v9.2.1.0 (2026-06-24) — ArtixForge
+
+### Added
+- **Cinnamon** desktop environment — full integration across installer, migrations, ISO builder, recovery detection, and GUI
+- **Budgie** desktop environment — full integration across all modules
+- **Moksha** desktop environment — Enlightenment-based, full integration across all modules
+- **COSMIC** desktop environment — Rust-based (alpha), full integration with seatd and Wayland support
+- COSMIC alpha warning in TUI sanity checks and post-install log
+- Moksha community-maintained notice in TUI sanity checks
+
+### Changed
+- Supported DE/WM count increased from 13 to 17
+- `tui_select_desktop` menu updated with new entries
+- `tui_select_display_manager` includes COSMIC in Wayland/seatd group
+- `install_desktop` case blocks for all four new DEs with proper package lists, DM pairing, and service enablement
+- `basestrap.sh` seat manager block includes COSMIC
+- Migration `DE_PACKAGES` and `DE_DISPLAY_MANAGER` arrays updated
+- ISO package list generation includes all new DEs
+- Recovery `detect_desktop` patterns cover new DEs
+- GTK4 GUI desktop combo boxes updated in `base.py`, `migration.py`, and `iso.py`
+- README and GUIDE.md desktop table expanded to 17 entries
+
 ## v9.2.0.0 (2026-06-24) — I can't believe I'm migrating from arch edition
 
 ### Added

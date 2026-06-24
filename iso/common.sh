@@ -259,6 +259,10 @@ generate_iso_package_list() {
         vxwm)    pkg_list+=(base-devel git libx11 libxft libxinerama freetype2 xorg-server xorg-xinit) ;;
         icewm)   pkg_list+=(icewm lightdm lightdm-gtk-greeter "lightdm-${init}") ;;
         mango)   pkg_list+=(base-devel git) ;;
+        cinnamon) pkg_list+=(cinnamon lightdm lightdm-gtk-greeter) ;;
+        budgie)   pkg_list+=(budgie-desktop budgie-screensaver budgie-control-center lightdm lightdm-gtk-greeter) ;;
+        moksha)   pkg_list+=(moksha enlightenment lightdm lightdm-gtk-greeter) ;;
+        cosmic)   pkg_list+=(cosmic cosmic-terminal cosmic-text-editor cosmic-files cosmic-settings cosmic-launcher lightdm lightdm-gtk-greeter) ;;
     esac
 
     local x_stack

@@ -66,7 +66,7 @@ install_base_system() {
     [[ -n "${ucode}" ]] && pkgs+=("${ucode}")
 
     case "${wm_de}" in
-        hyprland|mango|niri|sway)
+        hyprland|mango|niri|sway|cosmic)
             [[ -n "${seatd_suffix}" ]] && pkgs+=(seatd "seatd-${seatd_suffix}") ;;
         *)
             [[ -n "${elogind_suffix}" ]] && pkgs+=("elogind-${elogind_suffix}") ;;

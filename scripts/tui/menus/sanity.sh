@@ -32,6 +32,9 @@ tui_show_sanity_warnings() {
     [[ "$(state_get COREUTILS)" == "custom" ]] && warnings+=("Custom coreutils — ensure all essential tools are implemented")
     [[ "$(state_get COREUTILS)" != "gnu" && "$(state_get COREUTILS)" != "none" && "$(state_get COREUTILS)" != "" ]] && warnings+=("Non-GNU coreutils: some install scripts may behave unexpectedly")
 
+
+    [[ "$(state_get WM_DE)" == "cosmic" ]] && warnings+=("COSMIC is alpha software — APIs may change, features may be missing")
+    [[ "$(state_get WM_DE)" == "moksha" ]] && warnings+=("Moksha/Enlightenment is community-maintained — limited testing")
     [[ "$(state_get WM_DE)" == "none" ]] && warnings+=("No desktop environment selected")
     [[ "$(state_get WM_DE)" == "sonicde" ]] && warnings+=("SonicDE is a third-party KDE replacement — not officially supported by Artix")
     [[ "$(state_get WM_DE)" == "sonicde" && "$(state_get ENABLE_ARCH_REPOS)" == "no" ]] && warnings+=("SonicDE may need Arch repositories for dependencies")

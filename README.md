@@ -48,7 +48,7 @@ It walks you through partitioning, filesystem creation, base system installation
 | Storage              | Standard partitions, LVM, LUKS, LVM-on-LUKS                                                                             |
 | Boot method          | UKI, GRUB, rEFInd, EFIStub, Limine                                                                                      |
 | Kernel               | linux, zen, lts, hardened, libre, cachyos-*, bazzite, xanmod, tkg                                                    |
-| Desktop              | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, vxwm, IceWM, SonicDE, none                        |
+| Desktop              | XFCE, LXQt, KDE Plasma, LXDE, Hyprland, MangoWM, Niri, Sway, i3, dwm, vxwm, IceWM, SonicDE, Cinnamon, Budgie, Moksha, COSMIC, none |
 | Network              | NetworkManager, dhcpcd+iwd, ConnMan, none                                                                               |
 | Audio                | PipeWire, PulseAudio, none                                                                                              |
 | Shell                | bash, zsh, fish                                                                                                         |
@@ -186,7 +186,7 @@ A debug toggle is available for every mode from the same menu. If you encounter 
 
 * **Init migration:** convert between openrc, runit, dinit, s6, and systemd (if Arch repos enabled) without reinstalling.
 * Automatic service mapping; custom services are backed up and listed.
-* **Desktop migration:** convert between any of the 13 supported desktop environments/window managers.
+* **Desktop migration:** convert between any of the 17 supported desktop environments/window managers.
 * Migrates display manager, display stack, audio stack, and network stack alongside the desktop.
 * User configurations (`~/.config`, `~/.local`, `~/.cache`) are backed up before migration.
 * **ATA (Arch to Artix):** experimental full-system conversion from Arch Linux to Artix.

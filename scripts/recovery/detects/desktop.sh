@@ -15,6 +15,10 @@ detect_desktop() {
         [icewm]=icewm
         [sonicde-meta]=sonicde
         [plasma-desktop]=kde
+        [cinnamon]=cinnamon
+        [budgie-desktop]=budgie
+        [moksha]=moksha
+        [cosmic]=cosmic
     )
 
     for pkg in "${!de_map[@]}"; do
