@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+ATA_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="${BASE_DIR:-$(cd -- "${ATA_DIR}/../.." && pwd)}"
+
+source "${BASE_DIR}/scripts/common.sh" 2>/dev/null || true
+source "${BASE_DIR}/scripts/state.sh" 2>/dev/null || true
+source "${BASE_DIR}/scripts/recovery/detect.sh" 2>/dev/null || true
+source "${BASE_DIR}/scripts/recovery/core.sh" 2>/dev/null || true
+
 ata_detect_all() {
     log_info "Auditing Arch system..."
 
