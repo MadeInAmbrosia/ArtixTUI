@@ -32,6 +32,11 @@ ata_migrate_main() {
         return 0
     fi
 
+    if ! ping -c 1 -W 3 1.1.1.1 &>/dev/null && ! curl -s --max-time 5 https://1.1.1.1 &>/dev/null; then
+        tui_msg "No Network" "Internet connection required for migration.\n\nFix your network and retry."
+        return 0
+    fi
+
     local target_init aur_helper backup_dir has_homed de
     target_init="$(state_get INIT '')"
     aur_helper="$(state_get ATA_AUR_HELPER '')"
@@ -170,6 +175,8 @@ WHAT WILL BE BACKED UP:
         echo "convert" > "${MIGRATION_STAGE_FILE}"
         migration_stage="convert"
     fi
+
+    export resolv_backup
 
     if [[ "${migration_stage}" == "convert" ]]; then
         ata_convert_all

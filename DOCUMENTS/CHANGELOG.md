@@ -1,6 +1,21 @@
 # Changelog
 
-## v9.2.2.2 (2026-06-24) — ATA service map overhaul + DNS resilience
+## v9.2.2.3 (2026-06-24) — ArtixForge
+
+### Added
+- **ATA DNS provider selection** — users can choose Cloudflare, Google, Quad9, copy from backup, or enter a custom DNS when systemd-resolved is replaced
+- **ATA pre-flight network check** — migration aborts early with a clear message if no internet connection is detected
+
+### Changed
+- **ATA DNS replacement now atomic** — writes to `.tmp` file then `mv -f` over `/etc/resolv.conf`, eliminating the window where no resolver exists
+- **ATA DNS replacement stops systemd-resolved first** — prevents the daemon from regenerating the stub after it's removed
+- **ATA missing init handling** — uses `die` instead of `return 1` for consistent error messaging
+
+### Fixed
+- `/etc/resolv.conf` no longer disappears during conversion stage, preventing "could not resolve host" errors during package downloads
+- Users in countries or networks where Cloudflare DNS is blocked can select an alternative provider
+
+## v9.2.2.2 (2026-06-24) — ArtixForge
 
 ### Added
 - **ATA DNS backup/restore** — original `/etc/resolv.conf` contents saved before conversion stage and restored if the file is removed or broken; fallback to Cloudflare DNS if no backup exists
@@ -16,7 +31,7 @@
 - `getty@.service`, `remote-fs.target`, `systemd-userdbd.service` and all other systemd-internal units excluded from migration checklist
 - DNS resolution failures during `cache_artix_packages` caused by `ata_convert_resolv_conf` removing the `systemd-resolved` stub before restoring a working resolver
 
-## v9.2.2.1 (2026-06-24) — ATA desktop detection + backup fixes
+## v9.2.2.1 (2026-06-24) — ArtixForge
 
 ### Fixed
 - **ATA desktop detection** — Arch package names now queried directly after recovery detection, fixing `WM_DE=none` on systems with KDE, XFCE, Cinnamon, Budgie, GNOME, LXQt, LXDE, Hyprland, Sway, Niri, i3, dwm, IceWM, or MATE installed

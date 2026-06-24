@@ -196,9 +196,47 @@ ata_convert_mkinitcpio() {
 ata_convert_resolv_conf() {
     log_info "Fixing resolv.conf..."
     if [[ -f /tmp/ata-resolv-link.txt ]]; then
-        rm -f /etc/resolv.conf
-        printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
-        log_warn "systemd-resolved stub removed – using Cloudflare DNS. Edit /etc/resolv.conf if needed."
+        systemctl stop systemd-resolved 2>/dev/null || true
+        systemctl disable systemd-resolved 2>/dev/null || true
+
+        local dns_choice
+        dns_choice=$(tui_menu "DNS Resolver" \
+"systemd-resolved was detected and must be replaced.
+
+Choose a DNS provider for the migration:" \
+            "Cloudflare (1.1.1.1)" \
+            "Google (8.8.8.8)" \
+            "Quad9 (9.9.9.9)" \
+            "Copy from backup" \
+            "Enter custom DNS") || dns_choice="Cloudflare"
+
+        case "${dns_choice}" in
+            *Cloudflare*)
+                printf 'nameserver 1.1.1.1\nnameserver 1.0.0.1\n' > /etc/resolv.conf.tmp
+                ;;
+            *Google*)
+                printf 'nameserver 8.8.8.8\nnameserver 8.8.4.4\n' > /etc/resolv.conf.tmp
+                ;;
+            *Quad9*)
+                printf 'nameserver 9.9.9.9\nnameserver 149.112.112.112\n' > /etc/resolv.conf.tmp
+                ;;
+            *backup*)
+                if [[ -n "${resolv_backup:-}" ]]; then
+                    printf '%s\n' "${resolv_backup}" > /etc/resolv.conf.tmp
+                else
+                    printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf.tmp
+                    log_warn "No backup available – using Cloudflare"
+                fi
+                ;;
+            *custom*)
+                local custom_dns
+                custom_dns=$(tui_input "Custom DNS" "Enter DNS server IP:" "1.1.1.1") || custom_dns="1.1.1.1"
+                printf 'nameserver %s\n' "${custom_dns}" > /etc/resolv.conf.tmp
+                ;;
+        esac
+
+        mv -f /etc/resolv.conf.tmp /etc/resolv.conf
+        log_info "DNS resolver configured. Edit /etc/resolv.conf if needed."
     fi
 }
 
