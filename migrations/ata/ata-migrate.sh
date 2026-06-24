@@ -39,6 +39,11 @@ ata_migrate_main() {
     has_homed=0
     de="$(state_get WM_DE none)"
 
+    local resolv_backup=""
+    if [[ -f /etc/resolv.conf ]]; then
+        resolv_backup="$(cat /etc/resolv.conf)"
+    fi
+
     local migration_stage="init"
     if [[ -f "${MIGRATION_STAGE_FILE}" ]]; then
         migration_stage=$(cat "${MIGRATION_STAGE_FILE}")
@@ -56,6 +61,14 @@ ata_migrate_main() {
             target_init=""
             aur_helper=""
             de="none"
+        fi
+    fi
+
+    # Safety net: if we reached a later stage without a chosen init, abort
+    if [[ "${migration_stage}" != "init" && -z "${target_init}" ]]; then
+        target_init="$(state_get INIT '')"
+        if [[ -z "${target_init}" ]]; then
+            die "No init system was selected. The migration cannot continue."
         fi
     fi
 
@@ -161,11 +174,27 @@ WHAT WILL BE BACKED UP:
     if [[ "${migration_stage}" == "convert" ]]; then
         ata_convert_all
         [[ ${has_homed} -eq 1 ]] && ata_migrate_homed_users "${backup_dir}"
+
+        # Restore DNS if the conversion stage broke it
+        if [[ ! -f /etc/resolv.conf || -L /etc/resolv.conf ]]; then
+            if [[ -n "${resolv_backup}" ]]; then
+                printf '%s\n' "${resolv_backup}" > /etc/resolv.conf
+            else
+                printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
+            fi
+            log_info "DNS resolver restored for package downloads"
+        fi
+
         echo "repos" > "${MIGRATION_STAGE_FILE}"
         migration_stage="repos"
     fi
 
     if [[ "${migration_stage}" == "repos" ]]; then
+        if [[ ! -s /etc/resolv.conf ]]; then
+            printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
+            log_info "DNS resolver created (was empty)"
+        fi
+
         log_info "Pre-downloading Artix base packages..."
         cache_artix_packages "${target_init}"
 
@@ -173,6 +202,7 @@ WHAT WILL BE BACKED UP:
         clean_pacman_cache
         install_artix_keyring
 
+        # Build package map AFTER Artix repos are available
         ata_build_package_map
         ata_show_migration_list
 

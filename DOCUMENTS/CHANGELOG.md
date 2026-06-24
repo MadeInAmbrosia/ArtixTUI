@@ -1,5 +1,21 @@
 # Changelog
 
+## v9.2.2.2 (2026-06-24) — ATA service map overhaul + DNS resilience
+
+### Added
+- **ATA DNS backup/restore** — original `/etc/resolv.conf` contents saved before conversion stage and restored if the file is removed or broken; fallback to Cloudflare DNS if no backup exists
+- **ATA DNS pre-flight check** — `repos` stage verifies `/etc/resolv.conf` exists and is non-empty before any package downloads
+
+### Changed
+- **ATA service map skip list** — expanded from 18 to 95+ entries covering all systemd-internal units, targets, sockets, timers, and core binaries; added regex catch-all for any remaining `systemd-*` patterns and unit types (`.target`, `.socket`, `.timer`, `.mount`, `.automount`, `.path`, `.slice`, `.scope`)
+- **ATA package mapping order** — `ata_build_package_map` and `ata_show_migration_list` now run after `prepare_artix_repos` so pacman queries hit Artix mirrors, eliminating false "NO ARTIX EQUIVALENT" for packages that exist in Artix repos
+- **ATA missing init handling** — empty `target_init` now calls `die` instead of `return 1` for consistent error messaging
+
+### Fixed
+- `NetworkManager`, `lightdm`, and other common services no longer incorrectly show as having no Artix equivalent
+- `getty@.service`, `remote-fs.target`, `systemd-userdbd.service` and all other systemd-internal units excluded from migration checklist
+- DNS resolution failures during `cache_artix_packages` caused by `ata_convert_resolv_conf` removing the `systemd-resolved` stub before restoring a working resolver
+
 ## v9.2.2.1 (2026-06-24) — ATA desktop detection + backup fixes
 
 ### Fixed

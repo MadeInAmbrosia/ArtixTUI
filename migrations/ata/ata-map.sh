@@ -8,32 +8,159 @@ ata_build_package_map() {
     pacman -Sy --noconfirm 2>/dev/null || true
     : > "${ATA_MAP_CACHE}"
 
-    # Systemd internal units that don't need migration
+    # Units that are systemd-internal and should never appear in the migration checklist
     local -A skip_units=(
-        ["getty@.service"]=1
-        ["serial-getty@.service"]=1
+        # Journal / logging
         ["systemd-journald.service"]=1
-        ["systemd-logind.service"]=1
-        ["systemd-resolved.service"]=1
-        ["systemd-timesyncd.service"]=1
-        ["systemd-networkd.service"]=1
-        ["systemd-udevd.service"]=1
-        ["systemd-tmpfiles-setup.service"]=1
-        ["systemd-sysusers.service"]=1
-        ["systemd-random-seed.service"]=1
-        ["systemd-update-utmp.service"]=1
-        ["systemd-backlight@.service"]=1
-        ["systemd-fsck@.service"]=1
-        ["systemd-user-sessions.service"]=1
-        ["user-runtime-dir@.service"]=1
-        ["systemd-rfkill.service"]=1
         ["systemd-journal-flush.service"]=1
+        ["systemd-journal-catalog-update.service"]=1
+        ["systemd-journald-dev-log.socket"]=1
+        ["systemd-journald.socket"]=1
+
+        # Login / session / user tracking
+        ["systemd-logind.service"]=1
+        ["systemd-user-sessions.service"]=1
+        ["systemd-userdbd.service"]=1
+        ["user-runtime-dir@.service"]=1
+        ["systemd-homed.service"]=1
+        ["systemd-homed-activate.service"]=1
+
+        # Network (resolved/networkd are systemd-native)
+        ["systemd-resolved.service"]=1
+        ["systemd-networkd.service"]=1
+        ["systemd-networkd-wait-online.service"]=1
+        ["systemd-network-generator.service"]=1
+        ["systemd-resolved-generator.service"]=1
+
+        # Time sync
+        ["systemd-timesyncd.service"]=1
+
+        # Device / kernel / boot
+        ["systemd-udevd.service"]=1
+        ["systemd-udevd-control.socket"]=1
+        ["systemd-udevd-kernel.socket"]=1
+        ["systemd-udev-trigger.service"]=1
+        ["systemd-udev-settle.service"]=1
+        ["systemd-modules-load.service"]=1
+        ["systemd-boot-check-no-failures.service"]=1
+        ["systemd-boot-system-token.service"]=1
+        ["systemd-fsck@.service"]=1
+        ["systemd-fsck-root.service"]=1
+        ["systemd-growfs@.service"]=1
+        ["systemd-growfs-root.service"]=1
+        ["systemd-repart.service"]=1
+        ["systemd-pstore.service"]=1
+        ["systemd-binfmt.service"]=1
+        ["systemd-sysctl.service"]=1
+
+        # Random seed / entropy
+        ["systemd-random-seed.service"]=1
+
+        # Tmpfiles / sysusers / machine-id
+        ["systemd-tmpfiles-setup.service"]=1
+        ["systemd-tmpfiles-setup-dev.service"]=1
+        ["systemd-tmpfiles-clean.service"]=1
+        ["systemd-sysusers.service"]=1
+        ["systemd-machine-id-commit.service"]=1
+
+        # Update / utmp
+        ["systemd-update-utmp.service"]=1
+        ["systemd-update-utmp-runlevel.service"]=1
+
+        # Backlight / rfkill / hardware
+        ["systemd-backlight@.service"]=1
+        ["systemd-rfkill.service"]=1
+        ["systemd-rfkill.socket"]=1
+        ["systemd-hwdb-update.service"]=1
+        ["systemd-ask-password-console.service"]=1
+        ["systemd-ask-password-wall.service"]=1
+
+        # Mount / swap / crypto (handled by fstab/crypttab instead)
+        ["systemd-fstab-generator"]=1
+        ["systemd-cryptsetup@.service"]=1
+        ["systemd-cryptsetup-generator"]=1
+        ["systemd-veritysetup-generator"]=1
+        ["systemd-veritysetup@.service"]=1
+        ["systemd-swap-generator"]=1
+        ["systemd-mount.service"]=1
+        ["systemd-umount.service"]=1
+        ["systemd-remount-fs.service"]=1
+        ["systemd-shutdown"]=1
+        ["systemd-reboot"]=1
+        ["systemd-poweroff"]=1
+
+        # OOM / watchdog
+        ["systemd-oomd.service"]=1
+        ["systemd-oomd.socket"]=1
+        ["systemd-watchdog.service"]=1
+
+        # Systemd-specific targets
+        ["sysinit.target"]=1
+        ["basic.target"]=1
+        ["multi-user.target"]=1
+        ["graphical.target"]=1
+        ["default.target"]=1
+        ["shutdown.target"]=1
+        ["poweroff.target"]=1
+        ["reboot.target"]=1
+        ["halt.target"]=1
+        ["rescue.target"]=1
+        ["emergency.target"]=1
+        ["local-fs.target"]=1
+        ["local-fs-pre.target"]=1
+        ["remote-fs.target"]=1
+        ["remote-fs-pre.target"]=1
+        ["network.target"]=1
+        ["network-online.target"]=1
+        ["time-sync.target"]=1
+        ["nss-lookup.target"]=1
+        ["nss-user-lookup.target"]=1
+        ["paths.target"]=1
+        ["sockets.target"]=1
+        ["timers.target"]=1
+        ["getty.target"]=1
+        ["getty-pre.target"]=1
+        ["suspend.target"]=1
+        ["hibernate.target"]=1
+        ["hybrid-sleep.target"]=1
+        ["suspend-then-hibernate.target"]=1
+        ["sleep.target"]=1
+        ["system-update.target"]=1
+        ["system-update-pre.target"]=1
+        ["kexec.target"]=1
+
+        # Timer units (converted to cron separately)
+        ["systemd-tmpfiles-clean.timer"]=1
+        ["systemd-timesyncd.timer"]=1
+        ["systemd-rfkill.timer"]=1
+        ["systemd-userdbd.socket"]=1
+        ["systemd-journald-audit.socket"]=1
+        ["systemd-networkd.socket"]=1
+        ["systemd-resolved.socket"]=1
+
+        # Core systemd binary itself
+        ["systemd"]=1
+        ["systemd-stub"]=1
+        ["systemd-shutdown"]=1
+        ["systemd-reboot"]=1
+        ["systemd-poweroff"]=1
+        ["systemd-halt"]=1
+        ["systemd-kexec"]=1
     )
 
     while IFS= read -r unit; do
         [[ -n "${skip_units[${unit}]:-}" ]] && continue
 
+        # Generic catch‑all for any remaining systemd‑ish names
+        if [[ "${unit}" =~ ^systemd- ]] || \
+           [[ "${unit}" =~ \.(target|socket|timer|mount|automount|path|slice|scope)$ ]] || \
+           [[ "${unit}" == "getty@.service" ]] || \
+           [[ "${unit}" == "serial-getty@.service" ]]; then
+            continue
+        fi
+
         local pkg=""
+        local orig_unit="${unit}"
         unit="${unit%.service}"
         unit="${unit%.target}"
         unit="${unit%.timer}"
@@ -92,7 +219,7 @@ ata_build_package_map() {
         [[ -n "${arch_ver}" && -n "${artix_ver}" && "${arch_ver}" != "${artix_ver}" ]] && status="version-mismatch"
 
         printf '%s|%s|%s|%s|%s|%s\n' \
-            "${unit}" "${pkg}" "${arch_ver}" "${artix_pkg}" "${artix_ver}" "${status}" >> "${ATA_MAP_CACHE}"
+            "${orig_unit}" "${pkg}" "${arch_ver}" "${artix_pkg}" "${artix_ver}" "${status}" >> "${ATA_MAP_CACHE}"
     done < /tmp/ata-units.txt
 }
 
