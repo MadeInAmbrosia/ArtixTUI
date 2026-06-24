@@ -251,7 +251,10 @@ WHAT WILL BE BACKED UP:
         fi
 
         log_info "Clearing pacman cache to avoid corrupted downloads..."
-        _pacman -Scc --noconfirm 2>/dev/null || true
+        yes | _pacman -Scc 2>/dev/null || true
+
+        # Remove known-problematic cached packages
+        rm -f /var/cache/pacman/pkg/mkinitcpio-*.pkg.tar.zst
 
         retry_command "base system install" \
             _pacman -S --noconfirm base base-devel grub linux linux-headers mkinitcpio rsync artix-branding-base

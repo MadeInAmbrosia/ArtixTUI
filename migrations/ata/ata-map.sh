@@ -187,8 +187,7 @@ ata_build_package_map() {
         [[ -z "${pkg}" ]] && pkg="${unit}"
 
         local arch_repo=""
-        arch_repo=$(pacman -Si "${pkg}" 2>/dev/null | grep 'Repository' | awk '{print $3}') || true
-        [[ -z "${arch_repo}" ]] && arch_repo="unknown"
+        arch_repo=$(pacman -Si "${pkg}" 2>/dev/null | grep 'Repository' | head -n1 | awk '{print $3}') || true
 
         local artix_repo=""
         case "${arch_repo}" in
@@ -213,7 +212,7 @@ ata_build_package_map() {
         fi
 
         if [[ "${artix_pkg}" != "MISSING" ]]; then
-            artix_ver=$(pacman -Si "${artix_pkg}" 2>/dev/null | grep 'Version' | awk '{print $3}')
+            artix_ver=$(pacman -Si "${artix_pkg}" 2>/dev/null | grep 'Version' | head -n1 | awk '{print $3}')
         fi
 
         local arch_ver=""
