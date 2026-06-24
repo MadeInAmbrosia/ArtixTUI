@@ -7,7 +7,7 @@ ata_detect_all() {
     log_info "Auditing Arch system..."
 
     # Core system (uses recovery detection functions)
-    detect_current_init
+    detect_init
     detect_desktop
     detect_display_manager
     detect_xstack
