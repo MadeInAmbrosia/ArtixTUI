@@ -15,7 +15,6 @@ ata_convert_all() {
 ata_convert_network_credentials() {
     log_info "Converting network credentials..."
 
-    # systemd-networkd .network files -> extract WiFi PSK
     local found=0
     for f in /etc/systemd/network/*.network; do
         [[ -f "$f" ]] || continue
@@ -35,7 +34,6 @@ WPA
         fi
     done
 
-    # iwd .psk files -> copy directly
     if [[ -d /var/lib/iwd ]]; then
         mkdir -p /var/lib/iwd
         cp -a /var/lib/iwd/*.psk /var/lib/iwd/ 2>/dev/null || true
@@ -43,7 +41,6 @@ WPA
         found=1
     fi
 
-    # NetworkManager connections -> copy directly (they're distro-agnostic)
     if [[ -d /etc/NetworkManager/system-connections ]]; then
         mkdir -p /etc/NetworkManager/system-connections
         cp -a /etc/NetworkManager/system-connections/* /etc/NetworkManager/system-connections/ 2>/dev/null || true
@@ -106,7 +103,8 @@ ata_convert_timers() {
             local seconds
             seconds=$(ata_parse_time_seconds "${onunitactivesec}")
             if [[ -n "${seconds}" ]]; then
-                local wrapper_script="/etc/cron.d/ata-timer-${timer_unit//[\/@]/-}.sh"
+                local safe_name="${timer_unit//[\/@]/-}"
+                local wrapper_script="/etc/cron.d/ata-timer-${safe_name}.sh"
                 cat > "${wrapper_script}" <<WRAPPER
 #!/bin/bash
 while true; do
@@ -223,11 +221,10 @@ ata_convert_crypttab() {
     fi
     while IFS= read -r line; do
         [[ -z "${line}" || "${line}" == \#* ]] && continue
-        local name device keyfile options
+        local name device uuid
         name=$(echo "${line}" | awk '{print $1}')
         device=$(echo "${line}" | awk '{print $2}')
         device=$(blkid -U "${device#UUID=}" 2>/dev/null || echo "${device}")
-        local uuid
         uuid=$(blkid -s UUID -o value "${device}" 2>/dev/null || true)
         if [[ -n "${uuid}" ]]; then
             if ! grep -q "cryptdevice=UUID=${uuid}" /etc/default/grub 2>/dev/null; then
@@ -243,10 +240,10 @@ ata_convert_timesyncd() {
     local init
     init=$(state_get INIT openrc)
     case "${init}" in
-        openrc) pacman -S --noconfirm --needed ntp-openrc ;;
-        runit)  pacman -S --noconfirm --needed ntp-runit ;;
-        dinit)  pacman -S --noconfirm --needed ntp-dinit ;;
-        s6)     pacman -S --noconfirm --needed ntp-s6 ;;
+        openrc) pacman -S --noconfirm --needed ntp-openrc 2>/dev/null || pacman -S --noconfirm --needed chrony-openrc 2>/dev/null || log_warn "Could not install NTP package" ;;
+        runit)  pacman -S --noconfirm --needed ntp-runit 2>/dev/null || pacman -S --noconfirm --needed chrony-runit 2>/dev/null || log_warn "Could not install NTP package" ;;
+        dinit)  pacman -S --noconfirm --needed ntp-dinit 2>/dev/null || pacman -S --noconfirm --needed chrony-dinit 2>/dev/null || log_warn "Could not install NTP package" ;;
+        s6)     pacman -S --noconfirm --needed ntp-s6 2>/dev/null || pacman -S --noconfirm --needed chrony-s6 2>/dev/null || log_warn "Could not install NTP package" ;;
     esac
-    enable_service ntpd
+    enable_service ntpd 2>/dev/null || enable_service ntp 2>/dev/null || enable_service chronyd 2>/dev/null || log_warn "Could not enable NTP service"
 }
