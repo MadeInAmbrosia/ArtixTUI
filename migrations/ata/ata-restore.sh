@@ -7,6 +7,10 @@ ata_restore_user_data() {
 
     while IFS= read -r user; do
         [[ -d "${backup_dir}/home/${user}" ]] || continue
+        if [[ "$(realpath "${backup_dir}/home/${user}")" == "$(realpath "/home/${user}")" ]]; then
+            log_info "  /home/${user} already in place — skipping"
+            continue
+        fi
         cp -a "${backup_dir}/home/${user}/" "/home/${user}/"
         chown -R "${user}:${user}" "/home/${user}" 2>/dev/null || true
         log_info "  Restored /home/${user}"
@@ -31,9 +35,15 @@ ata_restore_user_data() {
         NetworkManager/system-connections
     )
     for path in "${restore_paths[@]}"; do
-        if [[ -d "${backup_dir}/etc/${path}" ]]; then
-            mkdir -p "/etc/${path%/*}" 2>/dev/null || true
-            cp -a "${backup_dir}/etc/${path}" "/etc/${path}"
+        local src="${backup_dir}/etc/${path}"
+        local dst="/etc/${path}"
+        if [[ -d "${src}" ]]; then
+            if [[ "$(realpath "${src}" 2>/dev/null)" == "$(realpath "${dst}" 2>/dev/null)" ]]; then
+                log_info "  /etc/${path} already in place — skipping"
+                continue
+            fi
+            mkdir -p "$(dirname "${dst}")" 2>/dev/null || true
+            cp -a "${src}" "${dst}"
             log_info "  Restored /etc/${path}"
         fi
     done
