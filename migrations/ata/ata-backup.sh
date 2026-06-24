@@ -9,8 +9,15 @@ ata_backup_all() {
     log_info "Creating backup at ${backup_dir}..."
 
     # /home
+    mkdir -p "${backup_dir}/home"
     while IFS= read -r user; do
-        [[ -d "/home/${user}" ]] && cp -a "/home/${user}" "${backup_dir}/home/${user}"
+        if [[ -d "/home/${user}" ]]; then
+            cp -a "/home/${user}" "${backup_dir}/home/${user}"
+        elif [[ -f "/home/${user}.home" ]]; then
+            log_info "  ${user} has a systemd-homed image — will be migrated later"
+        else
+            log_warn "  ${user} has no home directory — skipping backup"
+        fi
     done < /tmp/ata-users.txt
 
     # /etc

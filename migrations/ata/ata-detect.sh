@@ -8,7 +8,7 @@ ata_detect_all() {
 
     # Core system (uses recovery detection functions)
     detect_init
-    detect_desktop
+    # detect_desktop (recovery detects look for Artix package names)
     detect_display_manager
     detect_xstack
     detect_audio_stack
@@ -20,6 +20,37 @@ ata_detect_all() {
     detect_luks
     detect_lvm
     detect_uki
+
+    # Override desktop detection with Arch package names
+    if pacman -Q plasma-meta &>/dev/null || pacman -Q plasma-desktop &>/dev/null; then
+        state_set WM_DE kde
+    elif pacman -Q xfce4 &>/dev/null; then
+        state_set WM_DE xfce4
+    elif pacman -Q cinnamon &>/dev/null; then
+        state_set WM_DE cinnamon
+    elif pacman -Q budgie-desktop &>/dev/null; then
+        state_set WM_DE budgie
+    elif pacman -Q gnome-shell &>/dev/null; then
+        state_set WM_DE gnome
+    elif pacman -Q lxqt-session &>/dev/null; then
+        state_set WM_DE lxqt
+    elif pacman -Q lxde-common &>/dev/null; then
+        state_set WM_DE lxde
+    elif pacman -Q hyprland &>/dev/null; then
+        state_set WM_DE hyprland
+    elif pacman -Q sway &>/dev/null; then
+        state_set WM_DE sway
+    elif pacman -Q niri &>/dev/null; then
+        state_set WM_DE niri
+    elif pacman -Q i3-wm &>/dev/null; then
+        state_set WM_DE i3wm
+    elif pacman -Q dwm &>/dev/null; then
+        state_set WM_DE dwm
+    elif pacman -Q icewm &>/dev/null; then
+        state_set WM_DE icewm
+    elif pacman -Q mate-desktop &>/dev/null; then
+        state_set WM_DE mate
+    fi
 
     # Users
     awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd > /tmp/ata-users.txt
@@ -120,37 +151,6 @@ ata_detect_all() {
         snap list 2>/dev/null | tail -n +2 | awk '{print $1}' > /tmp/ata-snap.txt || true
         log_warn "Snap packages detected. Snaps require systemd and will NOT function on Artix."
         log_warn "List saved to backup. Consider replacing with flatpaks or native packages."
-    fi
-
-    # Override desktop detection with Arch package names
-    if pacman -Q plasma-meta &>/dev/null || pacman -Q plasma-desktop &>/dev/null; then
-        state_set WM_DE kde
-    elif pacman -Q xfce4 &>/dev/null; then
-        state_set WM_DE xfce4
-    elif pacman -Q cinnamon &>/dev/null; then
-        state_set WM_DE cinnamon
-    elif pacman -Q budgie-desktop &>/dev/null; then
-        state_set WM_DE budgie
-    elif pacman -Q gnome-shell &>/dev/null; then
-        state_set WM_DE gnome
-    elif pacman -Q lxqt-session &>/dev/null; then
-        state_set WM_DE lxqt
-    elif pacman -Q lxde-common &>/dev/null; then
-        state_set WM_DE lxde
-    elif pacman -Q hyprland &>/dev/null; then
-        state_set WM_DE hyprland
-    elif pacman -Q sway &>/dev/null; then
-        state_set WM_DE sway
-    elif pacman -Q niri &>/dev/null; then
-        state_set WM_DE niri
-    elif pacman -Q i3-wm &>/dev/null; then
-        state_set WM_DE i3wm
-    elif pacman -Q dwm &>/dev/null; then
-        state_set WM_DE dwm
-    elif pacman -Q icewm &>/dev/null; then
-        state_set WM_DE icewm
-    elif pacman -Q mate-desktop &>/dev/null; then
-        state_set WM_DE mate
     fi
 
     log_info "Audit complete."

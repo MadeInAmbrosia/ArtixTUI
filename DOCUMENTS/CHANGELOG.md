@@ -1,5 +1,16 @@
 # Changelog
 
+## v9.2.2.1 (2026-06-24) — ATA desktop detection + backup fixes
+
+### Fixed
+- **ATA desktop detection** — Arch package names now queried directly after recovery detection, fixing `WM_DE=none` on systems with KDE, XFCE, Cinnamon, Budgie, GNOME, LXQt, LXDE, Hyprland, Sway, Niri, i3, dwm, IceWM, or MATE installed
+- **ATA backup directory creation** — `mkdir -p` now ensures target directory exists before copying user homes; users with systemd-homed images or missing home directories are handled gracefully instead of failing with "no such file or directory"
+- **ATA service map filtering** — 18 systemd-internal units (`getty@.service`, `systemd-journald.service`, etc.) now excluded from the migration checklist, preventing confusing entries like "getty → systemd"
+
+### Changed
+- `ata_backup_all` skips users with no home directory instead of failing, and logs systemd-homed users for later migration
+- `ata_build_package_map` uses a skip-units filter list for cleaner service migration UI
+
 ## v9.2.2.0 (2026-06-24) — ArtixForge
 
 ### Added

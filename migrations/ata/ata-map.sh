@@ -8,7 +8,31 @@ ata_build_package_map() {
     pacman -Sy --noconfirm 2>/dev/null || true
     : > "${ATA_MAP_CACHE}"
 
+    # Systemd internal units that don't need migration
+    local -A skip_units=(
+        ["getty@.service"]=1
+        ["serial-getty@.service"]=1
+        ["systemd-journald.service"]=1
+        ["systemd-logind.service"]=1
+        ["systemd-resolved.service"]=1
+        ["systemd-timesyncd.service"]=1
+        ["systemd-networkd.service"]=1
+        ["systemd-udevd.service"]=1
+        ["systemd-tmpfiles-setup.service"]=1
+        ["systemd-sysusers.service"]=1
+        ["systemd-random-seed.service"]=1
+        ["systemd-update-utmp.service"]=1
+        ["systemd-backlight@.service"]=1
+        ["systemd-fsck@.service"]=1
+        ["systemd-user-sessions.service"]=1
+        ["user-runtime-dir@.service"]=1
+        ["systemd-rfkill.service"]=1
+        ["systemd-journal-flush.service"]=1
+    )
+
     while IFS= read -r unit; do
+        [[ -n "${skip_units[${unit}]:-}" ]] && continue
+
         local pkg=""
         unit="${unit%.service}"
         unit="${unit%.target}"
