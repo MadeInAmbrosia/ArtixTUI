@@ -1,5 +1,29 @@
 # Changelog
 
+## v9.2.2.0 (2026-06-24) — ArtixForge
+
+### Added
+- **ATA stage-based resume** — migration progress tracked via `migration-stage.conf` through init, backup, convert, repos, install, services, and finalize stages; interrupted migrations can be resumed or restarted fresh
+- **ATA network retry wrapping** — all critical `pacman -S` calls wrapped in `retry_command` with 3 attempts and exponential backoff (5s/10s/20s)
+- **ATA cache clearing** — package cache wiped before install phase to prevent corrupted partial downloads from poisoning retries
+- **ATA chroot mount guards** — `/proc`, `/sys`, and `/dev` verified mounted before `mkinitcpio` and `update_bootloader` calls
+- **ATA fresh-start recovery** — failed migrations can be restarted clean by removing partial systemd state and old backups
+- **ATA NTP fallback** — `ata_convert_timesyncd` falls back from `ntp-openrc`/`ntp-runit`/etc. to `chrony-openrc`/`chrony-runit`/etc. if NTP packages are unavailable; service enablement falls back `ntpd` → `ntp` → `chronyd`
+- **ATA detection sourcing** — `ata-detect.sh` and `ata-migrate.sh` now source recovery detects and migration common libraries directly, eliminating "command not found" errors
+
+### Changed
+- `ata_migrate_main` restructured into discrete stages with resume capability
+- `ata_oncalendar_to_cron` patterns quoted to prevent bash glob expansion at parse time
+- `ata_convert_timesyncd` uses cascading fallbacks for both package installation and service enablement
+- ATA migration returns `0` for expected exits (live ISO, not Arch, user cancelled) to prevent ERR trap false positives
+- `tui_migration_menu` ATA entry uses single clean label `"Arch Linux → Artix (EXPERIMENTAL)"` instead of duplicate strings
+
+### Fixed
+- Syntax error in `ata_oncalendar_to_cron` caused by unquoted glob patterns in case statement
+- `detect_init` now detects systemd via `/usr/lib/systemd/systemd` and `/usr/bin/systemctl` before falling back to Artix inits
+- Missing source of `migrations/inits/common.sh` and `migrations/des/common.sh` in ATA migrate entry point
+- `cp` backup failure when `/home` directory doesn't exist for a detected user
+
 ## v9.2.1.0 (2026-06-24) — ArtixForge
 
 ### Added

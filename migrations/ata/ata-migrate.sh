@@ -18,6 +18,8 @@ source "${ATA_DIR}/ata-map.sh"
 source "${ATA_DIR}/ata-convert.sh"
 source "${ATA_DIR}/ata-restore.sh"
 
+readonly MIGRATION_STAGE_FILE="/tmp/artix-installer/migration-stage.conf"
+
 ata_migrate_main() {
     if [[ -d /run/artix/sfs/rootfs ]]; then
         tui_msg "Cannot Run from Live ISO" \
@@ -30,7 +32,26 @@ ata_migrate_main() {
         return 0
     fi
 
-    tui_msg "Arch → Artix Migration" \
+    local migration_stage="init"
+    if [[ -f "${MIGRATION_STAGE_FILE}" ]]; then
+        migration_stage=$(cat "${MIGRATION_STAGE_FILE}")
+        tui_msg "Failed Migration Detected" \
+            "A previous ATA migration was interrupted at stage: ${migration_stage}.\n\nYou can resume or start fresh."
+        if tui_yesno "Resume Migration?" "Resume the interrupted migration?"; then
+            log_info "Resuming ATA migration from stage: ${migration_stage}"
+        else
+            log_info "Starting fresh – removing partial state..."
+            remove_systemd 2>/dev/null || true
+            local old_backup
+            old_backup="$(state_get MIGRATION_BACKUP_DIR '')"
+            [[ -n "${old_backup}" && -d "${old_backup}" ]] && rm -rf "${old_backup}"
+            rm -f "${MIGRATION_STAGE_FILE}"
+            migration_stage="init"
+        fi
+    fi
+
+    if [[ "${migration_stage}" == "init" ]]; then
+        tui_msg "Arch → Artix Migration" \
 "This will convert your Arch Linux system to Artix.
 
 WHAT CAN BE MIGRATED AUTOMATICALLY:
@@ -62,114 +83,152 @@ WHAT WILL BE BACKED UP:
   • System journal (text export)
   • Everything to /arch-migration-backup-YYYYMMDD-HHMMSS"
 
-    if ! tui_yesno "Begin Migration" "This is destructive. Proceed?"; then
-        return 0
-    fi
-
-    ata_detect_all
-
-    local target_init
-    target_init=$(tui_menu "Choose Init System" "Select your new init:" \
-        "openrc" "runit" "dinit" "s6") || return 0
-    state_set INIT "${target_init}"
-
-    local use_arch_repos="yes"
-    tui_yesno "Arch Repositories" "Keep access to Arch repositories for AUR helpers?" || use_arch_repos="no"
-    state_set ENABLE_ARCH_REPOS "${use_arch_repos}"
-
-    local aur_helper=""
-    if [[ -s /tmp/ata-aur.txt ]]; then
-        local aur_count
-        aur_count=$(wc -l < /tmp/ata-aur.txt)
-        if tui_yesno "AUR Packages" "${aur_count} AUR packages detected.\n\nAttempt to reinstall them automatically after migration?"; then
-            aur_helper=$(tui_menu "AUR Helper" "Select AUR helper:" "paru" "yay" "Skip") || aur_helper=""
-            [[ "${aur_helper}" == "Skip" ]] && aur_helper=""
+        if ! tui_yesno "Begin Migration" "This is destructive. Proceed?"; then
+            return 0
         fi
+
+        ata_detect_all
+
+        local target_init
+        target_init=$(tui_menu "Choose Init System" "Select your new init:" \
+            "openrc" "runit" "dinit" "s6") || return 0
+        state_set INIT "${target_init}"
+
+        local use_arch_repos="yes"
+        tui_yesno "Arch Repositories" "Keep access to Arch repositories for AUR helpers?" || use_arch_repos="no"
+        state_set ENABLE_ARCH_REPOS "${use_arch_repos}"
+
+        local aur_helper=""
+        if [[ -s /tmp/ata-aur.txt ]]; then
+            local aur_count
+            aur_count=$(wc -l < /tmp/ata-aur.txt)
+            if tui_yesno "AUR Packages" "${aur_count} AUR packages detected.\n\nAttempt to reinstall them automatically after migration?"; then
+                aur_helper=$(tui_menu "AUR Helper" "Select AUR helper:" "paru" "yay" "Skip") || aur_helper=""
+                [[ "${aur_helper}" == "Skip" ]] && aur_helper=""
+            fi
+        fi
+
+        local has_homed=0
+        if [[ -s /tmp/ata-homed.txt ]]; then
+            has_homed=1
+            tui_msg "systemd-homed Detected" "Users with systemd-homed were found.\n\nTheir home directories will be unlocked and migrated to standard /home if you provide their passwords."
+        fi
+
+        local de aur_count flatpak_count snap_count
+        de=$(state_get WM_DE none)
+        aur_count=$(wc -l < /tmp/ata-aur.txt 2>/dev/null || echo 0)
+        flatpak_count=$(wc -l < /tmp/ata-flatpak.txt 2>/dev/null || echo 0)
+        snap_count=$(wc -l < /tmp/ata-snap.txt 2>/dev/null || echo 0)
+
+        local summary=""
+        summary+="Desktop: ${de}"$'\n'
+        summary+="AUR packages: ${aur_count}"$'\n'
+        summary+="Flatpaks: ${flatpak_count}"$'\n'
+        summary+="Snaps: ${snap_count}"$'\n'
+        summary+="Target init: ${target_init}"$'\n'
+        summary+="Arch repos: ${use_arch_repos}"$'\n'
+        [[ -n "${aur_helper}" ]] && summary+="AUR helper: ${aur_helper}"$'\n'
+        tui_msg "Migration Summary" "${summary}"
+
+        if ! tui_yesno "Final Confirmation" "This is the point of no return.\n\nAll changes are backed up.\n\nProceed with migration?"; then
+            log_info "Migration cancelled."
+            return 0
+        fi
+
+        echo "backup" > "${MIGRATION_STAGE_FILE}"
     fi
 
-    local has_homed=0
-    if [[ -s /tmp/ata-homed.txt ]]; then
-        has_homed=1
-        tui_msg "systemd-homed Detected" "Users with systemd-homed were found.\n\nTheir home directories will be unlocked and migrated to standard /home if you provide their passwords."
+    if [[ "${migration_stage}" == "backup" ]]; then
+        local backup_dir="/arch-migration-backup-$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "${backup_dir}"
+        chmod 700 "${backup_dir}"
+        state_set MIGRATION_BACKUP_DIR "${backup_dir}"
+        ata_backup_all "${backup_dir}"
+        echo "convert" > "${MIGRATION_STAGE_FILE}"
     fi
 
-    local de aur_count flatpak_count snap_count
-    de=$(state_get WM_DE none)
-    aur_count=$(wc -l < /tmp/ata-aur.txt 2>/dev/null || echo 0)
-    flatpak_count=$(wc -l < /tmp/ata-flatpak.txt 2>/dev/null || echo 0)
-    snap_count=$(wc -l < /tmp/ata-snap.txt 2>/dev/null || echo 0)
-
-    local summary=""
-    summary+="Desktop: ${de}"$'\n'
-    summary+="AUR packages: ${aur_count}"$'\n'
-    summary+="Flatpaks: ${flatpak_count}"$'\n'
-    summary+="Snaps: ${snap_count}"$'\n'
-    summary+="Target init: ${target_init}"$'\n'
-    summary+="Arch repos: ${use_arch_repos}"$'\n'
-    [[ -n "${aur_helper}" ]] && summary+="AUR helper: ${aur_helper}"$'\n'
-    tui_msg "Migration Summary" "${summary}"
-
-    if ! tui_yesno "Final Confirmation" "This is the point of no return.\n\nAll changes are backed up.\n\nProceed with migration?"; then
-        log_info "Migration cancelled."
-        return 0
+    if [[ "${migration_stage}" == "convert" ]]; then
+        ata_convert_all
+        local has_homed
+        has_homed=$(if [[ -s /tmp/ata-homed.txt ]]; then echo 1; else echo 0; fi)
+        [[ ${has_homed} -eq 1 ]] && ata_migrate_homed_users "${backup_dir}"
+        echo "repos" > "${MIGRATION_STAGE_FILE}"
     fi
 
-    local backup_dir="/arch-migration-backup-$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "${backup_dir}"
-    chmod 700 "${backup_dir}"
-    state_set MIGRATION_BACKUP_DIR "${backup_dir}"
-    ata_backup_all "${backup_dir}"
+    if [[ "${migration_stage}" == "repos" ]]; then
+        ata_build_package_map
+        ata_show_migration_list
 
-    ata_convert_all
+        log_info "Pre-downloading Artix base packages..."
+        cache_artix_packages "${target_init}"
 
-    [[ ${has_homed} -eq 1 ]] && ata_migrate_homed_users "${backup_dir}"
-
-    ata_build_package_map
-    ata_show_migration_list
-
-    log_info "Pre-downloading Artix base packages..."
-    cache_artix_packages "${target_init}"
-
-    prepare_artix_repos
-    clean_pacman_cache
-    install_artix_keyring
-
-    remove_systemd
-
-    install_target_init "systemd" "${target_init}"
-    _pacman -S --noconfirm base base-devel grub linux linux-headers mkinitcpio rsync artix-branding-base
-
-    reinstall_artix_packages
-
-    [[ "${de}" != "none" ]] && run_de_migration "none" "${de}"
-
-    log_info "Enabling selected services..."
-    while IFS= read -r unit; do
-        local mapped
-        mapped=$(awk -F'|' -v u="${unit}" '$1==u {print $4}' "${ATA_MAP_CACHE}")
-        [[ -n "${mapped}" && "${mapped}" != "MISSING" ]] && _enable_service "${mapped}" "${target_init}"
-    done < /tmp/ata-migrate-selection.txt 2>/dev/null
-
-    ata_convert_user_services
-    ata_convert_systemd_boot
-    ata_rebuild_dkms
-    ata_restore_user_data "${backup_dir}"
-    ata_restore_flatpaks "${backup_dir}"
-    ata_restore_network_credentials "${backup_dir}"
-
-    if [[ -n "${aur_helper}" && -s /tmp/ata-aur.txt ]]; then
-        ata_reinstall_aur "${aur_helper}"
+        prepare_artix_repos
+        clean_pacman_cache
+        install_artix_keyring
+        remove_systemd
+        echo "install" > "${MIGRATION_STAGE_FILE}"
     fi
 
-    if [[ -s /tmp/ata-exotic-mounts.txt ]]; then
-        log_warn "Exotic mounts (NFS/CIFS/etc.) found in /etc/fstab. Verify after boot."
+    if [[ "${migration_stage}" == "install" ]]; then
+        log_info "Clearing pacman cache to avoid corrupted downloads..."
+        _pacman -Scc --noconfirm 2>/dev/null || true
+
+        retry_command "base system install" \
+            _pacman -S --noconfirm base base-devel grub linux linux-headers mkinitcpio rsync artix-branding-base
+
+        retry_command "target init install" \
+            install_target_init "systemd" "${target_init}"
+
+        retry_command "full package replacement" \
+            reinstall_artix_packages
+
+        local de
+        de=$(state_get WM_DE none)
+        [[ "${de}" != "none" ]] && run_de_migration "none" "${de}"
+
+        echo "services" > "${MIGRATION_STAGE_FILE}"
     fi
 
-    log_info "Rebuilding initramfs..."
-    _chroot mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
-    update_bootloader
+    if [[ "${migration_stage}" == "services" ]]; then
+        log_info "Enabling selected services..."
+        while IFS= read -r unit; do
+            local mapped
+            mapped=$(awk -F'|' -v u="${unit}" '$1==u {print $4}' "${ATA_MAP_CACHE}")
+            [[ -n "${mapped}" && "${mapped}" != "MISSING" ]] && _enable_service "${mapped}" "${target_init}"
+        done < /tmp/ata-migrate-selection.txt 2>/dev/null
+
+        ata_convert_user_services
+        ata_convert_systemd_boot
+        ata_rebuild_dkms
+        ata_restore_user_data "${backup_dir}"
+        ata_restore_flatpaks "${backup_dir}"
+        ata_restore_network_credentials "${backup_dir}"
+
+        local aur_helper
+        aur_helper=$(state_get ATA_AUR_HELPER "")
+        if [[ -n "${aur_helper}" && -s /tmp/ata-aur.txt ]]; then
+            ata_reinstall_aur "${aur_helper}"
+        fi
+
+        if [[ -s /tmp/ata-exotic-mounts.txt ]]; then
+            log_warn "Exotic mounts (NFS/CIFS/etc.) found in /etc/fstab. Verify after boot."
+        fi
+
+        mountpoint -q /proc || mount -t proc proc /proc
+        mountpoint -q /sys  || mount -t sysfs sys /sys
+        mountpoint -q /dev  || mount --bind /dev /dev
+
+        log_info "Rebuilding initramfs..."
+        _chroot mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
+
+        log_info "Updating bootloader..."
+        update_bootloader
+
+        echo "finalize" > "${MIGRATION_STAGE_FILE}"
+    fi
 
     rm -f /tmp/ata-*.txt /tmp/ata-pkg-map.txt
+    rm -f "${MIGRATION_STAGE_FILE}"
 
     tui_msg "Migration Complete" \
 "Your system has been converted to Artix Linux (${target_init}).
