@@ -251,7 +251,8 @@ WHAT WILL BE BACKED UP:
         fi
 
         log_info "Clearing pacman cache to avoid corrupted downloads..."
-        yes | _pacman -Scc 2>/dev/null || true
+        rm -rf /var/cache/pacman/pkg/* 2>/dev/null || true
+        rm -rf /var/lib/pacman/sync/* 2>/dev/null || true
 
         # Remove known-problematic cached packages
         rm -f /var/cache/pacman/pkg/mkinitcpio-*.pkg.tar.zst
