@@ -36,7 +36,7 @@ tui_migration_menu() {
             fi
             ;;
         "Arch Linux → Artix"*)
-            if ! tui_yesno "EXPERIMENTAL FEATURE" \
+            if tui_yesno "EXPERIMENTAL FEATURE" \
 "Arch → Artix migration is EXPERIMENTAL.
 
 It will attempt to convert your entire Arch Linux system
