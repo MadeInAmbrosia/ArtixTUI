@@ -2,12 +2,16 @@
 set -Eeuo pipefail
 
 ATA_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="${BASE_DIR:-$(cd -- "${ATA_DIR}/../.." && pwd)}"
 
 source "${ATA_DIR}/ata-detect.sh"
 source "${ATA_DIR}/ata-backup.sh"
 source "${ATA_DIR}/ata-map.sh"
 source "${ATA_DIR}/ata-convert.sh"
 source "${ATA_DIR}/ata-restore.sh"
+
+source "${BASE_DIR}/scripts/recovery/detect.sh" 2>/dev/null || true
+source "${BASE_DIR}/scripts/recovery/core.sh" 2>/dev/null || true
 
 ata_migrate_main() {
     if [[ -d /run/artix/sfs/rootfs ]]; then
