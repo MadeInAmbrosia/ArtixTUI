@@ -60,7 +60,7 @@ diverged in ways no script can fully predict.
 
 Proceed at your own risk."; then
                 source "${MIGRATIONS_DIR}/ata/ata-migrate.sh"
-                ata_migrate_main
+                ata_migrate_main || true
             fi
             ;;
         *) return 0 ;;
