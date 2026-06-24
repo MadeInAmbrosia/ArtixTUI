@@ -82,7 +82,6 @@ ata_migrate_main() {
         fi
     fi
 
-    # Safety net: if we reached a later stage without a chosen init, abort
     if [[ "${migration_stage}" != "init" && -z "${target_init}" ]]; then
         target_init="$(state_get INIT '')"
         if [[ -z "${target_init}" ]]; then
@@ -175,7 +174,6 @@ WHAT WILL BE BACKED UP:
             return 0
         fi
 
-        # Persist all state before moving to the next stage
         state_save
         echo "backup" > "${MIGRATION_STAGE_FILE}"
         migration_stage="backup"
@@ -195,7 +193,6 @@ WHAT WILL BE BACKED UP:
         ata_convert_all
         [[ ${has_homed} -eq 1 ]] && ata_migrate_homed_users "${backup_dir}"
 
-        # Restore DNS if the conversion stage broke it
         if [[ ! -f /etc/resolv.conf || -L /etc/resolv.conf ]]; then
             if [[ -n "${resolv_backup}" ]]; then
                 printf '%s\n' "${resolv_backup}" > /etc/resolv.conf
@@ -221,6 +218,12 @@ WHAT WILL BE BACKED UP:
         prepare_artix_repos
         clean_pacman_cache
         install_artix_keyring
+
+        if [[ "$(state_get ENABLE_ARCH_REPOS yes)" == "yes" ]]; then
+            _pacman -S --noconfirm --needed archlinux-keyring 2>/dev/null || true
+            _chroot pacman-key --populate archlinux 2>/dev/null || true
+            log_info "Arch Linux keyring preserved and populated"
+        fi
 
         # Build package map AFTER Artix repos are available
         ata_build_package_map
@@ -248,6 +251,16 @@ WHAT WILL BE BACKED UP:
 
         retry_command "full package replacement" \
             reinstall_artix_packages
+
+        _pacman -S --noconfirm --needed artix-keyring 2>/dev/null || true
+        _chroot pacman-key --init 2>/dev/null || true
+        _chroot pacman-key --populate artix 2>/dev/null || true
+
+        if [[ "$(state_get ENABLE_ARCH_REPOS yes)" == "yes" ]]; then
+            _pacman -S --noconfirm --needed archlinux-keyring 2>/dev/null || true
+            _chroot pacman-key --populate archlinux 2>/dev/null || true
+        fi
+        log_info "Keyrings reinstalled and populated"
 
         [[ "${de}" != "none" ]] && run_de_migration "none" "${de}"
 
@@ -283,10 +296,15 @@ WHAT WILL BE BACKED UP:
         mountpoint -q /dev  || mount --bind /dev /dev
 
         log_info "Rebuilding initramfs..."
-        _chroot mkinitcpio -P 2>/dev/null || log_warn "mkinitcpio failed"
+        if ! _chroot mkinitcpio -P 2>/dev/null; then
+            log_warn "mkinitcpio failed — attempting with fallback kernel"
+            _chroot mkinitcpio -P -k /boot/vmlinuz-linux 2>/dev/null || log_warn "mkinitcpio failed completely — manual repair may be needed"
+        fi
 
         log_info "Updating bootloader..."
-        update_bootloader
+        if ! update_bootloader; then
+            log_warn "Bootloader update failed — you may need to run grub-install manually"
+        fi
 
         echo "finalize" > "${MIGRATION_STAGE_FILE}"
         migration_stage="finalize"

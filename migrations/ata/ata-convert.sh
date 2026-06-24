@@ -240,6 +240,39 @@ Choose a DNS provider for the migration:" \
     fi
 }
 
+ata_convert_timesyncd() {
+    log_info "Installing NTP replacement..."
+    local init
+    init=$(state_get INIT openrc)
+    local installed=0
+    case "${init}" in
+        openrc)
+            _pacman -S --noconfirm --needed ntp-openrc 2>/dev/null && installed=1
+            [[ ${installed} -eq 0 ]] && _pacman -S --noconfirm --needed chrony-openrc 2>/dev/null && installed=1
+            ;;
+        runit)
+            _pacman -S --noconfirm --needed ntp-runit 2>/dev/null && installed=1
+            [[ ${installed} -eq 0 ]] && _pacman -S --noconfirm --needed chrony-runit 2>/dev/null && installed=1
+            ;;
+        dinit)
+            _pacman -S --noconfirm --needed ntp-dinit 2>/dev/null && installed=1
+            [[ ${installed} -eq 0 ]] && _pacman -S --noconfirm --needed chrony-dinit 2>/dev/null && installed=1
+            ;;
+        s6)
+            _pacman -S --noconfirm --needed ntp-s6 2>/dev/null && installed=1
+            [[ ${installed} -eq 0 ]] && _pacman -S --noconfirm --needed chrony-s6 2>/dev/null && installed=1
+            ;;
+    esac
+
+    if [[ ${installed} -eq 0 ]]; then
+        log_warn "Could not install NTP package — time sync will need manual setup"
+        return 0
+    fi
+
+    enable_service ntpd 2>/dev/null || enable_service ntp 2>/dev/null || enable_service chronyd 2>/dev/null || \
+        log_warn "Could not enable NTP service — enable manually after boot"
+}
+
 ata_convert_pacman_hooks() {
     log_info "Disabling systemd-dependent pacman hooks..."
     if [[ -s /tmp/ata-systemd-hooks.txt ]]; then
@@ -271,17 +304,4 @@ ata_convert_crypttab() {
             fi
         fi
     done < /tmp/ata-crypttab.txt
-}
-
-ata_convert_timesyncd() {
-    log_info "Installing NTP replacement..."
-    local init
-    init=$(state_get INIT openrc)
-    case "${init}" in
-        openrc) pacman -S --noconfirm --needed ntp-openrc 2>/dev/null || pacman -S --noconfirm --needed chrony-openrc 2>/dev/null || log_warn "Could not install NTP package" ;;
-        runit)  pacman -S --noconfirm --needed ntp-runit 2>/dev/null || pacman -S --noconfirm --needed chrony-runit 2>/dev/null || log_warn "Could not install NTP package" ;;
-        dinit)  pacman -S --noconfirm --needed ntp-dinit 2>/dev/null || pacman -S --noconfirm --needed chrony-dinit 2>/dev/null || log_warn "Could not install NTP package" ;;
-        s6)     pacman -S --noconfirm --needed ntp-s6 2>/dev/null || pacman -S --noconfirm --needed chrony-s6 2>/dev/null || log_warn "Could not install NTP package" ;;
-    esac
-    enable_service ntpd 2>/dev/null || enable_service ntp 2>/dev/null || enable_service chronyd 2>/dev/null || log_warn "Could not enable NTP service"
 }

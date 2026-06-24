@@ -1,6 +1,23 @@
 # Changelog
 
-## v9.2.2.4 (2026-06-24) — ATA resume state persistence + DNS hardening
+## v9.2.2.5 (2026-06-24) — ArtixForge
+
+### Added
+- **ATA archlinux-keyring preservation** — keyring reinstalled and repopulated after repo switch and again after package replacement, ensuring Arch-signed packages verify correctly throughout the migration
+- **Signature error detection in retry_command** — pacman signature failures now trigger `recoverable_error` immediately instead of wasting retries on a broken keyring; network errors are distinguished and logged separately
+- **mkinitcpio and bootloader fallback** — `services` stage continues with warnings if initramfs rebuild or bootloader update fail, rather than aborting the entire migration
+
+### Changed
+- `retry_command` in `scripts/common.sh` now parses command output for signature errors (`signature.*invalid`, `PGP.*invalid`, `unknown trust`) and network errors (`could not resolve`, `failed retrieving`) and responds accordingly
+- `ata_convert_timesyncd` uses `_pacman` for chroot-aware package installation and returns cleanly if no NTP package is available
+- Keyring population added to both `repos` stage (after `install_artix_keyring`) and `install` stage (after `reinstall_artix_packages`)
+
+### Fixed
+- `archlinux-keyring` no longer removed during package replacement, preventing "signature from Artix Buildbot is invalid" and "PGP invalid or corrupted signatures" errors for packages from Arch repositories
+- NTP installation failure no longer cascades into unrecoverable error — warns and continues
+- `mkinitcpio` failure no longer blocks migration completion — warns and continues with manual repair note
+
+## v9.2.2.4 (2026-06-24) — ArtixForge
 
 ### Added
 - **ATA universal DNS safety net** — working resolver guaranteed before any stage logic runs, even when resuming from an interrupted migration after reboot

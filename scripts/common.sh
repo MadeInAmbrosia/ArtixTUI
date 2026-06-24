@@ -192,15 +192,28 @@ retry_command() {
     local desc="${1}"; shift
     local retries=3 delay=5
     for ((i=1; i<=retries; i++)); do
-        if "$@"; then
+        local output
+        output=$("$@" 2>&1)
+        local rc=$?
+        if [[ ${rc} -eq 0 ]]; then
             return 0
         fi
-        log_warn "${desc} failed (attempt ${i}/${retries})"
+        if echo "${output}" | grep -qi "signature.*invalid\|signature.*corrupted\|PGP.*invalid\|unknown trust"; then
+            log_error "${desc} failed with signature errors — keyring may be corrupted"
+            recoverable_error "${desc} failed — signature verification error. Keyring may need repair."
+            return 1
+        fi
+        if echo "${output}" | grep -qi "could not resolve\|no address\|connection refused\|could not connect\|failed retrieving"; then
+            log_warn "${desc} failed with network errors (attempt ${i}/${retries})"
+        else
+            log_warn "${desc} failed (attempt ${i}/${retries})"
+        fi
         if [[ ${i} -lt ${retries} ]]; then
             sleep "${delay}"
             delay=$((delay * 2))
         fi
     done
+    log_error "${desc} failed after ${retries} attempts"
     return 1
 }
 
