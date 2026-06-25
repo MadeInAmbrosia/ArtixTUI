@@ -5,13 +5,8 @@
 ### Changed
 - **GTK4 GUI modernized** — complete rewrite of all `artixgui/` pages using `Adw.NavigationView`, `Adw.PreferencesGroup`, and `Adw.ActionRow`; card-based mode selection, proper header bars, and smooth page transitions
 - **GUI architecture** — `Gtk.Window` + `Gtk.Stack` replaced with `Adw.Application` + `Adw.NavigationView`; manual page tracking removed in favor of native push/pop navigation
-- **GUI code reduction** — 1629 insertions replacing 2237 deletions across 12 files; 27% less code with identical backend logic
 - **Progress window** — embedded as `ProgressPage` widget instead of standalone pop-up; result screen uses `Adw.StatusPage` instead of `Gtk.MessageDialog`
 - **`forge-gui` version** — bumped to 0.5.0
-
-### Removed
-- **Overlay logo hack** — semi-transparent background logo replaced with clean header bar title
-- **Manual page index arithmetic** — `self.current_page`, `self.stack.set_visible_child()`, and `update_nav_buttons()` eliminated
 
 ## v9.2.3.1 (2026-06-25) — ArtixForge
 
