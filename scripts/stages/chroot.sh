@@ -45,37 +45,6 @@ stage_chroot() {
         return 1
     fi
 
-    if [[ "${fs_type}" == 'zfs' ]]; then
-        log_info "Verifying ZFS root import..."
-
-        if ! artix-chroot /mnt zpool list zroot >/dev/null 2>&1; then
-            log_error "ZFS pool zroot is not imported inside chroot."
-            log_error "System will not boot correctly."
-            return 1
-        fi
-
-        local zfs_root_mount
-        zfs_root_mount="$(artix-chroot /mnt zfs get -H -o value mountpoint zroot/root 2>/dev/null || true)"
-
-        if [[ "${zfs_root_mount}" != '/' ]]; then
-            log_error "ZFS dataset zroot/root mountpoint is '${zfs_root_mount}' — expected '/'."
-            log_error "System will not boot correctly."
-            return 1
-        fi
-
-        if ! artix-chroot /mnt modprobe zfs; then
-            log_error "Failed to load ZFS module inside chroot."
-            return 1
-        fi
-
-        log_info "ZFS environment validation successful."
-    fi
-
-    if [[ "${fs_type}" == 'bcachefs' ]]; then
-        log_info "Building Bcachefs DKMS module for target kernel..."
-        artix-chroot /mnt dkms autoinstall bcachefs || log_warn "Bcachefs DKMS build failed"
-    fi
-
     if ! configure_users; then
         log_error "User configuration failed."
         return 1

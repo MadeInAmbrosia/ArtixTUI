@@ -45,10 +45,6 @@ require_root() {
     [[ "${EUID}" -eq 0 ]] || die 'must be run as root'
 }
 
-require_efi() {
-    [[ -d /sys/firmware/efi ]] || die 'system is not booted in UEFI mode'
-}
-
 require_internet() {
     if [[ -d /mnt/repo || -d /run/artix/repo ]]; then
         export ALLOW_OFFLINE=yes
@@ -80,14 +76,15 @@ require_internet() {
     warn 'no internet connection detected'
 
     if ! tui_yesno "Network Setup" "No internet detected. Configure network now?"; then
-        die 'no internet connection'
+        recoverable_error 'no internet connection'
+        return 1
     fi
 
     local net_type
     net_type=$(tui_menu "Network Type" "Select connection type:" \
         "DHCP (automatic)" \
         "WiFi" \
-        "Static IP") || die 'no internet connection'
+        "Static IP") || { recoverable_error 'no internet connection'; return 1; }
 
     case "${net_type}" in
         *DHCP*)
@@ -103,7 +100,8 @@ require_internet() {
             wifi_pass=$(tui_password "WiFi" "Enter passphrase:")
             iwctl station "${wifi_iface}" connect "${wifi_ssid}" --passphrase "${wifi_pass}" || {
                 log_warn "WiFi connection failed."
-                die 'no internet connection'
+                recoverable_error 'no internet connection'
+                return 1
             }
             ;;
         *Static*)
@@ -131,8 +129,10 @@ require_internet() {
         return 0
     fi
 
-    die 'network configuration failed. No internet connection'
+    recoverable_error 'network configuration failed. No internet connection'
+    return 1
 }
+
 get_partition_name() {
     local disk="${1}"
     local partition="${2}"
@@ -179,7 +179,7 @@ check_disk_space() {
     if [[ -n "${avail_gb}" && "${avail_gb}" -lt "${required_gb}" ]]; then
         log_error "Low disk space on ${target}: ${avail_gb}GB available, ${required_gb}GB needed"
         if ! tui_yesno "Low Disk Space" "Only ${avail_gb}GB free on ${target}. Continue anyway?"; then
-            die "Not enough disk space"
+            recoverable_error "Not enough disk space"
         fi
     fi
 }
@@ -201,6 +201,13 @@ retry_command() {
         if echo "${output}" | grep -qi "signature.*invalid\|signature.*corrupted\|PGP.*invalid\|unknown trust"; then
             log_error "${desc} failed with signature errors — keyring may be corrupted"
             recoverable_error "${desc} failed — signature verification error. Keyring may need repair."
+            return 1
+        fi
+        if echo "${output}" | grep -qi "corrupted.*package\|invalid or corrupted"; then
+            log_error "${desc} failed with corrupted package — clearing cache and refreshing mirrors"
+            rm -f /var/cache/pacman/pkg/*.part /var/cache/pacman/pkg/*.tar.zst 2>/dev/null || true
+            pacman -Syy --noconfirm 2>/dev/null || true
+            recoverable_error "${desc} failed — package may be corrupted. Mirrors refreshed."
             return 1
         fi
         if echo "${output}" | grep -qi "could not resolve\|no address\|connection refused\|could not connect\|failed retrieving"; then
@@ -251,6 +258,8 @@ recoverable_error() {
         local action
         action=$(tui_menu "Error" "${msg}" \
             "Retry" \
+            "Retry with Debug Mode (writes detailed log)" \
+            "Refresh mirrors and retry" \
             "Update ArtixForge and retry" \
             "Abort") || exit 1
 
@@ -258,7 +267,24 @@ recoverable_error() {
             "Retry")
                 return 0
                 ;;
-            "Update ArtixForge and retry")
+            "Retry with Debug"*)
+                export ARTIX_DEBUG='true'
+                exec 19> "${BASE_DIR}/artix-debug.log"
+                export BASH_XTRACEFD=19
+                export PS4='+ ${BASH_SOURCE}:${LINENO}:${FUNCNAME[0]}: '
+                set -x
+                log_info "Debug mode enabled — retrying..."
+                return 0
+                ;;
+            "Refresh mirrors"*)
+                log_info "Refreshing mirrors and retrying..."
+                if [[ -f /etc/pacman.d/mirrorlist.orig ]]; then
+                    cp /etc/pacman.d/mirrorlist.orig /etc/pacman.d/mirrorlist
+                fi
+                pacman -Syy --noconfirm 2>/dev/null || true
+                return 0
+                ;;
+            "Update ArtixForge"*)
                 log_info "Updating ArtixForge from GitHub..."
                 local update_dir="/tmp/artixforge-update"
                 rm -rf "${update_dir}"

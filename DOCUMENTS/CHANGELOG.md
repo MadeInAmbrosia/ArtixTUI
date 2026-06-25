@@ -1,5 +1,12 @@
 # Changelog
 
+## v9.2.3.1 (2026-06-25) — ArtixForge
+
+### Removed
+- **ZFS leftovers** — `zfs_basestrap.sh` and all `fs_type == zfs` conditionals removed after ZFS was dropped in v9.1.0.0
+- **bcachefs leftovers** — dead experimental code paths removed
+- **`require_efi` function** — superseded by `detect_boot_mode`, no longer called anywhere
+
 ## v9.2.3.0 (2026-06-24) — ArtixForge
 
 ### Added

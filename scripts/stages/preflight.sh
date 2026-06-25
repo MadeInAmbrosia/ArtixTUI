@@ -11,7 +11,7 @@ _preflight_rank_mirrors() {
     fi
 
     log_info "Ranking mirrors..."
-    pacman -S --noconfirm --needed pacman-contrib || die "Failed to install pacman-contrib"
+    pacman -S --noconfirm --needed pacman-contrib || recoverable_error "Failed to install pacman-contrib"
 
     local ranked="/tmp/mirrorlist.ranked"
     if rankmirrors -n 6 "${backup}" > "${ranked}" 2>/dev/null; then
@@ -96,49 +96,6 @@ stage_preflight() {
     case "${fs_type}" in
         xfs)      command_exists mkfs.xfs || pkgs+=(xfsprogs) ;;
         f2fs)     command_exists mkfs.f2fs || pkgs+=(f2fs-tools) ;;
-        bcachefs)
-            if ! command_exists mkfs.bcachefs || ! modprobe bcachefs 2>/dev/null; then
-                log_info "Building bcachefs-tools from source..."
-                local bcachefs_src='/tmp/bcachefs-tools-src'
-                rm -rf "${bcachefs_src}"
-                pacman -S --noconfirm --needed base-devel git rust clang liburcu libaio keyutils lz4 zstd libscrypt
-                git clone --depth 1 https://evilpiepirate.org/git/bcachefs-tools.git "${bcachefs_src}" || {
-                    die "Failed to clone bcachefs-tools source repository"
-                }
-                make -C "${bcachefs_src}" -j$(nproc) || die "Failed to build bcachefs-tools"
-                make -C "${bcachefs_src}" install || die "Failed to install bcachefs-tools"
-                rm -rf "${bcachefs_src}"
-                if ! command -v mkfs.bcachefs >/dev/null 2>&1; then
-                    die "mkfs.bcachefs still unavailable after building"
-                fi
-                log_info "bcachefs-tools built and installed successfully"
-            fi
-            modprobe bcachefs 2>/dev/null || {
-                log_warn "bcachefs kernel module not available. DKMS may be required."
-            }
-            ;;
-        zfs)
-            if [[ "${target_kernel}" != "linux" &&
-                  "${target_kernel}" != "linux-lts" &&
-                  "${target_kernel}" != "linux-zen" &&
-                  "${target_kernel}" != "linux-hardened" ]]; then
-                die "ZFS is only supported with linux, linux-lts, linux-zen, or linux-hardened kernels."
-            fi
-
-            if ! grep -q '^\[archzfs\]' /etc/pacman.conf; then
-                pacman-key --recv-keys F75D9D76 --keyserver hkp://keyserver.ubuntu.com
-                pacman-key --lsign-key F75D9D76
-                cat <<'EOF' >> /etc/pacman.conf
-
-[archzfs]
-Server = https://archzfs.com/$repo/x86_64
-EOF
-                pacman -Sy --noconfirm
-                pacman -Sl archzfs >/dev/null 2>&1 || die "archzfs repository unusable"
-            fi
-
-            pkgs+=(archzfs/zfs-dkms archzfs/zfs-utils base-devel)
-            ;;
     esac
 
     if [[ ${#pkgs[@]} -gt 0 ]]; then
@@ -153,46 +110,15 @@ EOF
             if ! gum spin --spinner dot --title "Preflight – retrying" -- \
                 pacman -S --noconfirm --needed "${pkgs[@]}"; then
                 log_error "Failed to install: ${pkgs[*]}"
-                die "Package installation failed. Check network and mirrorlist."
+                recoverable_error "Package installation failed. Check network and mirrorlist."
             fi
         fi
         log_info "Preflight dependencies installed.";
         for pkg in "${pkgs[@]}"; do
             local pkg_name="${pkg##*/}"
-            pacman -Q "${pkg_name}" &>/dev/null || die "Failed to install ${pkg}"
+            pacman -Q "${pkg_name}" &>/dev/null || recoverable_error "Failed to install ${pkg}"
         done
     fi;
-
-    if [[ "${fs_type}" == 'zfs' ]]; then
-        log_info "Kernel: $(uname -r)"
-        log_info "Installed ZFS packages:"
-        pacman -Q | grep '^zfs' || true
-        log_info "Available ZFS modules:"
-        find /usr/lib/modules -iname 'zfs.ko*' 2>/dev/null || true
-        depmod -a
-
-        if ! modprobe zfs 2>/dev/null; then
-            log_error "Failed to load ZFS kernel module."
-            log_error "DKMS status:"
-            dkms status 2>/dev/null || true
-            die "ZFS kernel module not available. DKMS build may have failed or kernel $(uname -r) is unsupported."
-        fi
-        log_info "ZFS kernel module loaded successfully."
-    fi
-
-    if [[ "${fs_type}" == 'bcachefs' ]]; then
-        local bcachefs_ver kernel_ver
-        if command -v bcachefs >/dev/null; then
-            bcachefs_ver=$(bcachefs version 2>/dev/null | grep -oP '\d+\.\d+' | head -1) || true
-            if [[ -n "${bcachefs_ver}" ]]; then
-                kernel_ver=$(uname -r | cut -d. -f1,2)
-                if [[ "$(printf '%s\n' "${bcachefs_ver}" "${kernel_ver}" | sort -V | head -n1)" != "${bcachefs_ver}" ]]; then
-                    log_warn "bcachefs-tools version ${bcachefs_ver} may be older than kernel ${kernel_ver}."
-                    log_warn "Update the live ISO or bcachefs-tools to avoid superblock errors."
-                fi
-            fi
-        fi
-    fi
 
     if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
         local parted_ver

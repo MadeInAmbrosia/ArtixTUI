@@ -71,13 +71,6 @@ setup_audio
 log_info "Installing extras..."
 install_extras
 
-if [[ "${FS_TYPE}" == 'zfs' ]]; then
-    log_info "Enabling ZFS services..."
-    enable_service zfs-import 2>/dev/null || true
-    enable_service zfs-mount 2>/dev/null || true
-    enable_service zfs-zed 2>/dev/null || true
-fi
-
 if [[ "${FS_TYPE}" == 'btrfs' ]]; then
     log_info "Setting up snapper for BTRFS snapshots..."
     snapper -c root create-config / 2>/dev/null || log_warn "snapper config may already exist"

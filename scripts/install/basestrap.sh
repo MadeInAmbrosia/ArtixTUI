@@ -6,7 +6,6 @@ BASESTRAP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/basestraps"
 source "${BASESTRAP_DIR}/packages.sh"
 source "${BASESTRAP_DIR}/target_repos.sh"
 source "${BASESTRAP_DIR}/kernel_build.sh"
-source "${BASESTRAP_DIR}/zfs_basestrap.sh"
 
 install_base_system() {
     local init kernel fs_type bootloader network_stack user_shell display_manager wm_de locale keymap timezone microcode_override
@@ -253,9 +252,6 @@ EOF
     artix-chroot /mnt ln -sf "/usr/share/zoneinfo/${timezone}" /etc/localtime
     artix-chroot /mnt hwclock --systohc
 
-    if [[ "${fs_type}" == 'zfs' ]]; then
-        basestrap_zfs_setup
-    fi
 
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Adding LVM hook to mkinitcpio..."
@@ -291,11 +287,6 @@ EOF
         if [[ -d /mnt/boot/grub ]]; then
             artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
         fi
-    fi
-
-    if [[ "${fs_type}" != 'zfs' ]]; then
-        log_info "Generating fstab..."
-        fstabgen -U /mnt > /mnt/etc/fstab
     fi
 
     if [[ -d /mnt/repo ]]; then

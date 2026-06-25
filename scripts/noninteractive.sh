@@ -41,10 +41,3 @@ tui_menu() { printf '%s' "${1:-}"; return 0; }
 tui_checklist() { return 0; }
 tui_spin() { bash -c "$2"; }
 tui_show_file() { return 0; }
-
-require_efi() {
-    if [[ "${ARTIX_BOOT_MODE:-}" == "bios" ]]; then
-        return 0
-    fi
-    [[ -d /sys/firmware/efi ]] || die 'system is not booted in UEFI mode'
-}
