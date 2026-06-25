@@ -261,6 +261,13 @@ Arch-specific auditing: systemd units, timers, homed users, network
 credentials, pacman hooks, PAM modules, crypttab entries, DKMS modules,
 flatpaks, snaps, AppImages, Docker containers, and AUR packages.
 
+### ATA desktop detection override
+Recovery's `detect_desktop` looks for Artix package names (e.g.,
+`plasma-desktop`).  On Arch the same packages have different names (e.g.,
+`plasma-meta`).  ATA runs a direct `pacman -Q` query for Arch package names
+after the recovery detection to correctly identify the installed desktop
+environment instead of reporting `WM_DE=none`.
+
 ### ATA backup and credential security
 All user data, system configs, and credentials are backed up to
 `/arch-migration-backup-YYYYMMDD-HHMMSS/` with `chmod 700`.  Network
@@ -277,13 +284,20 @@ init-specific suffixes (`-openrc`, `-runit`, `-dinit`, `-s6`).  Version
 mismatches between Arch and Artix packages are flagged in a TUI checklist,
 letting the user decide what to migrate.
 
+### ATA `head -n1` on `pacman -Si` queries
+`pacman -Si networkmanager` returns `Repository: world\nextra` when a package
+exists in both Artix repos.  The original `grep Repository | awk '{print $3}'`
+captured both lines, producing a newline in the version string that created
+ghost `1.56.1-1 →` entries in the service checklist.  Fixed with `head -n1`.
+
 ### ATA systemd timer conversion
 `OnCalendar=` timers are parsed and converted to cron expressions using a
 lookup table for common patterns (daily, hourly, weekly, monthly) and a
 time-parser for explicit `YYYY-MM-DD HH:MM:SS` formats.  `OnBootSec=` timers
 become `@reboot sleep N && command` cron entries.  `OnUnitActiveSec=` timers
 become background loop scripts launched at boot.  Monotonic timers without a
-direct cron equivalent are flagged for manual review.
+direct cron equivalent are flagged for manual review.  Case patterns are quoted
+to prevent bash glob expansion at parse time (e.g., `"*-*-* 00:00:00"`).
 
 ### ATA PAM and mkinitcpio conversion
 `pam_systemd.so` references are replaced with `pam_elogind.so` across all
@@ -293,6 +307,35 @@ mkinitcpio hooks are rewritten: `systemd`→`udev`, `sd-encrypt`→`encrypt`,
 `filesystems` if missing.  pacman hooks that call `systemctl`, `journalctl`,
 or reference systemd paths are moved to `/etc/pacman.d/hooks.bak/` rather
 than deleted.
+
+### ATA `mkinitcpio` preset uncommenting
+Arch's `linux.preset` uses commented-out lines that the Arch `mkinitcpio`
+package uncomments during installation.  Artix's package leaves them commented,
+resulting in a preset with no `default_image` or `fallback_image` — initramfs
+generation fails silently.  The migration now uncomments these lines instead of
+leaving the preset file fully commented-out.
+
+### ATA `libsystemd.so.0` dependency chain
+Arch compiles `util-linux`, `e2fsprogs`, `coreutils`, and `findutils` against
+`libsystemd.so.0`.  When `systemd-libs` is removed, `mount`, `umount`, `fsck`,
+and `findmnt` break because the shared library is missing.  The migration
+force-removes `systemd-libs` with `pacman -Rdd` and reinstalls all dependent
+packages from Artix repos, which compile without the systemd dependency.
+
+### ATA DNS atomic replacement
+`ata_convert_resolv_conf` writes to `/etc/resolv.conf.tmp` then `mv -f` over
+the old file, eliminating the window where no resolver exists between deleting
+the `systemd-resolved` stub and writing the new file.  Also stops
+`systemd-resolved` before touching the file to prevent it from regenerating
+the stub.  Users can choose Cloudflare, Google, Quad9, copy from backup, or
+enter a custom DNS server.
+
+### ATA `_pacman -Scc` hang
+`pacman -Scc --noconfirm` doesn't suppress the `[Y/n]` prompt for cache
+cleaning in some pacman versions.  The migration hung indefinitely waiting
+for input that never arrived.  Fixed by using direct `rm -rf` on
+`/var/cache/pacman/pkg/*` and `/var/lib/pacman/sync/*` instead of calling
+`pacman -Scc`.
 
 ### ATA homed user migration
 `systemd-homed` users are detected via `homectl list`.  For LUKS-encrypted
@@ -324,7 +367,14 @@ Like init and desktop migrations, ATA uses stage files to track progress
 through detection, backup, conversion, package removal, installation, service
 migration, and finalization.  If interrupted, the migration can be resumed
 from the last completed stage or restarted fresh with both source and target
-states cleaned.
+states cleaned.  Resume correctly loads `target_init`, `backup_dir`, and
+`de` from the persisted state file.
+
+### ATA minimum viable system check
+After all package operations complete, ATA verifies that the kernel, init
+system, session manager, coreutils, dbus, pacman, and network stack are
+actually installed.  Any missing critical package is installed with the
+correct init-specific suffix before the migration reports success.
 
 ---
 

@@ -59,6 +59,11 @@ ata_convert_mkinitcpio_presets() {
         [[ -f "${preset}" ]] || continue
         sed -i '/default_uki\|uki_output\|fallback_uki\|--splash\|--uefi/d' "${preset}"
         sed -i 's|/boot/EFI/Linux/.*\.efi||g' "${preset}"
+        sed -i 's/^#\(default_image=\)/\1/' "${preset}"
+        sed -i 's/^#\(fallback_image=\)/\1/' "${preset}"
+        sed -i 's/^#\(default_config=\)/\1/' "${preset}"
+        sed -i 's/^#\(fallback_config=\)/\1/' "${preset}"
+        sed -i 's/^#\(fallback_options=\)/\1/' "${preset}"
         log_info "  Cleaned ${preset}"
     done
 }
