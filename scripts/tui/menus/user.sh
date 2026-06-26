@@ -74,7 +74,7 @@ tui_edit_user() {
     fi
     local -a user_list
     for ((i=1; i<=${USER_COUNT}; i++)); do
-        user_list+=("User ${i}: ${USER_${i}_NAME:-unnamed}")
+        user_list+=("User ${i}: $(state_get "USER_${i}_NAME" "unnamed")")
     done
     local chosen
     chosen=$(tui_menu "Edit User" "Select a user to edit:" "${user_list[@]}") || return
@@ -90,20 +90,20 @@ tui_remove_user() {
     fi
     local -a user_list
     for ((i=1; i<=${USER_COUNT}; i++)); do
-        user_list+=("User ${i}: ${USER_${i}_NAME:-unnamed}")
+        user_list+=("User ${i}: $(state_get "USER_${i}_NAME" "unnamed")")
     done
     local chosen
     chosen=$(tui_menu "Remove User" "Select a user to remove:" "${user_list[@]}") || return
     local idx="${chosen%%:*}"
     idx="${idx#User }"
-    if tui_yesno "Confirm Removal" "Remove ${USER_${idx}_NAME:-this user}?"; then
+    if tui_yesno "Confirm Removal" "Remove $(state_get "USER_${idx}_NAME" "this user")?"; then
         for ((i=idx; i<${USER_COUNT}; i++)); do
             local next=$((i+1))
-            USER_${i}_NAME="${USER_${next}_NAME:-}"
-            USER_${i}_PASS="${USER_${next}_PASS:-}"
-            USER_${i}_SHELL="${USER_${next}_SHELL:-/bin/bash}"
-            USER_${i}_GROUPS="${USER_${next}_GROUPS:-wheel,audio,video,storage}"
-            USER_${i}_SUDO="${USER_${next}_SUDO:-yes}"
+            state_set "USER_${i}_NAME"   "$(state_get "USER_${next}_NAME" "")"
+            state_set "USER_${i}_PASS"   "$(state_get "USER_${next}_PASS" "")"
+            state_set "USER_${i}_SHELL"  "$(state_get "USER_${next}_SHELL" "/bin/bash")"
+            state_set "USER_${i}_GROUPS" "$(state_get "USER_${next}_GROUPS" "wheel,audio,video,storage")"
+            state_set "USER_${i}_SUDO"   "$(state_get "USER_${next}_SUDO" "yes")"
         done
         USER_COUNT=$((USER_COUNT - 1))
         state_set USER_COUNT "${USER_COUNT}"
@@ -116,7 +116,7 @@ tui_remove_user() {
 
 tui_edit_user_dialog() {
     local idx="${1}" mode="${2}"
-    local current_name="${USER_${idx}_NAME:-}"
+    local current_name="$(state_get "USER_${idx}_NAME" "")"
     
     local name
     name=$(tui_input "Username" "Enter username:" "${current_name}") || return
@@ -128,7 +128,7 @@ tui_edit_user_dialog() {
         pass=$(openssl passwd -6 -- "${pass}") || { log_error "Failed to hash password"; return; }
     fi
 
-    local current_shell="${USER_${idx}_SHELL:-/bin/bash}"
+    local current_shell="$(state_get "USER_${idx}_SHELL" "/bin/bash")"
     local shell
     shell=$(tui_menu "User Shell" "Select default shell for ${name}:" "bash" "zsh" "fish") || shell="bash"
     case "${shell}" in
@@ -137,13 +137,13 @@ tui_edit_user_dialog() {
         fish) shell="/usr/bin/fish" ;;
     esac
 
-    local current_groups="${USER_${idx}_GROUPS:-wheel,audio,video,storage}"
+    local current_groups="$(state_get "USER_${idx}_GROUPS" "wheel,audio,video,storage")"
     local groups
     groups=$(tui_checklist "User Groups" "Select groups for ${name}:" \
         "wheel" "audio" "video" "storage" "lp" "network" "optical" "scanner" "users") || groups="${current_groups}"
     groups="${groups//$'\n'/ }"
 
-    local current_sudo="${USER_${idx}_SUDO:-yes}"
+    local current_sudo="$(state_get "USER_${idx}_SUDO" "yes")"
     local sudo_choice
     sudo_choice=$(tui_menu "Sudo Access" "Grant sudo privileges to ${name}?" "Yes" "No") || sudo_choice="Yes"
     [[ "${sudo_choice}" == "Yes" ]] && sudo_choice="yes" || sudo_choice="no"
