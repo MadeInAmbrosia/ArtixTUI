@@ -278,11 +278,11 @@ EOF
     fi
 
     if [[ "${kernel}" == 'tkg' ]]; then
-        basestrap_build_tkg
+        basestrap_build_tkg || die "TKG kernel build failed — cannot continue without a kernel"
     fi
 
     if [[ "${kernel}" == 'linux-bazzite-bin' ]]; then
-        basestrap_build_bazzite
+        basestrap_build_bazzite || die "Bazzite kernel build failed — cannot continue without a kernel"
         artix-chroot /mnt mkinitcpio -P
         if [[ -d /mnt/boot/grub ]]; then
             artix-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
