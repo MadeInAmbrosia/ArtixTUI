@@ -81,9 +81,14 @@ stage_preflight() {
     [[ "$(state_get USE_LVM no)" == "yes" ]] && { command_exists pvcreate || pkgs+=(lvm2); }
 
     if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
-        for tool in bc flex bison openssl; do
+        for tool in bc flex bison openssl fakeroot; do
             command -v "${tool}" &>/dev/null || pkgs+=("${tool}")
         done
+    fi
+
+    if [[ "$(state_get KERNEL_CHOICE linux)" == "linux-bazzite-bin" ]]; then
+        command -v fakeroot &>/dev/null || pkgs+=(fakeroot)
+        command -v makepkg &>/dev/null || pkgs+=(base-devel)
     fi
 
     case "$(uname -r)" in

@@ -114,6 +114,18 @@ basestrap_build_bazzite() {
         log_error "Failed to clone linux-bazzite-bin AUR repo."
         return 1
     }
+
+    if [[ ! -f /etc/mkinitcpio.d/linux-bazzite.preset ]]; then
+        mkdir -p /etc/mkinitcpio.d
+        cat > /etc/mkinitcpio.d/linux-bazzite.preset <<'PRESET'
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux-bazzite"
+PRESETS=('default')
+default_config="/etc/mkinitcpio.conf"
+default_image="/boot/initramfs-linux-bazzite.img"
+PRESET
+    fi
+
     useradd -m builduser 2>/dev/null || true
     chown -R builduser:builduser "${build_dir}"
     su builduser -c "cd '${build_dir}' && makepkg -s --noconfirm --needed --skippgpcheck" &>/tmp/bazzite-build.log || {
