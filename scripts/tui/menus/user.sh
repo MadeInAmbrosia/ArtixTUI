@@ -179,17 +179,15 @@ tui_select_hostname() {
 
 tui_select_timezone() {
     local tz
-    while true; do
-        tz=$(tui_input "Timezone" "Enter timezone (Region/City):" "Europe/Belgrade") || return 1
-        if [[ -f "/usr/share/zoneinfo/${tz}" ]]; then break; fi
-        tui_msg_quick "Invalid Timezone" "Timezone not found. Example: Europe/London"
-    done
+    tz=$(find /usr/share/zoneinfo -type f 2>/dev/null | sed 's|/usr/share/zoneinfo/||' | grep -v '^posix\|^right\|^Etc\|\.tab$' | sort | gum filter --placeholder "Type to search timezones (e.g. Europe)..." --height=15) || tz="Europe/Belgrade"
+    [[ -n "${tz}" ]] || tz="Europe/Belgrade"
     state_set TIMEZONE "${tz}"
 }
 
 tui_select_locale() {
     local l
-    l=$(tui_input "Locale" "Enter locale:" "en_US.UTF-8") || return 1
+    l=$(grep -E '^#?[a-z]{2}_[A-Z]{2}.*UTF-8' /etc/locale.gen 2>/dev/null | sed 's/^#//' | awk '{print $1}' | sort -u | gum filter --placeholder "Type to search locales..." --height=15) || l="en_US.UTF-8"
+    [[ -n "${l}" ]] || l="en_US.UTF-8"
     state_set LOCALE "${l}"
 }
 
