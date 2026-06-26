@@ -179,15 +179,17 @@ tui_select_hostname() {
 }
 
 tui_select_timezone() {
-    local tz
-    tz=$(find /usr/share/zoneinfo -type f 2>/dev/null | sed 's|/usr/share/zoneinfo/||' | grep -v '^posix\|^right\|^Etc\|\.tab$' | sort | gum filter --placeholder "Type to search timezones (e.g. Europe)..." --height=15) || tz="Europe/Belgrade"
+    local items tz
+    items=$(find /usr/share/zoneinfo -type f 2>/dev/null | sed 's|/usr/share/zoneinfo/||' | grep -v '^posix\|^right\|^Etc\|\.tab$' | sort)
+    tz=$(printf '%s\n' "${items}" | tui_filter "Timezone" "Type to search (e.g. Europe)..." --placeholder "Europe/London") || tz="Europe/Belgrade"
     [[ -n "${tz}" ]] || tz="Europe/Belgrade"
     state_set TIMEZONE "${tz}"
 }
 
 tui_select_locale() {
-    local l
-    l=$(grep -E '^#?[a-z]{2}_[A-Z]{2}.*UTF-8' /etc/locale.gen 2>/dev/null | sed 's/^#//' | awk '{print $1}' | sort -u | gum filter --placeholder "Type to search locales..." --height=15) || l="en_US.UTF-8"
+    local items l
+    items=$(grep -E '^#?[a-z]{2}_[A-Z]{2}.*UTF-8' /etc/locale.gen 2>/dev/null | sed 's/^#//' | awk '{print $1}' | sort -u)
+    l=$(printf '%s\n' "${items}" | tui_filter "Locale" "Type to search (e.g. en_US)..." --placeholder "en_US.UTF-8") || l="en_US.UTF-8"
     [[ -n "${l}" ]] || l="en_US.UTF-8"
     state_set LOCALE "${l}"
 }
