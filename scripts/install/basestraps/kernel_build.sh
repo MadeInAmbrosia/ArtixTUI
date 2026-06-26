@@ -115,25 +115,30 @@ basestrap_build_bazzite() {
         return 1
     }
 
-    if [[ ! -f /etc/mkinitcpio.d/linux-bazzite.preset ]]; then
-        mkdir -p /etc/mkinitcpio.d
-        cat > /etc/mkinitcpio.d/linux-bazzite.preset <<'PRESET'
+    pacman -S --noconfirm --needed fakeroot base-devel git mkinitcpio
+
+    mkdir -p /etc/mkinitcpio.d
+    cat > /etc/mkinitcpio.d/linux-bazzite.preset <<'PRESET'
 ALL_config="/etc/mkinitcpio.conf"
 ALL_kver="/boot/vmlinuz-linux-bazzite"
 PRESETS=('default')
 default_config="/etc/mkinitcpio.conf"
 default_image="/boot/initramfs-linux-bazzite.img"
 PRESET
-    fi
 
     useradd -m builduser 2>/dev/null || true
     chown -R builduser:builduser "${build_dir}"
-    su builduser -c "cd '${build_dir}' && makepkg -s --noconfirm --needed --skippgpcheck" &>/tmp/bazzite-build.log || {
+    su builduser -c "cd '${build_dir}' && makepkg -s --noconfirm --needed --skippgpcheck" 2>&1 | tee /tmp/bazzite-build.log | while IFS= read -r line; do
+        log_info "  ${line}"
+    done
+    local build_rc=${PIPESTATUS[0]}
+    if [[ ${build_rc} -ne 0 ]]; then
         log_error "Failed to build linux-bazzite-bin."
         log_error "Last 20 lines of build log:"
         tail -20 /tmp/bazzite-build.log 2>/dev/null | while IFS= read -r line; do log_error "  ${line}"; done
         return 1
-    }
+    fi
+
     pacman -U --noconfirm "${build_dir}"/*.pkg.tar.* || {
         log_error "Failed to install linux-bazzite-bin package."
         return 1

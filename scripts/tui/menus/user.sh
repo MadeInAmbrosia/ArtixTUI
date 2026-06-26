@@ -141,7 +141,7 @@ tui_edit_user_dialog() {
     local groups
     groups=$(tui_checklist "User Groups" "Select groups for ${name}:" \
         "wheel" "audio" "video" "storage" "lp" "network" "optical" "scanner" "users") || groups="${current_groups}"
-    groups="${groups//$'\n'/ }"
+    groups="${groups//$'\n'/,}"
     [[ -z "${groups// /}" ]] && groups="${current_groups}"
 
     local current_sudo="$(state_get "USER_${idx}_SUDO" "yes")"
