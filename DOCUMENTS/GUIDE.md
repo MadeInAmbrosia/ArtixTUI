@@ -192,6 +192,30 @@ How you run commands as root.
 
 Both are secure. `sudo` is more familiar; `doas` is loved by minimalists.
 
+## 12a. User Accounts
+
+ArtixForge lets you create multiple user accounts during installation.
+
+| Option | What it does |
+|--------|-------------|
+| Add User | Create a new user with username, password, shell, groups, and sudo access |
+| Edit User | Modify an existing user's details |
+| Remove User | Delete a user account |
+
+For each user you can configure:
+
+- **Username** — must start with a letter, no spaces
+- **Password** — hashed before storage, never written to disk in plaintext
+- **Shell** — bash, zsh, or fish
+- **Groups** — wheel (admin), audio, video, storage, lp, network, optical, scanner, users
+- **Sudo access** — yes/no, applies to sudo or doas depending on your privilege escalation choice
+
+At least one user account is required. The first user's name is also used
+for AUR package builds and source compilation if those features are enabled.
+
+**Root password** is set separately from user accounts. You can skip setting
+a root password if you prefer to use sudo for all administrative tasks.
+
 ---
 
 ## 13. Coreutils (Power User only)
@@ -480,6 +504,9 @@ Reboot, start the installer again, and pick **Resume** from the main menu. It wi
 
 **Does the GUI work in a virtual machine?**
 Yes, if the VM has graphics acceleration and a desktop environment. For headless VMs, use the TUI.
+
+**Can I create multiple user accounts?**
+Yes. The installer lets you add, edit, and remove users with custom groups, shells, and sudo access. At least one user is required.
 
 **Where can I get help?**
 Open an issue on [GitHub](https://github.com/realvolk/ArtixForge/issues) or visit the Artix community forums.
