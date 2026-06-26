@@ -202,8 +202,10 @@ tui_select_priv_escalation() {
 }
 
 tui_select_keyboard_layout() {
-    local k
-    k=$(tui_input "Keyboard Layout" "Enter keyboard layout:" "us") || return 1
+    local k items
+    items=$(localectl list-keymaps 2>/dev/null || find /usr/share/kbd/keymaps -name '*.map.gz' 2>/dev/null | sed 's|.*/||; s|\.map\.gz||' | sort -u)
+    k=$(printf '%s\n' "${items}" | tui_filter "Keyboard Layout" "Type to search (e.g. us, de, fr)..." --placeholder "us") || k="us"
+    [[ -n "${k}" ]] || k="us"
     state_set KEYMAP "${k}"
 }
 
