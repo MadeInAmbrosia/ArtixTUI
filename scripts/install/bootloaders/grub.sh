@@ -20,6 +20,11 @@ bootloader_install_grub() {
     fi
 
     local grub_extra=""
+    if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
+        echo 'GRUB_PRELOAD_MODULES="lvm"' >> /mnt/etc/default/grub
+        grub_extra="--modules=lvm"
+    fi
+
     xtrace_safe artix-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARTIX ${grub_extra} || recoverable_error 'grub-install failed – updating ArtixForge may help'
     if [[ -n "${root_param}" ]]; then
         artix-chroot /mnt sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"${root_param}\"|" /etc/default/grub
