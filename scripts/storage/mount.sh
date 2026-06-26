@@ -78,7 +78,7 @@ mount_filesystems() {
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Activating LVM volumes..."
         modprobe dm-mod 2>/dev/null || true
-        vgchange -ay || die "Failed to activate LVM volume group"
+        xtrace_safe vgchange -ay || recoverable_error "Failed to activate LVM volume group"
         root_part="/dev/mapper/vg0-root"
     fi
 
