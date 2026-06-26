@@ -1,5 +1,11 @@
 # Changelog
 
+## v9.2.4.2 (2026-06-26) — ArtixForge
+
+### Fixed
+- **Default user fallback** — `configure_users` now guarantees at least one user exists even if the GUI users page is skipped; creates default `artix` user when `USER_COUNT` is 0
+- **`user_count` variable scope** — safety net now runs before `user_count` is captured, preventing loop from iterating zero times
+
 ## v9.2.4.1 (2026-06-26) — ArtixForge
 
 ### Added

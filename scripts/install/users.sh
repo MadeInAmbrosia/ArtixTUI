@@ -2,10 +2,21 @@
 set -Eeuo pipefail
 
 configure_users() {
-    local user_count="${USER_COUNT:-1}"
     local priv_esc wm_de
     priv_esc="$(state_get PRIV_ESCALATION sudo)"
     wm_de="$(state_get WM_DE none)"
+
+    # Safety net in-case the user bit the dust
+    if [[ ${USER_COUNT:-0} -eq 0 ]]; then
+        state_set USER_COUNT 1
+        state_set USER_1_NAME "artix"
+        state_set USER_1_SHELL "/bin/bash"
+        state_set USER_1_GROUPS "wheel,audio,video,storage"
+        state_set USER_1_SUDO "yes"
+        log_warn "No users configured — creating default user 'artix'"
+    fi
+
+    local user_count="${USER_COUNT:-1}"
 
     for ((i=1; i<=user_count; i++)); do
         local username password shell ugroups usudo
