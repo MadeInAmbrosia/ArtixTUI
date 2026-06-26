@@ -88,6 +88,8 @@ install_desktop() {
     display_manager="$(printf '%s' "${DISPLAY_MANAGER:-none}" | tr -d '[:space:]')"
     kde_profile='none'
 
+    export USER_NAME="${USER_1_NAME:-${USER_NAME:-artix}}"
+
     if [[ "${wm_de}" == 'kde' ]]; then
         kde_profile="$(state_get KDE_PROFILE desktop)"
     fi

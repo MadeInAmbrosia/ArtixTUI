@@ -1,5 +1,19 @@
 # Changelog
 
+## v9.2.4.1 (2026-06-26) — ArtixForge
+
+### Added
+- **Multi-user support** — users can be added, edited, and removed in both TUI and GUI; each user gets configurable shell, groups, and sudo/doas access
+- **User management TUI** — `tui_configure_users` with add/edit/remove dialogs, group checklist (wheel, audio, video, storage, lp, network, optical, scanner, users), shell selection, and sudo toggle
+- **User management GUI** — `InstallerApp.create_users_page` with listbox, add/edit/remove buttons, and full user dialog with password hashing, group checkboxes, and sudo switch
+- **Installation report** — `/root/artixforge-install-report.txt` written during finalize stage with system config, hardware detection, user accounts, disk layout, and support link
+- **Multi-user state keys** — `USER_COUNT`, `USER_${i}_NAME`, `USER_${i}_PASS`, `USER_${i}_SHELL`, `USER_${i}_GROUPS`, `USER_${i}_SUDO` persisted through state, handoff, and post-install
+
+### Changed
+- `install_desktop` exports `USER_NAME` from first user for AUR/source build compatibility
+- `stage_finalize` writes installation report before sync/unmount
+
+
 ## v9.2.4.0 (2026-06-25) — ArtixForge
 
 ### Changed

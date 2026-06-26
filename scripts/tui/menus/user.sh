@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Legacy
 tui_select_username() {
     local u
     u=$(tui_input "Username" "Enter username:" "artix") || return 1
@@ -19,6 +20,147 @@ tui_select_root_password() {
     local pass
     pass=$(tui_password_confirm "Root Password" "Enter root password:" "Confirm password:") || return 1
     state_set ROOT_PASS "${pass}"
+}
+
+tui_configure_users() {
+    USER_COUNT="${USER_COUNT:-0}"
+    state_set USER_COUNT "${USER_COUNT}"
+
+    while true; do
+        local choice
+        choice=$(tui_menu "User Management" "Manage user accounts:" \
+            "Add a user" \
+            "Edit a user" \
+            "Remove a user" \
+            "Done – return to installer") || break
+
+        case "${choice}" in
+            "Add a user"*)
+                tui_add_user
+                ;;
+            "Edit a user"*)
+                tui_edit_user
+                ;;
+            "Remove a user"*)
+                tui_remove_user
+                ;;
+            "Done"*)
+                break
+                ;;
+        esac
+    done
+
+    if [[ ${USER_COUNT:-0} -eq 0 ]]; then
+        tui_msg_quick "No Users" "At least one user account is required."
+        tui_add_user
+    fi
+
+    if ! tui_yesno "Root Password" "Set a root password?"; then
+        state_set ROOT_PASS ""
+    else
+        tui_select_root_password
+    fi
+}
+
+tui_add_user() {
+    local idx=$(( ${USER_COUNT:-0} + 1 ))
+    tui_edit_user_dialog "${idx}" "new"
+}
+
+tui_edit_user() {
+    if [[ ${USER_COUNT:-0} -eq 0 ]]; then
+        tui_msg_quick "No Users" "No users to edit."
+        return
+    fi
+    local -a user_list
+    for ((i=1; i<=${USER_COUNT}; i++)); do
+        user_list+=("User ${i}: ${USER_${i}_NAME:-unnamed}")
+    done
+    local chosen
+    chosen=$(tui_menu "Edit User" "Select a user to edit:" "${user_list[@]}") || return
+    local idx="${chosen%%:*}"
+    idx="${idx#User }"
+    tui_edit_user_dialog "${idx}" "edit"
+}
+
+tui_remove_user() {
+    if [[ ${USER_COUNT:-0} -eq 0 ]]; then
+        tui_msg_quick "No Users" "No users to remove."
+        return
+    fi
+    local -a user_list
+    for ((i=1; i<=${USER_COUNT}; i++)); do
+        user_list+=("User ${i}: ${USER_${i}_NAME:-unnamed}")
+    done
+    local chosen
+    chosen=$(tui_menu "Remove User" "Select a user to remove:" "${user_list[@]}") || return
+    local idx="${chosen%%:*}"
+    idx="${idx#User }"
+    if tui_yesno "Confirm Removal" "Remove ${USER_${idx}_NAME:-this user}?"; then
+        for ((i=idx; i<${USER_COUNT}; i++)); do
+            local next=$((i+1))
+            USER_${i}_NAME="${USER_${next}_NAME:-}"
+            USER_${i}_PASS="${USER_${next}_PASS:-}"
+            USER_${i}_SHELL="${USER_${next}_SHELL:-/bin/bash}"
+            USER_${i}_GROUPS="${USER_${next}_GROUPS:-wheel,audio,video,storage}"
+            USER_${i}_SUDO="${USER_${next}_SUDO:-yes}"
+        done
+        USER_COUNT=$((USER_COUNT - 1))
+        state_set USER_COUNT "${USER_COUNT}"
+        for key in NAME PASS SHELL GROUPS SUDO; do
+            state_set "USER_${USER_COUNT}_${key}" ""
+        done
+        log_info "User ${idx} removed."
+    fi
+}
+
+tui_edit_user_dialog() {
+    local idx="${1}" mode="${2}"
+    local current_name="${USER_${idx}_NAME:-}"
+    
+    local name
+    name=$(tui_input "Username" "Enter username:" "${current_name}") || return
+    [[ -n "${name}" ]] || { tui_msg_quick "Invalid" "Username cannot be empty."; return; }
+
+    local pass
+    pass=$(tui_password_confirm "User Password" "Enter password for ${name}:" "Confirm password:") || return
+    if [[ -n "${pass}" ]]; then
+        pass=$(openssl passwd -6 -- "${pass}") || { log_error "Failed to hash password"; return; }
+    fi
+
+    local current_shell="${USER_${idx}_SHELL:-/bin/bash}"
+    local shell
+    shell=$(tui_menu "User Shell" "Select default shell for ${name}:" "bash" "zsh" "fish") || shell="bash"
+    case "${shell}" in
+        bash) shell="/bin/bash" ;;
+        zsh)  shell="/bin/zsh" ;;
+        fish) shell="/usr/bin/fish" ;;
+    esac
+
+    local current_groups="${USER_${idx}_GROUPS:-wheel,audio,video,storage}"
+    local groups
+    groups=$(tui_checklist "User Groups" "Select groups for ${name}:" \
+        "wheel" "audio" "video" "storage" "lp" "network" "optical" "scanner" "users") || groups="${current_groups}"
+    groups="${groups//$'\n'/ }"
+
+    local current_sudo="${USER_${idx}_SUDO:-yes}"
+    local sudo_choice
+    sudo_choice=$(tui_menu "Sudo Access" "Grant sudo privileges to ${name}?" "Yes" "No") || sudo_choice="Yes"
+    [[ "${sudo_choice}" == "Yes" ]] && sudo_choice="yes" || sudo_choice="no"
+
+    state_set "USER_${idx}_NAME"   "${name}"
+    state_set "USER_${idx}_PASS"   "${pass}"
+    state_set "USER_${idx}_SHELL"  "${shell}"
+    state_set "USER_${idx}_GROUPS" "${groups}"
+    state_set "USER_${idx}_SUDO"   "${sudo_choice}"
+
+    if [[ "${mode}" == "new" ]]; then
+        USER_COUNT="${idx}"
+        state_set USER_COUNT "${USER_COUNT}"
+        log_info "User ${name} added."
+    else
+        log_info "User ${name} updated."
+    fi
 }
 
 tui_select_hostname() {
@@ -81,6 +223,9 @@ tui_select_microcode() {
         return 0
     fi
     local u
-    u=$(tui_menu "CPU Microcode" "Select microcode:" "amd-ucode" "intel-ucode" "none") || return 1
+    if ! u=$(tui_menu "CPU Microcode" "Select microcode:" "amd-ucode" "intel-ucode" "none" 2>/dev/null); then
+        log_warn "Microcode selection menu failed — defaulting to amd-ucode"
+        u="amd-ucode"
+    fi
     state_set MICROCODE_OVERRIDE "${u}"
 }

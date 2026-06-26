@@ -37,9 +37,15 @@ state_save() {
         printf 'BTRFS_LAYOUT=%q\n'          "${BTRFS_LAYOUT:-standard}"
         printf 'WM_DE=%q\n'                 "${WM_DE:-}"
         printf 'KDE_PROFILE=%q\n'           "${KDE_PROFILE:-desktop}"
-        printf 'USER_NAME=%q\n'             "${USER_NAME:-}"
-        printf 'USER_PASS=%q\n'             "${USER_PASS:-}"
         printf 'ROOT_PASS=%q\n'             "${ROOT_PASS:-}"
+        printf 'USER_COUNT=%q\n'            "${USER_COUNT:-1}"
+        for ((i=1; i<=${USER_COUNT:-1}; i++)); do
+            printf "USER_%d_NAME=%q\n"   "$i" "$(state_get "USER_${i}_NAME" "")"
+            printf "USER_%d_PASS=%q\n"   "$i" "$(state_get "USER_${i}_PASS" "")"
+            printf "USER_%d_SHELL=%q\n"  "$i" "$(state_get "USER_${i}_SHELL" "/bin/bash")"
+            printf "USER_%d_GROUPS=%q\n" "$i" "$(state_get "USER_${i}_GROUPS" "wheel,audio,video,storage")"
+            printf "USER_%d_SUDO=%q\n"   "$i" "$(state_get "USER_${i}_SUDO" "yes")"
+        done
         printf 'USER_SHELL=%q\n'            "${USER_SHELL:-/bin/bash}"
         printf 'PRIV_ESCALATION=%q\n'       "${PRIV_ESCALATION:-sudo}"
         printf 'NETWORK_STACK=%q\n'         "${NETWORK_STACK:-dhcpcd+iwd}"

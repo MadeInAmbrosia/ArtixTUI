@@ -172,8 +172,6 @@ tui_collect_install_config() {
     tui_select_timezone
     tui_select_locale
     tui_select_keyboard_layout
-    tui_select_username
-    tui_select_user_password
-    tui_select_root_password
+    tui_configure_users
     tui_show_sanity_warnings
 }
