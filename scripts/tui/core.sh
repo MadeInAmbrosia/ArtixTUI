@@ -154,7 +154,7 @@ tui_filter() {
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
     local choices_json
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    choices_json=$(cat | jq -R . | jq -s .)
     _forge_result '{"widget":"filter","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
 }
 
