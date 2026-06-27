@@ -41,7 +41,7 @@ log_error() {
 
 _forge() {
     local _json_out
-    _json_out=$(printf '%s\n' "$1" | "$FORGE_TUI" --mode widget 2>/dev/null | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g')
+    _json_out=$(printf '%s\n' "$1" | "$FORGE_TUI" --mode widget 2>/dev/null)
     printf '%s\n' "$_json_out"
 }
 
