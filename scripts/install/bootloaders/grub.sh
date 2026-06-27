@@ -22,7 +22,8 @@ bootloader_install_grub() {
     local -a grub_extra_args=()
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         echo 'GRUB_PRELOAD_MODULES="lvm dm-mod"' >> /mnt/etc/default/grub
-        grub_extra_args+=( --modules="lvm dm-mod" )
+        grub_extra_args+=( --modules )
+        grub_extra_args+=( "lvm dm-mod" )
     fi
     grub_extra_args+=( --removable )
 
