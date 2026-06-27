@@ -40,13 +40,8 @@ log_error() {
 }
 
 _forge() {
-    local _dir _tmp _json_out
-    _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
-    chmod 700 "$_dir"
-    _tmp="$_dir/input.json"
-    printf '%s\n' "$1" > "$_tmp"
-    _json_out=$("$FORGE_TUI" --mode widget --input "$_tmp" 2>/dev/null)
-    rm -rf "$_dir"
+    local _json_out
+    _json_out=$(printf '%s\n' "$1" | "$FORGE_TUI" --mode widget 2>/dev/null)
     printf '%s\n' "$_json_out"
 }
 
