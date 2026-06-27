@@ -40,28 +40,28 @@ log_error() {
 }
 
 _forge() {
-    local _dir _tmp _out _json_out
+    local _dir _tmp _out
     _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
     chmod 700 "$_dir"
     _tmp="$_dir/input.json"
     _out="$_dir/output.json"
     printf '%s\n' "$1" > "$_tmp"
     "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" 2>/dev/null
-    _json_out=$(cat "$_out" 2>/dev/null)
-    rm -rf "$_dir"
-    printf '%s\n' "$_json_out"
+    _FORGE_LAST_OUT="$_out"
 }
 
 _forge_result() {
+    _forge "$1"
     local _json
-    _json=$(_forge "$1")
-    jq -r '.result // .selected // empty' <<< "$_json"
+    _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
+    jq -r '.result // .selected // empty' <<< "$_json" 2>/dev/null
 }
 
 _forge_cancelled() {
+    _forge "$1"
     local _json
-    _json=$(_forge "$1")
-    [[ "$(jq -r '.cancelled' <<< "$_json")" == "true" ]]
+    _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
+    [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
 }
 
 tui_msg() {
