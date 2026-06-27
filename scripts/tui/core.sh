@@ -41,7 +41,8 @@ log_error() {
 
 _forge() {
     local _json_out
-    _json_out=$(printf '%s\n' "$1" | "$FORGE_TUI" --mode widget 2>/dev/null)
+    _json_out=$(printf '%s\n' "$1" | "$FORGE_TUI" --mode widget 2>/tmp/forge-stderr.log)
+    echo "DEBUG _forge captured: |$_json_out|" >> /tmp/forge-debug.log
     printf '%s\n' "$_json_out"
 }
 
