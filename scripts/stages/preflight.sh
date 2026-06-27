@@ -105,15 +105,13 @@ stage_preflight() {
 
     if [[ ${#pkgs[@]} -gt 0 ]]; then
         log_info "Installing required tools: ${pkgs[*]}"
-        if ! gum spin --spinner dot --title "Preflight – installing dependencies" -- \
-            pacman -S --noconfirm --needed "${pkgs[@]}"; then
+        if ! pacman -S --noconfirm --needed "${pkgs[@]}"; then
             log_warn "Package installation failed — restoring original mirrors and retrying."
             if [[ -f "${original_mirrorlist}" ]]; then
                 cp "${original_mirrorlist}" /etc/pacman.d/mirrorlist
                 pacman -Sy --noconfirm || true
             fi
-            if ! gum spin --spinner dot --title "Preflight – retrying" -- \
-                pacman -S --noconfirm --needed "${pkgs[@]}"; then
+            if ! pacman -S --noconfirm --needed "${pkgs[@]}"; then
                 log_error "Failed to install: ${pkgs[*]}"
                 recoverable_error "Package installation failed. Check network and mirrorlist."
             fi
