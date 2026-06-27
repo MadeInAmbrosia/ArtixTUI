@@ -49,12 +49,18 @@ configure_users() {
             }
         fi
 
+        local clean_groups
+        clean_groups=$(printf '%s' "${ugroups}" | tr -d '[]"' | tr ',' ' ')
+        clean_groups="${clean_groups## }"
+        clean_groups="${clean_groups%% }"
+        clean_groups=$(printf '%s' "${clean_groups}" | tr -s ' ')
+
         log_info "Creating user ${username}..."
 
         artix-chroot /mnt /bin/bash -c "
 set -Eeuo pipefail
 if ! id '${username}' &>/dev/null; then
-    useradd -m -G '${ugroups//,/ }' -s '${shell}' '${username}'
+    useradd -m -G '${clean_groups}' -s '${shell}' '${username}'
 fi
 [[ -n '${user_hash}' ]] && usermod -p '${user_hash}' '${username}'
 

@@ -141,7 +141,9 @@ tui_edit_user_dialog() {
     local groups
     groups=$(tui_checklist "User Groups" "Select groups for ${name}:" \
         "wheel" "audio" "video" "storage" "lp" "network" "optical" "scanner" "users") || groups="${current_groups}"
+    groups=$(printf '%s' "${groups}" | jq -r 'if type == "array" then join(",") else . end' 2>/dev/null || printf '%s' "${groups}")
     groups="${groups//$'\n'/,}"
+    groups=$(printf '%s' "${groups}" | tr -d '[]"')
     [[ -z "${groups// /}" ]] && groups="${current_groups}"
 
     local current_sudo="$(state_get "USER_${idx}_SUDO" "yes")"
