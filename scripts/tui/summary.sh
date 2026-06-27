@@ -2,28 +2,30 @@
 set -Eeuo pipefail
 
 tui_show_summary() {
+    local title_colour
+    title_colour=$(theme_ansi_code "${GUM_TITLE_COLOR}")
     local summary
     printf -v summary \
-"$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Disk:')       %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Hostname:')   %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Timezone:')   %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Locale:')     %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Keyboard:')   %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Microcode:')  %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'BTRFS:')      %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Filesystem:') %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'LVM:')        %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Init:')       %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Bootloader:') %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'UKI:')        %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Kernel:')     %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Priv Esc:')   %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Power User:') %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Desktop:')    %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Network:')    %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'X Stack:')    %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'LUKS:')       %s
-$(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Arch Repos:') %s" \
+"\e[1;${title_colour}mDisk:\e[0m       %s
+\e[1;${title_colour}mHostname:\e[0m   %s
+\e[1;${title_colour}mTimezone:\e[0m   %s
+\e[1;${title_colour}mLocale:\e[0m     %s
+\e[1;${title_colour}mKeyboard:\e[0m   %s
+\e[1;${title_colour}mMicrocode:\e[0m  %s
+\e[1;${title_colour}mBTRFS:\e[0m      %s
+\e[1;${title_colour}mFilesystem:\e[0m %s
+\e[1;${title_colour}mLVM:\e[0m        %s
+\e[1;${title_colour}mInit:\e[0m       %s
+\e[1;${title_colour}mBootloader:\e[0m %s
+\e[1;${title_colour}mUKI:\e[0m        %s
+\e[1;${title_colour}mKernel:\e[0m     %s
+\e[1;${title_colour}mPriv Esc:\e[0m   %s
+\e[1;${title_colour}mPower User:\e[0m %s
+\e[1;${title_colour}mDesktop:\e[0m    %s
+\e[1;${title_colour}mNetwork:\e[0m    %s
+\e[1;${title_colour}mX Stack:\e[0m    %s
+\e[1;${title_colour}mLUKS:\e[0m       %s
+\e[1;${title_colour}mArch Repos:\e[0m %s" \
         "$(state_get DISK)" \
         "$(state_get HOSTNAME artix)" \
         "$(state_get TIMEZONE Europe/Belgrade)" \
@@ -45,7 +47,9 @@ $(gum style --bold --foreground "${GUM_TITLE_COLOR}" 'Arch Repos:') %s" \
         "$(state_get USE_LUKS no)" \
         "$(state_get ENABLE_ARCH_REPOS no)"
 
-    gum style --border rounded --padding 1 --bold --foreground "${GUM_TITLE_COLOR}" "Installation Summary"
-    gum format "${summary}"
-    gum confirm "Proceed with installation?" || exit 0
+    tui_msg "Installation Summary" "${summary}"
+
+    if ! tui_yesno "Proceed?" "Proceed with installation?"; then
+        exit 0
+    fi
 }

@@ -7,31 +7,18 @@ GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
 LOG_FILE="/tmp/artix-installer/install.log"
 CHROOT_LOG="/mnt/var/log/artix-installer.log"
 
+FORGE_TUI="${FORGE_TUI:-forge-tui}"
+
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
     [[ -d /mnt ]] && mkdir -p "$(dirname "${CHROOT_LOG}")" 2>/dev/null || true
 }
 
-theme_ansi() {
-    local gum_code="${1:-212}"
-    case "${gum_code}" in
-        212) printf '\e[38;5;212m' ;;
-        39)  printf '\e[38;5;39m' ;;
-        245) printf '\e[38;5;245m' ;;
-        250) printf '\e[38;5;250m' ;;
-        3)   printf '\e[38;5;3m' ;;
-        34)  printf '\e[38;5;34m' ;;
-        117) printf '\e[38;5;117m' ;;
-        196) printf '\e[38;5;196m' ;;
-        255) printf '\e[38;5;255m' ;;
-        11)  printf '\e[38;5;11m' ;;
-        *)   printf '\e[38;5;%sm' "${gum_code}" ;;
-    esac
-}
+theme_ansi_code() { printf '38;5;%s' "${1:-212}"; }
+theme_ansi()      { printf '\e[%sm' "$(theme_ansi_code "${1:-212}")"; }
 
 log_info() {
-    local msg="${1}"
-    local colour
+    local msg="${1}" colour
     colour=$(theme_ansi "${GUM_ACCENT_COLOR:-34}")
     _ensure_log_dirs
     printf '%s[*] %s\e[0m\n' "${colour}" "${msg}" | tee -a "${LOG_FILE}" >&2
@@ -39,8 +26,7 @@ log_info() {
 }
 
 log_warn() {
-    local msg="${1}"
-    local colour
+    local msg="${1}" colour
     colour=$(theme_ansi "${GUM_TITLE_COLOR:-212}")
     _ensure_log_dirs
     printf '%s[!] %s\e[0m\n' "${colour}" "${msg}" | tee -a "${LOG_FILE}" >&2
@@ -53,49 +39,80 @@ log_error() {
     printf '\e[1;31m[✗] %s\e[0m\n' "${msg}" | tee -a "${LOG_FILE}" >&2
 }
 
+_forge() {
+    local _dir _fifo _pid _json_out
+    _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
+    chmod 700 "$_dir"
+    _fifo="$_dir/fifo"
+    mkfifo "$_fifo"
+
+    printf '%s\n' "$1" > "$_fifo" &
+    _pid=$!
+
+    _json_out=$("$FORGE_TUI" --mode widget < "$_fifo" 2>/dev/null)
+
+    wait "$_pid" 2>/dev/null || true
+    rm -rf "$_dir"
+
+    printf '%s\n' "$_json_out"
+}
+
+_forge_result() {
+    local _json
+    _json=$(_forge "$1")
+    jq -r '.result // .selected // empty' <<< "$_json"
+}
+
+_forge_cancelled() {
+    local _json
+    _json=$(_forge "$1")
+    [[ "$(jq -r '.cancelled' <<< "$_json")" == "true" ]]
+}
+
 tui_msg() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
-    gum format "${msg}"
-    gum confirm "Press Enter to continue" --affirmative="OK" --timeout=0 </dev/tty 2>/dev/null || true
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}"
+    printf '%s\n' "${msg}"
+    _forge '{"widget":"msg","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}' >/dev/null
 }
 
 tui_yesno() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
-    gum format "${msg}"
-    gum confirm </dev/tty
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}"
+    printf '%s\n' "${msg}"
+    local result
+    result=$(_forge_result '{"widget":"yesno","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}')
+    [[ "$result" == "true" ]] && return 0 || return 1
 }
 
 tui_input() {
-    local title="${1}" msg="${2}" default="${3:-}" result
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum input --value "${default}" --prompt "> " </dev/tty) || true
-    printf '%s' "${result}"
+    local title="${1}" msg="${2}" default="${3:-}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    _forge_result '{"widget":"input","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","default":"'"${default//\"/\\\"}"'"}'
 }
 
 tui_password() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum input --password --prompt "> " </dev/tty || true
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    _forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}'
 }
 
 tui_msg_quick() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
-    gum format "${msg}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}"
+    printf '%s\n' "${msg}"
 }
 
 tui_password_confirm() {
     local title="${1:-Password}" prompt="${2:-Enter password:}" confirm_prompt="${3:-Confirm password:}"
     local pass confirm
     while true; do
-        gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-        pass=$(gum input --password --prompt "${prompt}: " </dev/tty) || true
+        printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+        pass=$(_forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${prompt//\"/\\\"}"'"}')
         [[ -n "${pass}" ]] || return 1
-        confirm=$(gum input --password --prompt "${confirm_prompt}: " </dev/tty) || true
+        confirm=$(_forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${confirm_prompt//\"/\\\"}"'"}')
         [[ -n "${confirm}" ]] || return 1
         if [[ "${pass}" == "${confirm}" ]]; then
             printf '%s\n' "${pass}"
@@ -108,47 +125,53 @@ tui_password_confirm() {
 tui_menu() {
     local title="${1}" msg="${2}"
     shift 2
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum choose --height=15 "$@" </dev/tty
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
 }
 
 tui_menu_custom() {
-    local title="${1}" msg="${2}"
-    local height="${3:-15}"
+    local title="${1}" msg="${2}" height="${3:-15}"
     shift 3
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum choose --height="${height}" "$@" </dev/tty
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"',"height":'"${height}"'}'
 }
 
 tui_checklist() {
     local title="${1}" msg="${2}"
     shift 2
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum choose --no-limit --height=15 "$@" </dev/tty
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    local choices_json result
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    result=$(_forge_result '{"widget":"checklist","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}')
+    printf '%s\n' "${result}"
 }
 
 tui_filter() {
     local title="${1}" msg="${2}"
     shift 2
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum filter --height=20 "$@"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    _forge_result '{"widget":"filter","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
 }
 
-tui_radiolist() {
-    tui_menu "$@"
-}
+tui_radiolist() { tui_menu "$@"; }
 
 tui_spin() {
     local title="${1}" cmd="${2}"
-    gum spin --spinner dot --title "${title}" -- bash -c "${cmd}" 2>&1 | while IFS= read -r line; do log_info "${line}"; done
+    bash -c "${cmd}" 2>&1 | while IFS= read -r line; do log_info "${line}"; done
 }
 
 tui_show_file() {
     local title="${1}" file="${2}"
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
-    gum pager < "${file}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}"
+    _forge '{"widget":"summary","title":"'"${title//\"/\\\"}"'","file":"'"${file}"'"}' >/dev/null
 }
