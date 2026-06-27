@@ -59,11 +59,15 @@ _forge_cancelled() {
 
 tui_msg() {
     local title="${1}" msg="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    printf '%s\n' "${msg}" >&2
     _forge '{"widget":"msg","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}' >/dev/null
 }
 
 tui_yesno() {
     local title="${1}" msg="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    printf '%s\n' "${msg}" >&2
     local result
     result=$(_forge_result '{"widget":"yesno","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}')
     [[ "$result" == "true" ]] && return 0 || return 1
@@ -71,24 +75,29 @@ tui_yesno() {
 
 tui_input() {
     local title="${1}" msg="${2}" default="${3:-}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
     _forge_result '{"widget":"input","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","default":"'"${default//\"/\\\"}"'"}'
 }
 
 tui_password() {
     local title="${1}" msg="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
     _forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}'
 }
 
 tui_msg_quick() {
     local title="${1}" msg="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}"
-    printf '%s\n' "${msg}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    printf '%s\n' "${msg}" >&2
 }
 
 tui_password_confirm() {
     local title="${1:-Password}" prompt="${2:-Enter password:}" confirm_prompt="${3:-Confirm password:}"
     local pass confirm
     while true; do
+        printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
         pass=$(_forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${prompt//\"/\\\"}"'"}')
         [[ -n "${pass}" ]] || return 1
         confirm=$(_forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${confirm_prompt//\"/\\\"}"'"}')
@@ -104,6 +113,8 @@ tui_password_confirm() {
 tui_menu() {
     local title="${1}" msg="${2}"
     shift 2
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
     local choices_json
     choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
     _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
@@ -112,6 +123,8 @@ tui_menu() {
 tui_menu_custom() {
     local title="${1}" msg="${2}" height="${3:-15}"
     shift 3
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
     local choices_json
     choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
     _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"',"height":'"${height}"'}'
@@ -120,6 +133,8 @@ tui_menu_custom() {
 tui_checklist() {
     local title="${1}" msg="${2}"
     shift 2
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
     local choices_json result
     choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
     result=$(_forge_result '{"widget":"checklist","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}')
@@ -129,6 +144,8 @@ tui_checklist() {
 tui_filter() {
     local title="${1}" msg="${2}"
     shift 2
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
     local choices_json
     choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
     _forge_result '{"widget":"filter","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
@@ -143,5 +160,6 @@ tui_spin() {
 
 tui_show_file() {
     local title="${1}" file="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     _forge '{"widget":"summary","title":"'"${title//\"/\\\"}"'","file":"'"${file}"'"}' >/dev/null
 }
