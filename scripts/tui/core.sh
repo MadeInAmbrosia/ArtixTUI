@@ -40,9 +40,15 @@ log_error() {
 }
 
 _forge() {
-    local _json_out
-    _json_out=$(printf '%s\n' "$1" | "$FORGE_TUI" --mode widget 2>/tmp/forge-stderr.log)
-    echo "DEBUG _forge captured: |$_json_out|" >> /tmp/forge-debug.log
+    local _dir _tmp _out _json_out
+    _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
+    chmod 700 "$_dir"
+    _tmp="$_dir/input.json"
+    _out="$_dir/output.json"
+    printf '%s\n' "$1" > "$_tmp"
+    "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" 2>/dev/null
+    _json_out=$(cat "$_out" 2>/dev/null)
+    rm -rf "$_dir"
     printf '%s\n' "$_json_out"
 }
 
