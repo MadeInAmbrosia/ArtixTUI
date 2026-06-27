@@ -1,5 +1,47 @@
 # Changelog
 
+## v9.2.5.0 (2026-06-27) — ArtixForge
+
+### Changed
+- **TUI backend rewritten** — `gum` replaced with `forge-tui`, a custom Rust TUI library using `ratatui` + `crossterm`
+- **`scripts/tui/core.sh`** — all `tui_*` functions now construct JSON and call `forge-tui --mode widget` instead of shelling out to `gum`; function signatures remain identical, no other files changed
+- **Bootstrap** — installer now copies `forge-tui` binary to `/usr/local/bin/forge-tui` if not found in PATH; falls back to `forge-tui/target/release/forge-tui` in the repo
+- **JSON transport** — `_forge` function writes JSON to a `chmod 700` temp directory, passes it to `forge-tui` via `--input`, reads response from `--output`; stdin/stdout remain connected to `/dev/tty` for interactive rendering
+- **`tui_spin`** — now uses the progress widget with full output capture instead of `gum spin`; output still piped through `log_info` for logging
+- **`tui_msg_quick`** — now pure Bash with ANSI escape codes; no subprocess, returns immediately
+- **`tui_msg`** — renders title/message via `printf` to stderr, then calls `forge-tui` msg widget for the blocking "press any key" prompt
+- **`tui_show_file`** — now uses `forge-tui` summary widget with scrollbar, keyboard navigation (j/k, PgUp/PgDn, Home/End), and mouse scroll support
+- **`anvil_tui.bash`** — now sources `scripts/tui/core.sh` instead of defining duplicate `tui_*` functions; all Power User TUI calls use the same backend
+
+### Added
+- **Proper layout engine** — all TUI widgets are centered with borders and margins, not stacked top-left
+- **Rich menu rows** — menus support inline metadata (version numbers, descriptions), color-coded stability indicators (green/yellow/red), and contextual warning panels that update on selection change
+- **Progress widget** — runs the actual installer command as a subprocess, streams stdout/stderr, and advances a progress bar based on stage markers in the output (`Preflight dependencies installed.`, `Mount setup completed.`, `Base system installation complete.`, etc.)
+- **Progress auto-advance** — bar creeps forward at 2%/s during long operations with no stage markers (pacman downloads, mkinitcpio builds)
+- **Progress raw output toggle** — press Tab to switch between progress bar view and full scrollable command output
+- **Mouse support** — click and scroll in menus, checklists, and summary views
+- **Filter widget** — fuzzy search with live filtering as you type; `tui_filter` now uses `forge-tui` filter widget instead of `gum filter`
+- **Watermark support** — `FORGE_TUI_WATERMARK` environment variable can point to a text file rendered at low opacity behind all widgets; library remains universal, ArtixForge does not set this by default
+- **Stability colors** — `stability_colors` JSON field maps stability labels (stable, testing, unstable) to colors; selection info panel shows per-item warnings
+- **`--input` / `--output` flags** — `forge-tui` accepts `--input <file>` for JSON requests and `--output <file>` for JSON responses; keeps stdin/stdout free for terminal rendering
+- **`/dev/tty` rendering** — TUI always renders to the real terminal via explicit `/dev/tty` open, works under `sudo`, in `exec`'d scripts, and over SSH with `< /dev/tty > /dev/tty` redirect
+- **Theme passthrough** — `GUM_TITLE_COLOR` and `GUM_ACCENT_COLOR` environment variables control border titles and selection highlights; all five ArtixForge themes work unchanged
+
+### Fixed
+- **Newlines in JSON** — `tui_input`, `tui_password`, `tui_menu`, and `tui_yesno` now escape newlines in message strings before JSON construction; fixes `jq: parse error` on prompts using `$'...'` syntax
+- **SSH PTY rendering** — `forge-tui` with `< /dev/tty > /dev/tty` redirect renders correctly over SSH pseudo-terminals
+- **`/dev/tty` fallback** — dinit consoles that lacked `/dev/tty` with `gum` now work with `forge-tui`'s explicit terminal open
+- **GRUB argument splitting** — LVM preload modules now written to `/etc/default/grub` via `GRUB_PRELOAD_MODULES` config line only; `--modules` flag removed from `grub-install` call to avoid argument splitting and module path mismatches inside chroot (`scripts/install/bootloaders/grub.sh`)
+- **Corrupted user groups** — `tui_checklist` JSON array output from `forge-tui` now parsed through `jq` to extract plain comma-separated groups in `tui_edit_user_dialog`; `configure_users` in `scripts/install/users.sh` strips JSON brackets, quotes, and whitespace from group strings before `useradd -G` as defense-in-depth (`scripts/tui/menus/user.sh`, `scripts/install/users.sh`)
+
+### Removed
+- **`gum` dependency** — TUI no longer requires `gum`; the bootstrap no longer installs it
+- **Hardcoded `</dev/tty`** — all `gum` redirections removed; `forge-tui` handles terminal access internally
+
+### Security
+- **No temp file exposure** — JSON requests written to `chmod 700` directories, cleaned after each call; plaintext passwords never touch disk
+- **FIFO replaced** — early FIFO-based transport replaced with regular files for reliability; same `chmod 700` protection
+
 ## v9.2.4.2 (2026-06-26) — ArtixForge
 
 ### Fixed
