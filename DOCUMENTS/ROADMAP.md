@@ -11,6 +11,7 @@ This roadmap is updated regularly based on:
 
 ## v9.?
 - Polishing the GUI until it's squeaky clean (Thank you GTK4)
+- Replacing gum (forge-tui in the works...)
 
 # The think-tank
 
