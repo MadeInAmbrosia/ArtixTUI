@@ -19,9 +19,19 @@ log_warn()  { local c; c=$(theme_ansi "${GUM_TITLE_COLOR:-212}"); printf '%s[!] 
 log_error() { printf '\e[1;31m[✗] %s\e[0m\n' "$*" >&2; }
 require_root() { [[ $EUID -eq 0 ]] || die "This command must be run as root"; }
 
-if ! command -v gum &>/dev/null; then
-    echo "[*] Installing gum..."
-    pacman -Sy --noconfirm gum || die "Failed to install gum. Install it manually and retry."
+if ! command -v forge-tui &>/dev/null; then
+    if [[ -f /usr/local/bin/forge-tui ]]; then
+        export PATH="/usr/local/bin:$PATH"
+    elif [[ -f "${POWERUSER_DIR}/bin/forge-tui" ]]; then
+        install -Dm755 "${POWERUSER_DIR}/bin/forge-tui" /usr/local/bin/forge-tui
+    else
+        echo "[*] forge-tui not found. Downloading..."
+        local forge_tui_url="https://raw.githubusercontent.com/realvolk/forge-tui/main/target/release/forge-tui"
+        curl -sL "${forge_tui_url}" -o /usr/local/bin/forge-tui 2>/dev/null && chmod +x /usr/local/bin/forge-tui || {
+            echo "[!] Failed to download forge-tui. Install it manually and retry."
+            exit 1
+        }
+    fi
 fi
 
 load_sections() {

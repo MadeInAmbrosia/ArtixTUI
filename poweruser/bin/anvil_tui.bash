@@ -1,42 +1,70 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+FORGE_TUI="${FORGE_TUI:-forge-tui}"
+
+_forge() {
+    local _dir _fifo _pid _json_out
+    _dir=$(mktemp -d --tmpdir anvil-tui-XXXXXX)
+    chmod 700 "$_dir"
+    _fifo="$_dir/fifo"
+    mkfifo "$_fifo"
+
+    printf '%s\n' "$1" > "$_fifo" &
+    _pid=$!
+
+    _json_out=$("$FORGE_TUI" --mode widget < "$_fifo" 2>/dev/null)
+
+    wait "$_pid" 2>/dev/null || true
+    rm -rf "$_dir"
+
+    printf '%s\n' "$_json_out"
+}
+
+_forge_result() {
+    local _json
+    _json=$(_forge "$1")
+    jq -r '.result // .selected // empty' <<< "$_json"
+}
+
+_forge_cancelled() {
+    local _json
+    _json=$(_forge "$1")
+    [[ "$(jq -r '.cancelled' <<< "$_json")" == "true" ]]
+}
+
 tui_menu() {
     local title="${1}" msg="${2}"
     shift 2
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum choose --height=15 "$@" </dev/tty
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
 }
 
 tui_checklist() {
     local title="${1}" msg="${2}"
     shift 2
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    gum choose --no-limit --height=15 "$@" </dev/tty
+    local choices_json result
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    result=$(_forge_result '{"widget":"checklist","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}')
+    printf '%s\n' "${result}"
 }
 
 tui_msg() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
-    gum format "${msg}"
-    gum confirm "Press Enter to continue" --affirmative="OK" --timeout=0 </dev/tty 2>/dev/null || true
+    _forge '{"widget":"msg","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}' >/dev/null
 }
 
 tui_input() {
-    local title="${1}" msg="${2}" default="${3:-}" result
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──" >&2
-    [[ -n "${msg}" ]] && gum format "${msg}" >&2
-    result=$(gum input --value "${default}" --prompt "> " </dev/tty) || true
-    printf '%s' "${result}"
+    local title="${1}" msg="${2}" default="${3:-}"
+    _forge_result '{"widget":"input","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","default":"'"${default//\"/\\\"}"'"}'
 }
 
 tui_yesno() {
     local title="${1}" msg="${2}"
-    gum style --bold --foreground "${GUM_TITLE_COLOR}" "── ${title} ──"
-    gum format "${msg}"
-    gum confirm </dev/tty
+    local result
+    result=$(_forge_result '{"widget":"yesno","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}')
+    [[ "$result" == "true" ]] && return 0 || return 1
 }
 
 tui_manage_sections() {
