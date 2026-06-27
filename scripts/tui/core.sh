@@ -54,7 +54,7 @@ _forge_result() {
     _forge "$1"
     local _json
     _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
-    jq -r '.result // .selected // empty' <<< "$_json" 2>/dev/null
+    jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
 }
 
 _forge_cancelled() {
