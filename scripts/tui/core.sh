@@ -46,7 +46,7 @@ _forge() {
     _tmp="$_dir/input.json"
     _out="$_dir/output.json"
     printf '%s\n' "$1" > "$_tmp"
-    "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out"
+    "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty
     _FORGE_LAST_OUT="$_out"
 }
 
