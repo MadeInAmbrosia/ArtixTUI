@@ -26,6 +26,7 @@ The installer runs entirely on your local machine. It does not:
 | Recipe database | `/mnt/usr/share/artix-poweruser/db/local.db` | Remains on the installed system |
 | Recovery detection data | `/tmp/artix-installer/state.conf` (reconstructed) | Deleted on reboot (tmpfs) |
 | ATA migration backup | `/arch-migration-backup-YYYYMMDD-HHMMSS/` | Stays on disk (root-only, chmod 700); user must delete manually |
+| forge-tui widget temp files | `/tmp/forge-tui-XXXXXX/` (chmod 700) | Discarded after each widget call; any remnants deleted on reboot (tmpfs) |
 
 The installed system itself contains no ArtixForge-specific data collection. The installer
 removes its own configuration from the target before finishing.
@@ -72,6 +73,8 @@ third-party network request outside of package management.
 SonicDE packages are downloaded from the sonicde-artix.github.io third-party repository.
 
 **The GUI installer (`forge-gui`):** extras search queries local pacman cache only. Power User recipe list is fetched once from the community repository at startup; individual recipe files are downloaded on demand when sections are enabled. All other data reads/writes `state.conf` and spawns the non‑interactive Bash installer. No telemetry, no analytics, no background network activity.
+
+**forge-tui:** the Rust TUI binary makes no network connections. It reads JSON from a local temp file specified by `--input` and writes responses to a local temp file specified by `--output`. All rendering is done via `/dev/tty`. No data leaves the process.
 
 ## Third-party services
 

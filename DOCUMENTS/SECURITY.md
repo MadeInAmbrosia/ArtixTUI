@@ -11,7 +11,7 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v9.2.4.2   | Latest Commits |
+| v9.2.5.0   | Latest Commits |
 | v9.1.1.4 | Latest Stable release |
 | < v9.1.1.4 | No |
 
@@ -47,6 +47,8 @@ Security concerns include, but are not limited to:
 - ATA AUR batch reinstall — packages reinstalled from AUR via third-party helper; untrusted PKGBUILDs may execute arbitrary code
 - ATA package mapping queries — local pacman database only; no external API calls for version comparison
 - ATA systemd-boot → GRUB conversion — EFI boot entries modified; old entries removed via efibootmgr
+- **forge-tui JSON transport** — widget requests and responses written to `chmod 700` temp directories, cleaned after each call; plaintext passwords from `tui_password` and `tui_password_confirm` never touch disk
+- **forge-tui checklist output** — JSON array results parsed and sanitized before use; `tr -d '[]"'` and `jq` normalization applied at consumption points to prevent JSON artifact injection into system commands (`useradd -G`, `state_set`)
 
 ## Best Practices
 
@@ -63,6 +65,7 @@ Security concerns include, but are not limited to:
 - The installer's state directory (`/tmp/artix-installer/`) lives on a tmpfs and is lost on reboot. The target configuration file (`/mnt/etc/artix-installer.conf`) is shredded or removed during the finalize stage.
 - Recovery mode requires explicit user confirmation before modifying any system files. Detection is read‑only until the user chooses a repair action.
 - **GUI installer (`forge-gui`):** runs in a separate Python process. User and root passwords are hashed with `openssl passwd -6` in the GUI process before being written to `state.conf` — plaintext passwords never touch the state file or disk. LUKS passphrases are held in memory only and cleared when the config window closes. The GUI makes no network connections of its own (extras search uses local pacman cache; Power User recipe list is fetched once at startup).
+- **forge-tui widget transport:** all TUI widget JSON requests and responses are written to `mktemp -d --tmpdir` directories with `chmod 700`. The temp directory is discarded after each call. The `tui_password` and `tui_password_confirm` widgets send passwords through `forge-tui`'s stdout (connected to `/dev/tty`) — passwords are never written to the temp JSON files. The `_forge_result` function reads only the output JSON file; the input file is left to be cleaned with the temp directory on reboot or manual removal.
 
 ### ATA Migration Security
 
