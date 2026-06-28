@@ -1,5 +1,25 @@
 # Changelog
 
+## v9.2.5.2 (2026-06-28) — ArtixForge
+
+### Changed
+- **Quick Profiles rewritten** — profiles are now organized by desktop environment first, variant second; each DE gets its own function with sensible defaults instead of hardcoded monolithic case blocks (`scripts/tui/menus/quick_profiles.sh`)
+- **Profile helpers** — `_qp_defaults`, `_qp_desktop`, and `_qp_wayland` encode common patterns; adding a new DE is a one-line function
+- **DE coverage** — all 14 desktop environments and 2 headless profiles (Server, Embedded) have dedicated quick profiles with compositor-specific tooling
+- **KDE/XFCE variants** — nested menu offers Full, Desktop, and Minimal (KDE) or Full and Minimal (XFCE); Server offers Full (firewalld+zram) and Minimal (SSH only)
+- **Wayland tooling** — profiles now include compositor-specific tools: swaybg+swaylock for wlroots compositors, hyprpaper+hyprlock for Hyprland; generic "Wayland Extras" checklist in `tui_select_extras` shows recommended tools per compositor
+- **Extras compositor awareness** — `_wayland_extras_for()` maps each compositor to its native tool set; `tui_msg_quick` shows recommendations before the checklist (`scripts/tui/menus/extras.sh`)
+- **Customize after profile** — confirming a quick profile still offers "Customize any settings?" which drops the user into the full manual config flow
+
+### Added
+- **`WAYLAND_TOOLS` associative array** — maps compositor names to space-separated native tool lists (swaybg, swaylock, hyprpaper, hyprlock, waybar, wofi, fuzzel, foot)
+- **Hyprland-specific extras** — `hyprlock` added alongside `hyprpaper` in both quick profiles and the Wayland Extras checklist
+- **Compositor guidance** — Wayland Extras checklist now includes descriptions indicating which compositor each tool belongs to (wlroots vs Hyprland)
+
+### Fixed
+- **Missing Wayland tools in profiles** — MangoWM, Hyprland, Sway, and Niri profiles now include wallpaper daemons and screen lockers instead of just waybar+wofi
+- **COSMIC extras** — COSMIC profile keeps extras minimal since COSMIC bundles its own application suite
+
 ## v9.2.5.1 (2026-06-28) — ArtixForge
 
 ### Changed

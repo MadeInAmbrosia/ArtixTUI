@@ -4,6 +4,19 @@ set -Eeuo pipefail
 # SAFETY FILTER!!!
 readonly EXTRAS_SAFETY_FILTER='linux-.*|systemd.*|plasma.*|grub|mkinitcpio|.*-openrc|.*-runit|.*-dinit|.*-s6|sddm|lightdm|gdm|xorg-.*|xlibre-.*|wayland|hyprland|sway|niri|pipewire|pulseaudio|networkmanager|connman|dhcpcd|efibootmgr|filesystem|pacman|bash|coreutils|util-linux'
 
+declare -A WAYLAND_TOOLS=(
+    ["mango"]="swaybg swaylock waybar wofi foot"
+    ["hyprland"]="hyprpaper hyprlock waybar wofi foot"
+    ["sway"]="swaybg swaylock waybar wofi foot"
+    ["niri"]="swaybg swaylock waybar fuzzel foot"
+    ["cosmic"]=""
+)
+
+_wayland_extras_for() {
+    local wm="${1}"
+    printf '%s' "${WAYLAND_TOOLS[$wm]:-swaybg swaylock waybar wofi foot}"
+}
+
 tui_search_extras() {
     log_info "Building safe package index..."
 
@@ -41,17 +54,13 @@ tui_select_extras() {
         mango)
             tui_msg_quick "MangoWM" "MangoWM is a minimal compositor.\nYou'll want a wallpaper, launcher, and status bar."
             ;;
-        hyprland|sway|niri)
-            tui_msg_quick "Wayland Setup" "${wm_de} needs a few extras for a full desktop.\nConsider a wallpaper, launcher, and bar."
+        hyprland)
+            tui_msg_quick "Hyprland Setup" "Hyprland needs hyprpaper, hyprlock, waybar, and wofi for a full desktop."
+            ;;
+        sway|niri)
+            tui_msg_quick "Wayland Setup" "${wm_de} needs swaybg, swaylock, waybar, and a launcher for a full desktop."
             ;;
     esac
-
-    local -A wayland_defaults=(
-        ["mango"]="swaybg wofi waybar"
-        ["hyprland"]="waybar wofi hyprpaper"
-        ["sway"]="swaybg waybar wofi"
-        ["niri"]="swaybg waybar wofi"
-    )
 
     category=$(tui_menu "Extras" "Select category:" \
         "System Tools" \
@@ -102,14 +111,20 @@ tui_select_extras() {
                     "mpv" "feh") || true
                 ;;
             "Wayland Extras")
+                local tools
+                tools=$(_wayland_extras_for "${wm_de}")
+                if [[ -n "${tools}" ]]; then
+                    tui_msg_quick "Wayland Extras" "Recommended for ${wm_de}: ${tools}"
+                fi
                 local wayland_items=(
-                    "swaybg" "wallpaper daemon for wlroots compositors"
-                    "swaylock" "screen locker"
-                    "waybar" "status bar"
-                    "wofi" "application launcher"
-                    "fuzzel" "application launcher"
-                    "foot" "terminal emulator"
-                    "hyprpaper" "wallpaper daemon for Hyprland"
+                    "swaybg"    "wallpaper daemon (wlroots)"
+                    "swaylock"  "screen locker (wlroots)"
+                    "hyprpaper" "wallpaper daemon (Hyprland)"
+                    "hyprlock"  "screen locker (Hyprland)"
+                    "waybar"    "status bar (wlroots/Hyprland)"
+                    "wofi"      "application launcher (wlroots)"
+                    "fuzzel"    "application launcher (wlroots)"
+                    "foot"      "terminal emulator (Wayland-native)"
                 )
                 local wayland_checklist=()
                 for ((i=0; i<${#wayland_items[@]}; i+=2)); do
