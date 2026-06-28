@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <strong>This is the official branch for v9.</strong><br>
+  <strong>This is the official tui-rewrite branch.</strong><br>
   Find a bug? Make an issue.
 </p>
 
