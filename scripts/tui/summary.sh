@@ -52,4 +52,10 @@ tui_show_summary() {
     if ! tui_yesno "Proceed?" "Proceed with installation?"; then
         exit 0
     fi
+
+    if [[ -n "${FORGE_TUI_DAEMON:-}" ]]; then
+        unset FORGE_TUI_DAEMON
+        [[ -S "${FORGE_TUI_SOCKET}" ]] && printf '{"widget":"quit"}\n' | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null
+        rm -f "${FORGE_TUI_SOCKET}"
+    fi
 }
