@@ -1,41 +1,78 @@
 <h1 align="center">ArtixForge</h1>
 
 <p align="center">
-  <strong>A modular operating system deployment framework for Artix Linux</strong><br>
-  No flags. No confusion. Just a terminal interface that works.
+  <strong>Modular operating system deployment for Artix Linux</strong><br>
+  TUI • GUI • Installer • Migration • ISO Builder
 </p>
 
 <p align="center">
-  <strong>This is the official tui-rewrite branch.</strong><br>
-  Find a bug? Make an issue.
+  <a href="#quick-start">Quick Start</a>
+  •
+  <a href="#screenshots">Screenshots</a>
+  •
+  <a href="#installation">Installation</a>
+  •
+  <a href="#contributing">Contributing</a>
+  •
+  <a href="#license">License</a>
 </p>
 
-
-
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v9.2.5.2-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v9.2.5.3-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Stable-v9.1.1.4-3572a5?style=flat-square" alt="Stable Release">
   <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
-  <img src="https://img.shields.io/badge/TUI-forge--tui_(Rust)-FFB6C1?style=flat-square&logo=rust" alt="forge-tui">
+  <img src="https://img.shields.io/badge/TUI-forge--tui-FFB6C1?style=flat-square&logo=rust" alt="forge-tui">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
 </p>
 
 ---
 
-# What is ArtixForge?
+# Installation
 
-ArtixForge is a **modular operating system deployment framework** for Artix Linux (OpenRC, runit, dinit, s6, and BusyBox init).
+## Artix Linux (via galaxy-gremlins)
 
-It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools – all from a single interface.
+```bash
+sudo pacman -S artixforge
+sudo artixforge
+```
 
-* **Two interfaces:** Terminal UI (keyboard‑only, works in any TTY) and Graphical UI (GTK, mouse‑friendly, launches automatically in desktop environments).
-* Built with `forge-tui` (Rust, ratatui + crossterm) for the TUI and `GTK4` + `libadwaita` + `Python` for the GUI.
-* Custom colour themes (ArtixForge, Artix Blue, Jet Black, Mono, Retro) that persist to the installed system.
-* Resilience hardened: automatic pacman lock recovery, exponential backoff retries, mid‑build resume, disk space checks at every stage.
-* **Build custom live ISOs** from any Quick Profile or full configuration – includes offline package bundles.
-* **System Migration:** convert between init systems (openrc, runit, dinit, s6, systemd), desktop environments, or Arch Linux → Artix without reinstalling.
-* Over 9 trillion system configurations in a standard install, over 1 quintillion with Power User mode.
+## Alternative: Git Clone
+
+For the latest development version or if the package is not yet available in your mirrors:
+
+```bash
+git clone --recursive https://github.com/realvolk/ArtixForge.git
+cd ArtixForge
+chmod +x install
+sudo ./install
+```
+
+You'll be greeted by a main menu where you choose your installation mode.
+
+**If you booted a desktop environment (KDE, XFCE, etc.)**, you will be asked whether you want to use the **Graphical UI (GTK4)** instead of the terminal interface. Answer `Yes` to launch a persistent configuration window with mouse support.
+
+**FAIR WARNING: THE GUI IS EXPERIMENTAL.**
+
+### Logs
+If the installer fails, check the logs before reporting:
+
+```bash
+cat /tmp/artix-installer/install.log
+```
+
+When debug mode is enabled (prompted after mode selection):
+```bash
+cat ~/ArtixForge/artix-debug.log
+```
+
+When migration fails:
+```bash
+cat /tmp/artix-migration-debug.log
+```
+
+These will tell you exactly what went wrong. Include them in any GitHub issue.
 
 ---
 
@@ -85,50 +122,20 @@ It walks you through partitioning, filesystem creation, base system installation
 
 ---
 
-# Installation
+# What is ArtixForge?
 
-## Artix Linux (via galaxy-gremlins)
+ArtixForge is a **modular operating system deployment framework** for Artix Linux (OpenRC, runit, dinit, s6, and BusyBox init).
 
-```bash
-sudo pacman -S artixforge
-sudo artixforge
-```
+It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools – all from a single interface.
 
-## Alternative: Git Clone
+* **Two interfaces:** Terminal UI (keyboard‑only, works in any TTY) and Graphical UI (GTK, mouse‑friendly, launches automatically in desktop environments).
+* Built with `forge-tui` (Rust, ratatui + crossterm) for the TUI and `GTK4` + `libadwaita` + `Python` for the GUI.
+* Custom colour themes (ArtixForge, Artix Blue, Jet Black, Mono, Retro) that persist to the installed system.
+* Resilience hardened: automatic pacman lock recovery, exponential backoff retries, mid‑build resume, disk space checks at every stage.
+* **Build custom live ISOs** from any Quick Profile or full configuration – includes offline package bundles.
+* **System Migration:** convert between init systems (openrc, runit, dinit, s6, systemd), desktop environments, or Arch Linux → Artix without reinstalling.
+* Over 9 trillion system configurations in a standard install, over 1 quintillion with Power User mode.
 
-For the latest development version or if the package is not yet available in your mirrors:
-
-```bash
-git clone --recursive https://github.com/realvolk/ArtixForge.git
-cd ArtixForge
-chmod +x install
-sudo ./install
-```
-
-You'll be greeted by a main menu where you choose your installation mode.
-
-**If you booted a desktop environment (KDE, XFCE, etc.)**, you will be asked whether you want to use the **Graphical UI (GTK4)** instead of the terminal interface. Answer `Yes` to launch a persistent configuration window with mouse support.
-
-**FAIR WARNING: THE GUI IS EXPERIMENTAL.**
-
-### Logs
-If the installer fails, check the logs before reporting:
-
-```bash
-cat /tmp/artix-installer/install.log
-```
-
-When debug mode is enabled (prompted after mode selection):
-```bash
-cat ~/ArtixForge/artix-debug.log
-```
-
-When migration fails:
-```bash
-cat /tmp/artix-migration-debug.log
-```
-
-These will tell you exactly what went wrong. Include them in any GitHub issue.
 
 ---
 
