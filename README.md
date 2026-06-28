@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Version-v9.2.5.2-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
-  <img src="https://img.shields.io/badge/TUI-forge--tui-FFB6C1?style=flat-square" alt="forge-tui">
+  <img src="https://img.shields.io/badge/TUI-forge--tui_(Rust)-FFB6C1?style=flat-square&logo=rust" alt="forge-tui">
   <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
 </p>
