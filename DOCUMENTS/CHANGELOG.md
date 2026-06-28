@@ -1,5 +1,32 @@
 # Changelog
 
+## v9.2.5.1 (2026-06-28) — ArtixForge
+
+### Changed
+- **forge-tui upgraded to 0.2.0** — daemon mode with persistent terminal, no flicker between widgets
+- **`scripts/tui/core.sh`** — `_forge` function now supports daemon mode via Unix socket when `FORGE_TUI_DAEMON=1` is set; falls back to one-shot mode automatically if stdout is not a terminal
+- **Daemon lifecycle** — daemon auto-starts on first `_forge` call, listens on `/tmp/forge-tui.sock`, shuts down cleanly via `{"widget":"quit"}` sent by EXIT trap on installer exit
+- **Terminal detection** — daemon mode automatically disables if stdout is not a terminal (`[[ -t 1 ]]` guard); GUI mode (`--non-interactive`) and piped installs are unaffected
+- **Newline escaping** — `tui_yesno`, `tui_menu`, `tui_menu_custom`, `tui_checklist`, and `tui_filter` escape newlines in message strings (`${msg//$'\n'/\\n}`) before JSON construction; `tui_input` and `tui_password` already handled this in 0.1.0
+- **`_forge_result` array handling** — daemon mode now uses the same `jq` expression as one-shot mode (`if .result | type == "array" then .result[] else .result // .selected // empty end`), fixing checklist and filter widgets that return multi-value arrays
+
+### Added
+- **Daemon mode (opt-in)** — set `FORGE_TUI_DAEMON=1` before launching installer; daemon holds terminal in alternate screen for entire session, eliminating flicker
+- **`--daemon` flag** — `forge-tui` can run as a resident daemon listening on a Unix socket for JSON widget commands
+- **Persistent terminal frame** — daemon mode holds the alternate screen across all widget transitions; no teardown/rebuild between widgets
+- **`nc` dependency** — daemon mode uses `nc -U` for Unix socket communication with the forge-tui daemon; `nc` is already present on all Artix live ISOs
+
+### Fixed
+- **Terminal flicker** — daemon mode eliminates alternate screen teardown/rebuild between every widget; terminal stays in raw mode for entire installer session
+- **`tui_spin` streaming** — daemon mode streams progress output line-by-line from the daemon until a `{"result":"done"}` marker is received; one-shot mode falls back to running the command directly and piping to `log_info`
+- **`_forge_cancelled` daemon path** — now reads cancellation status from daemon response JSON instead of the defunct `_FORGE_LAST_OUT` temp file
+- **EXIT trap cleanup** — trap checks socket existence before sending quit command, preventing errors if daemon died before installer exit
+
+### Security
+- **Socket permissions** — Unix socket created in `/tmp` with default permissions; daemon runs as root, socket inaccessible to non-root users
+- **No persistent state** — daemon holds no data between widget calls; each widget request is stateless
+- **Password handling** — `tui_password` and `tui_password_confirm` pass passwords through `forge-tui`'s stdout (connected to `/dev/tty`); passwords are never written to socket or temp files
+
 ## v9.2.5.0 (2026-06-27) — ArtixForge
 
 ### Changed

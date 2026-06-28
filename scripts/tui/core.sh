@@ -8,6 +8,10 @@ LOG_FILE="/tmp/artix-installer/install.log"
 CHROOT_LOG="/mnt/var/log/artix-installer.log"
 
 FORGE_TUI="${FORGE_TUI:-forge-tui}"
+FORGE_TUI_SOCKET="${FORGE_TUI_SOCKET:-/tmp/forge-tui.sock}"
+FORGE_TUI_DAEMON="${FORGE_TUI_DAEMON:-}"
+
+[[ -t 1 ]] || FORGE_TUI_DAEMON=""
 
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
@@ -40,35 +44,66 @@ log_error() {
 }
 
 _forge() {
-    local _dir _tmp _out
-    _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
-    chmod 700 "$_dir"
-    _tmp="$_dir/input.json"
-    _out="$_dir/output.json"
-    printf '%s\n' "$1" > "$_tmp"
-    "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty
-    _FORGE_LAST_OUT="$_out"
+    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
+        # Daemon mode: send JSON to Unix socket, read response
+        if [[ ! -S "$FORGE_TUI_SOCKET" ]]; then
+            # Start daemon in background
+            "$FORGE_TUI" --daemon --socket "$FORGE_TUI_SOCKET" &
+            # Wait for socket to appear
+            for _ in {1..50}; do
+                [[ -S "$FORGE_TUI_SOCKET" ]] && break
+                sleep 0.05
+            done
+        fi
+        printf '%s\n' "$1" | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null
+    else
+        # One-shot mode: temp file, launch process
+        local _dir _tmp _out
+        _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
+        chmod 700 "$_dir"
+        _tmp="$_dir/input.json"
+        _out="$_dir/output.json"
+        printf '%s\n' "$1" > "$_tmp"
+        "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty 2>/dev/null
+        _FORGE_LAST_OUT="$_out"
+    fi
 }
 
 _forge_result() {
-    _forge "$1"
-    local _json
-    _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
-    jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
+    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
+        local _json
+        _json=$(_forge "$1")
+        jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
+    else
+        _forge "$1"
+        local _json
+        _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
+        jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
+    fi
 }
 
 _forge_cancelled() {
-    _forge "$1"
-    local _json
-    _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
-    [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
+    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
+        local _json
+        _json=$(_forge "$1")
+        [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
+    else
+        _forge "$1"
+        local _json
+        _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
+        [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
+    fi
 }
+
+if [[ -n "$FORGE_TUI_DAEMON" ]]; then
+    trap '[[ -S "$FORGE_TUI_SOCKET" ]] && printf '"'"'{"widget":"quit"}\n'"'"' | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null; rm -f "$FORGE_TUI_SOCKET"' EXIT
+fi
+
 
 tui_msg() {
     local title="${1}" msg="${2}"
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
     _forge '{"widget":"msg","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}' >/dev/null
 }
 
@@ -160,8 +195,9 @@ tui_filter() {
     shift 2
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    msg="${msg//$'\n'/\\n}"
     local choices_json
-    choices_json=$(cat | jq -R . | jq -s .)
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
     _forge_result '{"widget":"filter","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
 }
 
@@ -169,7 +205,24 @@ tui_radiolist() { tui_menu "$@"; }
 
 tui_spin() {
     local title="${1}" cmd="${2}"
-    bash -c "${cmd}" 2>&1 | while IFS= read -r line; do log_info "${line}"; done
+    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
+        # Daemon mode: daemon runs cmd, streams output back line-by-line
+        local escaped_cmd
+        escaped_cmd=$(jq -n --arg c "$cmd" '$c')
+        # Send progress request, read lines until result marker
+        printf '{"widget":"progress","title":"%s","command":["bash","-c",%s]}\n' \
+            "${title//\"/\\\"}" "${escaped_cmd}" \
+            | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null \
+            | while IFS= read -r line; do
+                # Check for end-of-stream marker
+                if [[ "$line" == '{"result":"done"}' ]] || [[ "$line" == '{"result":'* ]]; then
+                    break
+                fi
+                log_info "${line}"
+            done
+    else
+        bash -c "${cmd}" 2>&1 | while IFS= read -r line; do log_info "${line}"; done
+    fi
 }
 
 tui_show_file() {
