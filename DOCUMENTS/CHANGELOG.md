@@ -1,5 +1,18 @@
 # Changelog
 
+## v9.2.5.3 (2026-06-28) — ArtixForge
+
+### Changed
+- **`install` refactored** — extracted `run_migration()`, `run_iso_build()`, and `_gui_launch()` functions; eliminated duplicate pipeline stage sequences, migration dispatch, and GUI startup blocks
+- **`run_install_pipeline` unified** — non-interactive auto/manual/power modes now call `run_install_pipeline` instead of repeating the stage list inline; `stage_poweruser` failure is non-fatal everywhere (`|| true`), not just in non-interactive mode
+- **`resume_install` handles migration/ISO** — non-interactive resume delegates to `resume_install()` which already detects migration-stage.conf and iso-build-stage.conf
+- **GUI launch deduplicated** — local `forge-gui` and PATH `forge-gui` share the same venv setup and config flow via `_gui_launch()`; `grep MODE=` replaced with `state_get`
+- **`start_iso_build` replaced** — undefined function replaced with `run_iso_build()` which is shared between interactive and non-interactive paths
+
+### Fixed
+- **Missing `start_iso_build` function** — ISO mode in interactive menu called an undefined function; now uses `run_iso_build`
+- **Non-interactive migration resume** — no longer skips state_load before running migration
+
 ## v9.2.5.2 (2026-06-28) — ArtixForge
 
 ### Changed

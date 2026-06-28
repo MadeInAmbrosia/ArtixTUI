@@ -89,6 +89,7 @@ check_installer_version() {
 verify_installer_layout() {
     local required_files=( common.sh state.sh kernels.sh )
     local required_dirs=( tui storage install post stages recovery )
+    local file dir
     for file in "${required_files[@]}"; do [[ -f "${SCRIPT_DIR}/${file}" ]] || return 1; done
     for dir in "${required_dirs[@]}"; do [[ -d "${SCRIPT_DIR}/${dir}" ]] || return 1; done
     [[ -d "${SCRIPT_DIR}/tui/menus" ]] || return 1
@@ -150,15 +151,9 @@ main_menu() {
             "Manual – detect existing partitions"
         )
 
-        if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
-            menu_items+=("Resume Migration – continue interrupted migration")
-        fi
-        if [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
-            menu_items+=("Resume ISO Build – continue interrupted ISO build")
-        fi
-        if [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null; then
-            menu_items+=("Resume Installation – continue interrupted install")
-        fi
+        [[ -f /tmp/artix-installer/migration-stage.conf ]] && menu_items+=("Resume Migration – continue interrupted migration")
+        [[ -f /tmp/artix-installer/iso-build-stage.conf ]] && menu_items+=("Resume ISO Build – continue interrupted ISO build")
+        [[ -f "${STATE_FILE}" ]] && grep -q '^DISK=' "${STATE_FILE}" 2>/dev/null && menu_items+=("Resume Installation – continue interrupted install")
 
         menu_items+=("Advanced – recovery, power user, migration, ISO")
 
@@ -203,13 +198,79 @@ run_install_pipeline() {
     stage_preflight || die 'preflight stage failed'
     stage_storage   || die 'storage stage failed'
     stage_base      || die 'base stage failed'
-    if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
-        stage_poweruser || die 'power user build stage failed'
-    fi
+    [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || true
     stage_chroot    || die 'chroot stage failed'
     stage_init      || die 'init configuration stage failed'
     stage_post      || die 'post-install stage failed'
     stage_finalize  || die 'finalization stage failed'
+}
+
+run_migration() {
+    local mig_type mig_src mig_tgt
+    mig_type="$(state_get MIGRATION_TYPE '')"
+    mig_src="$(state_get MIGRATION_SRC '')"
+    mig_tgt="$(state_get MIGRATION_TGT '')"
+    [[ -n "${mig_type}" && -n "${mig_src}" && -n "${mig_tgt}" ]] || die "Migration state incomplete"
+    log_info "Running migration: ${mig_type} ${mig_src} → ${mig_tgt}"
+    case "${mig_type}" in
+        ata)
+            [[ -f "${BASE_DIR}/migrations/ata/ata-migrate.sh" ]] || die "ATA migration module not found"
+            source "${BASE_DIR}/migrations/ata/ata-migrate.sh"
+            ata_migrate_main
+            ;;
+        init)
+            source "${BASE_DIR}/migrations/inits/common.sh"
+            run_init_migration "${mig_src}" "${mig_tgt}"
+            ;;
+        desktop)
+            source "${BASE_DIR}/migrations/des/common.sh"
+            run_de_migration "${mig_src}" "${mig_tgt}"
+            ;;
+        *) die "Unknown migration type: ${mig_type}" ;;
+    esac
+}
+
+run_iso_build() {
+    if ! command -v buildiso &>/dev/null; then
+        log_info "Installing artools and iso-profiles..."
+        pacman -S --noconfirm artools iso-profiles || die "Failed to install artools"
+        modprobe loop
+    fi
+    source "${BASE_DIR}/iso/tui.sh"
+    local profile_name init kernel offline boot_mode
+    profile_name="$(state_get QUICK_PROFILE 'Desktop')"
+    init="$(state_get INIT 'openrc')"
+    kernel="$(state_get KERNEL_CHOICE 'linux')"
+    offline="$(state_get ALLOW_OFFLINE 'no')"
+    boot_mode="$(state_get ISO_BOOT_MODE 'live')"
+    source "${BASE_DIR}/iso/build.sh"
+    build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
+}
+
+_gui_launch() {
+    local venv_dir="/tmp/artix-gui-venv"
+    if [[ ! -d "${venv_dir}" ]]; then
+        log_info "Setting up Python virtual environment for GUI..."
+        pacman -S --noconfirm --needed python-virtualenv gtk4 libadwaita python-gobject python-jsonschema
+        python3 -m venv "${venv_dir}" --system-site-packages
+        "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
+    fi
+    unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
+    export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
+    export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
+    export DISPLAY="${DISPLAY:-:0}"
+    export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
+    command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
+
+    if [[ -d "${BASE_DIR}/forge-gui" ]]; then
+        cd "${BASE_DIR}/forge-gui" && PYTHONPATH=".:${PYTHONPATH:-}" "${venv_dir}/bin/python3" -m forge_ui.cli --mode config > /tmp/gui-output.log 2>&1 || true
+    elif command -v forge-gui &>/dev/null; then
+        forge-gui --mode config
+    else
+        log_error "GUI installer not found"
+        return 1
+    fi
+    return 0
 }
 
 start_auto_install() {
@@ -233,13 +294,17 @@ start_manual_install() {
 resume_install() {
     if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
         log_info "Resuming migration..."
+        state_load
+        run_migration
         return 0
     fi
     if [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
         log_info "Resuming ISO build..."
+        state_load
+        run_iso_build
         return 0
     fi
-    if [[ ! -f "${STATE_FILE}" ]]; then die 'no saved installer state found'; fi
+    [[ -f "${STATE_FILE}" ]] || die 'no saved installer state found'
     state_load
     [[ -n "${DISK:-}" ]] || die 'saved installer state is incomplete'
     run_install_pipeline
@@ -366,58 +431,17 @@ main() {
         state_load
         MODE="$(state_get MODE auto)"
         log_info "Non‑interactive mode: ${MODE}"
+
         case "${MODE}" in
             auto|manual)
                 state_set INSTALL_MODE "${MODE}"
-                stage_preflight || die 'preflight stage failed'
-                stage_storage   || die 'storage stage failed'
-                stage_base      || die 'base stage failed'
-                [[ "$(state_get POWER_USER no)" == "yes" ]] && stage_poweruser || true
-                stage_chroot    || die 'chroot stage failed'
-                stage_init      || die 'init configuration stage failed'
-                stage_post      || die 'post-install stage failed'
-                stage_finalize  || die 'finalization stage failed'
+                run_install_pipeline
                 ;;
             resume)
                 if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
-                    local mig_type mig_src mig_tgt
-                    state_load
-                    mig_type="$(state_get MIGRATION_TYPE '')"
-                    mig_src="$(state_get MIGRATION_SRC '')"
-                    mig_tgt="$(state_get MIGRATION_TGT '')"
-                    if [[ -n "${mig_type}" && -n "${mig_src}" && -n "${mig_tgt}" ]]; then
-                        log_info "Resuming migration: ${mig_type} ${mig_src} → ${mig_tgt}"
-                        case "${mig_type}" in
-                            ata)
-                                if [[ -f "${BASE_DIR}/migrations/ata/ata-migrate.sh" ]]; then
-                                    source "${BASE_DIR}/migrations/ata/ata-migrate.sh"
-                                    ata_migrate_main
-                                else
-                                    die "ATA migration module not found"
-                                fi
-                                ;;
-                            init)
-                                source "${BASE_DIR}/migrations/inits/common.sh"
-                                run_init_migration "${mig_src}" "${mig_tgt}"
-                                ;;
-                            desktop)
-                                source "${BASE_DIR}/migrations/des/common.sh"
-                                run_de_migration "${mig_src}" "${mig_tgt}"
-                                ;;
-                            *) die "Unknown migration type: ${mig_type}" ;;
-                        esac
-                    fi
+                    run_migration
                 elif [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
-                    local profile_name init kernel offline boot_mode
-                    state_load
-                    profile_name="$(state_get QUICK_PROFILE 'Desktop')"
-                    init="$(state_get INIT 'openrc')"
-                    kernel="$(state_get KERNEL_CHOICE 'linux')"
-                    offline="$(state_get ALLOW_OFFLINE 'no')"
-                    boot_mode="$(state_get ISO_BOOT_MODE 'live')"
-                    log_info "Resuming ISO build: ${profile_name}"
-                    source "${BASE_DIR}/iso/build.sh"
-                    build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
+                    run_iso_build
                 else
                     resume_install
                 fi
@@ -444,67 +468,16 @@ main() {
                         start_auto_install
                         return
                         ;;
-                    *)
-                        tui_msg "System Status" "$(recovery_get_status)"
-                        ;;
+                    *) tui_msg "System Status" "$(recovery_get_status)" ;;
                 esac
                 log_info "Recovery action completed."
                 ;;
             power)
                 state_set POWER_USER "yes"
-                stage_preflight || die 'preflight stage failed'
-                stage_storage   || die 'storage stage failed'
-                stage_base      || die 'base stage failed'
-                stage_poweruser || die 'power user stage failed'
-                stage_chroot    || die 'chroot stage failed'
-                stage_init      || die 'init configuration stage failed'
-                stage_post      || die 'post-install stage failed'
-                stage_finalize  || die 'finalization stage failed'
+                run_install_pipeline
                 ;;
-            iso)
-                if ! command -v buildiso &>/dev/null; then
-                    log_info "Installing artools and iso-profiles..."
-                    pacman -S --noconfirm artools iso-profiles || die "Failed to install artools"
-                    modprobe loop
-                fi
-                source "${BASE_DIR}/iso/tui.sh"
-                local profile_name init kernel offline boot_mode
-                profile_name="$(state_get QUICK_PROFILE 'Desktop')"
-                init="$(state_get INIT 'openrc')"
-                kernel="$(state_get KERNEL_CHOICE 'linux')"
-                offline="$(state_get ALLOW_OFFLINE 'no')"
-                boot_mode="$(state_get ISO_BOOT_MODE 'live')"
-                source "${BASE_DIR}/iso/build.sh"
-                build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
-                ;;
-            migrate)
-                local mig_type mig_src mig_tgt
-                mig_type="$(state_get MIGRATION_TYPE '')"
-                mig_src="$(state_get MIGRATION_SRC '')"
-                mig_tgt="$(state_get MIGRATION_TGT '')"
-                if [[ -z "${mig_type}" || -z "${mig_src}" || -z "${mig_tgt}" ]]; then
-                    die "Migration state incomplete – run GUI configuration first"
-                fi
-                case "${mig_type}" in
-                    ata)
-                        if [[ -f "${BASE_DIR}/migrations/ata/ata-migrate.sh" ]]; then
-                            source "${BASE_DIR}/migrations/ata/ata-migrate.sh"
-                            ata_migrate_main
-                        else
-                            die "ATA migration module not found"
-                        fi
-                        ;;
-                    init)
-                        source "${BASE_DIR}/migrations/inits/common.sh"
-                        run_init_migration "${mig_src}" "${mig_tgt}"
-                        ;;
-                    desktop)
-                        source "${BASE_DIR}/migrations/des/common.sh"
-                        run_de_migration "${mig_src}" "${mig_tgt}"
-                        ;;
-                    *) die "Unknown migration type: ${mig_type}" ;;
-                esac
-                ;;
+            iso)   run_iso_build ;;
+            migrate) run_migration ;;
             *)
                 log_error "Unknown mode: ${MODE}"
                 exit 1
@@ -515,49 +488,12 @@ main() {
     fi
 
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-        if [[ -d "${BASE_DIR}/forge-gui" ]]; then
+        if [[ -d "${BASE_DIR}/forge-gui" ]] || command -v forge-gui &>/dev/null; then
             if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
                 clear
                 log_info "Launching GUI configuration window..."
-                export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
-                export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
-                export DISPLAY="${DISPLAY:-:0}"
-                export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
-                command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
-
-                local venv_dir="/tmp/artix-gui-venv"
-                if [[ ! -d "${venv_dir}" ]]; then
-                    log_info "Setting up Python virtual environment for GUI..."
-                    pacman -S --noconfirm --needed python-virtualenv gtk4 libadwaita python-gobject python-jsonschema
-                    python3 -m venv "${venv_dir}" --system-site-packages
-                    "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
-                fi
-                unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
-                cd "${BASE_DIR}/forge-gui" && PYTHONPATH=".:${PYTHONPATH:-}" "${venv_dir}/bin/python3" -m forge_ui.cli --mode config > /tmp/gui-output.log 2>&1 || true
-
-                if [[ -f "${STATE_FILE}" ]] && grep -q '^MODE=' "${STATE_FILE}" 2>/dev/null; then
+                if _gui_launch && [[ -f "${STATE_FILE}" ]] && grep -q '^MODE=' "${STATE_FILE}" 2>/dev/null; then
                     log_info "GUI configuration complete. Starting installation..."
-                    MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
-                    MODE="${MODE:-auto}"
-                    log_info "Mode: ${MODE}"
-                    exec "$0" --non-interactive
-                    exit 0
-                else
-                    log_error "GUI configuration was not completed. Falling back to TUI."
-                fi
-            fi
-        elif command -v forge-gui &>/dev/null; then
-            if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
-                clear
-                log_info "Launching GUI configuration window from PATH..."
-                export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
-                export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
-                forge-gui --mode config
-                if [[ -f "${STATE_FILE}" ]] && grep -q '^MODE=' "${STATE_FILE}" 2>/dev/null; then
-                    log_info "GUI configuration complete. Starting installation..."
-                    MODE="$(grep '^MODE=' "${STATE_FILE}" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')"
-                    MODE="${MODE:-auto}"
-                    log_info "Mode: ${MODE}"
                     exec "$0" --non-interactive
                     exit 0
                 else
@@ -587,7 +523,7 @@ main() {
         recovery) start_recovery_install ;;
         power)    MODE='power' ; state_set POWER_USER "yes" ; start_auto_install ;;
         migrate)  start_system_migration ;;
-        iso)      start_iso_build ;;
+        iso)      run_iso_build ;;
         *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
 }
