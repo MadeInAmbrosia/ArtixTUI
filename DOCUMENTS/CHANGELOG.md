@@ -1,5 +1,18 @@
 # Changelog
 
+## v9.2.6.1 (2026-06-29) — ArtixForge
+
+### Changed
+- **Disk & partition flow unified** — whole-disk auto-partitioning and manual partition selection merged into single "Installation" path; `tui_partition_setup()` called immediately after disk selection (`scripts/tui/menus/main.sh`, `scripts/stages/storage.sh`)
+- **Main menu simplified** — "Automatic" and "Manual" merged into "Installation – guided setup"; `start_manual_install()` removed (`install`)
+- **Swap moved to disk setup** — swap configuration happens during disk/partition selection instead of a separate prompt; duplicate swap questionnaire removed from `partition_disk()` (`scripts/storage/partition.sh`)
+- **GUI disk page redesigned** — single page with whole-disk toggle, swap, LUKS, LVM, and manual partitioning instructions; `automatic.py` renamed to `installation.py`, `manual.py` removed (`forge_ui/forge_ui/artixgui/`)
+- **GUI mode select updated** — "Automatic" and "Manual" cards replaced with single "Installation" card; `ModeSelectPage` imports `InstallationWizard` (`forge_ui/forge_ui/artixgui/mode_select.py`)
+- **Recovery disk selection** — `recovery_mount_all()` now prompts for target disk before scanning; LUKS, root filesystem, and ESP detection scoped to selected disk (`scripts/recovery/core.sh`)
+
+### Fixed
+- **GUI poweruser import** — `PowerUserWizard._create_disk_page()` now references `InstallationWizard` instead of deleted `AutomaticWizard`
+
 ## v9.2.6.0 (2026-06-29) — ArtixForge
 
 ### Changed

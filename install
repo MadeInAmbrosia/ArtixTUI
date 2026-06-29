@@ -147,8 +147,7 @@ detect_boot_mode() {
 main_menu() {
     while true; do
         local -a menu_items=(
-            "Automatic – guided installation"
-            "Manual – detect existing partitions"
+            "Installation – guided setup"
         )
 
         [[ -f /tmp/artix-installer/migration-stage.conf ]] && menu_items+=("Resume Migration – continue interrupted migration")
@@ -161,8 +160,7 @@ main_menu() {
         mode=$(tui_menu "ArtixForge v9" "Select installation mode:" "${menu_items[@]}") || exit 1
 
         case "${mode}" in
-            Automatic*)     MODE='auto' ; break ;;
-            Manual*)        MODE='manual' ; break ;;
+            Installation*)  MODE='auto' ; break ;;
             Advanced*)
                 local advanced_choice
                 advanced_choice=$(tui_menu "Advanced" "Select advanced mode:" \
@@ -282,12 +280,6 @@ start_auto_install() {
     fi
     state_save
     rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
-    run_install_pipeline
-}
-
-start_manual_install() {
-    rm -f /tmp/artix-installer/state.conf
-    state_set INSTALL_MODE manual
     run_install_pipeline
 }
 
@@ -433,8 +425,7 @@ main() {
         log_info "Non‑interactive mode: ${MODE}"
 
         case "${MODE}" in
-            auto|manual)
-                state_set INSTALL_MODE "${MODE}"
+            auto)
                 run_install_pipeline
                 ;;
             resume)
@@ -519,7 +510,6 @@ main() {
 
     case "${MODE}" in
         auto)     start_auto_install ;;
-        manual)   start_manual_install ;;
         resume)   resume_install ;;
         recovery) start_recovery_install ;;
         power)    MODE='power' ; state_set POWER_USER "yes" ; start_auto_install ;;

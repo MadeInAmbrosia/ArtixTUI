@@ -4,13 +4,22 @@ set -Eeuo pipefail
 readonly ROOT="/mnt"
 
 recovery_mount_all() {
+    local target_disk=""
+
+    if tui_yesno "Recovery Disk" "Select the disk containing your installation?"; then
+        tui_select_disk
+        target_disk="$(state_get DISK)"
+        [[ -b "${target_disk}" ]] || die "Invalid disk selected"
+        log_info "Scanning ${target_disk} for existing installation..."
+    fi
+
     local -a luks_parts=()
     local part
     while IFS= read -r part; do
         if cryptsetup isLuks "$part" &>/dev/null; then
             luks_parts+=("$part")
         fi
-    done < <(lsblk -n -o PATH)
+    done < <(lsblk -n -o PATH "${target_disk}" 2>/dev/null || lsblk -n -o PATH)
 
     if [[ ${#luks_parts[@]} -gt 0 ]]; then
         tui_msg "LUKS Container Found" "Found encrypted partition(s): ${luks_parts[*]}"
@@ -60,7 +69,7 @@ recovery_mount_all() {
     fi
 
     if [[ -z "${root_candidate}" ]]; then
-        log_info "No LUKS/LVM root found — scanning plain partitions..."
+        log_info "No LUKS/LVM root found — scanning partitions..."
         while IFS= read -r dev; do
             local fs_type
             fs_type=$(blkid -o value -s TYPE "${dev}" 2>/dev/null || true)
@@ -68,7 +77,7 @@ recovery_mount_all() {
                 root_candidate="${dev}"
                 break
             fi
-        done < <(lsblk -no PATH 2>/dev/null | grep -v '/dev/loop')
+        done < <(lsblk -no PATH "${target_disk}" 2>/dev/null || lsblk -no PATH | grep -v '/dev/loop')
     fi
 
     if [[ -z "${root_candidate}" ]]; then
@@ -79,12 +88,17 @@ recovery_mount_all() {
     mount "${root_candidate}" /mnt || die "Failed to mount root"
 
     local esp=""
-    for candidate in /dev/sda1 /dev/nvme0n1p1 /dev/vda1; do
-        if [[ -b "${candidate}" ]] && blkid -o value -s TYPE "${candidate}" 2>/dev/null | grep -qi 'vfat'; then
-            esp="${candidate}"
-            break
-        fi
-    done
+    if [[ -n "${target_disk}" ]]; then
+        esp=$(lsblk -nlo PATH,TYPE "${target_disk}" 2>/dev/null | grep 'vfat' | head -n1 | awk '{print $1}')
+    fi
+    if [[ -z "${esp}" ]]; then
+        for candidate in /dev/sda1 /dev/nvme0n1p1 /dev/vda1; do
+            if [[ -b "${candidate}" ]] && blkid -o value -s TYPE "${candidate}" 2>/dev/null | grep -qi 'vfat'; then
+                esp="${candidate}"
+                break
+            fi
+        done
+    fi
     if [[ -n "${esp}" ]]; then
         mkdir -p /mnt/boot/efi
         mount "${esp}" /mnt/boot/efi || log_warn "Failed to mount ESP"

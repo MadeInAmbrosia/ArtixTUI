@@ -12,6 +12,88 @@ tui_select_disk() {
     state_set DISK "${disk}"
 }
 
+tui_partition_setup() {
+    local disk
+    disk="$(state_get DISK)"
+    [[ -b "${disk}" ]] || die "No disk selected"
+
+    if tui_yesno "Partition Scheme" "Use the entire disk ${disk}?"; then
+        if tui_yesno "Swap" "Create a swap partition?"; then
+            local mem_gib
+            mem_gib=$(awk '/MemTotal/ {printf "%d", ($2 / 1024 / 1024) + 1}' /proc/meminfo)
+            local default_swap
+            if   [[ "${mem_gib}" -le 8 ]]; then default_swap='4G'
+            elif [[ "${mem_gib}" -le 16 ]]; then default_swap='8G'
+            else default_swap='16G'; fi
+            local swap_size
+            swap_size=$(tui_input "Swap Size" "Recommended: ${default_swap}" "${default_swap}") || die "Swap size required"
+            state_set SWAP_ENABLED "yes"
+            state_set SWAP_SIZE "${swap_size}"
+        else
+            state_set SWAP_ENABLED "no"
+            state_set SWAP_SIZE "0"
+        fi
+        state_set EFI_PART ""
+        state_set ROOT_PART ""
+        state_set SWAP_PART ""
+        return 0
+    fi
+
+    local -a parts=()
+    while IFS= read -r line; do
+        parts+=("$line")
+    done < <(lsblk -nlo NAME,SIZE,TYPE,MOUNTPOINT "${disk}" | grep -E 'part' || true)
+
+    if [[ ${#parts[@]} -eq 0 ]]; then
+        if tui_yesno "No Partitions" "No partitions found on ${disk}. Launch cfdisk?"; then
+            cfdisk "${disk}"
+            partprobe "${disk}"
+            udevadm settle
+            sleep 1
+            while IFS= read -r line; do
+                parts+=("$line")
+            done < <(lsblk -nlo NAME,SIZE,TYPE,MOUNTPOINT "${disk}" | grep -E 'part' || true)
+            if [[ ${#parts[@]} -eq 0 ]]; then
+                die "Still no partitions found after cfdisk. Cannot continue."
+            fi
+        else
+            die "Cannot continue without partitions"
+        fi
+    fi
+
+    local efi_choice
+    efi_choice=$(printf '%s\n' "${parts[@]}" | tui_menu "EFI Partition" "Select EFI system partition (≥512 MiB):") || die "EFI partition required"
+    local efi_part="/dev/$(echo "${efi_choice}" | awk '{print $1}')"
+    state_set EFI_PART "${efi_part}"
+
+    local -a root_candidates=()
+    for part in "${parts[@]}"; do
+        [[ "/dev/$(echo "${part}" | awk '{print $1}')" != "${efi_part}" ]] && root_candidates+=("${part}")
+    done
+    if [[ ${#root_candidates[@]} -eq 0 ]]; then
+        die "No partitions available for root (only EFI found). Create more partitions."
+    fi
+    local root_choice
+    root_choice=$(printf '%s\n' "${root_candidates[@]}" | tui_menu "Root Partition" "Select root partition:") || die "Root partition required"
+    state_set ROOT_PART "/dev/$(echo "${root_choice}" | awk '{print $1}')"
+
+    if tui_yesno "Swap" "Do you have a swap partition?"; then
+        local swap_choice
+        swap_choice=$(printf '%s\n' "${parts[@]}" | tui_menu "Swap Partition" "Select swap partition:") || true
+        if [[ -n "${swap_choice}" ]]; then
+            state_set SWAP_PART "/dev/$(echo "${swap_choice}" | awk '{print $1}')"
+            state_set SWAP_ENABLED "yes"
+            state_set SWAP_SIZE "0"
+        else
+            state_set SWAP_ENABLED "no"
+            state_set SWAP_SIZE "0"
+        fi
+    else
+        state_set SWAP_ENABLED "no"
+        state_set SWAP_SIZE "0"
+    fi
+}
+
 tui_select_init() {
     local init
     init=$(tui_menu "Init System" "Select init system:" \
@@ -128,6 +210,7 @@ tui_collect_install_config() {
     fi
     tui_select_theme
     tui_select_disk
+    tui_partition_setup
     if tui_quick_install; then
         if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
             tui_select_poweruser
