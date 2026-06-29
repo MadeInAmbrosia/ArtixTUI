@@ -230,3 +230,9 @@ tui_show_file() {
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     _forge '{"widget":"summary","title":"'"${title//\"/\\\"}"'","file":"'"${file}"'"}' >/dev/null
 }
+
+tui_edit() {
+    local title="${1}" file="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(_theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    _forge '{"widget":"text","title":"'"${title//\"/\\\"}"'","file":"'"${file}"'"}' >/dev/null
+}
