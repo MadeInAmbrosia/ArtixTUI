@@ -114,6 +114,11 @@ build_package() {
         return $?
     fi
 
+    log_info "  Creating package artifact..."
+    tar -caf "${ARTIFACTS_DIR}/${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst" -C "${PKG_DESTDIR}" . 2>>"${log_file}" || {
+        log_warn "Failed to create artifact tarball (non-fatal)"
+    }
+
     log_info "  Installing ${pkgname}..."
     if [[ "${pkgname}" == "linux-custom" ]]; then
         mkdir -p /mnt/boot /mnt/usr/lib/modules /mnt/etc/mkinitcpio.d

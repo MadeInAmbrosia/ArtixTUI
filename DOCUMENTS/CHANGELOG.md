@@ -1,5 +1,31 @@
 # Changelog
 
+## v9.2.6.0 (2026-06-29) — ArtixForge
+
+### Changed
+- **Power User upgraded** — `anvil` build system now targets Portage parity while staying transparent to Artix users
+- **`lib/flags.bash`** — added `use_enable()` function for recipe feature flag queries; `flags_hash()` includes selected features so flag changes trigger rebuilds
+- **`lib/recipe.bash`** — `load_recipe()` now resets `provides` array and guards against recipe variable leaks; `provides` field enables virtual package resolution
+- **`lib/deps.bash`** — `resolve_deps()` builds a provider map from recipe `provides` arrays; virtual dependencies resolve to concrete packages during topological sort
+- **`lib/builder.bash`** — `build_package()` creates binary artifact tarball (`pkg.tar.zst`) after packaging phase for reuse; artifact cache populated automatically
+- **`anvil_tui.bash`** — rewritten from gum/FIFO transport to forge-tui/temp file transport; matches installer's one-shot TUI mode; newline escaping added to all widget calls; function signatures unchanged
+- **Debug log readability** — `PS4` now strips path prefixes (`${BASH_SOURCE##*/}`); `ERR` trap injects `!!! ERROR at <file>:<line> in <function> (rc=<code>)` marker before failing line
+
+### Fixed
+- **GRUB + LVM installation failure** — `grub-install` now receives `--modules "part_gpt part_msdos fat lvm dm-mod ext2"` when LVM is enabled; module embedding is required for `grub-probe` to resolve `/dev/mapper/` paths inside chroot; `GRUB_PRELOAD_MODULES` config line retained for `grub-mkconfig` (`scripts/install/bootloaders/grub.sh`)
+- **DWM/i3wm installation failure** — `tui_select_arch_repos()` now forces Arch repositories for `dwm` and `i3wm` (packages are in Arch community repo, not Artix); matches existing behavior for hyprland/niri/mango (`scripts/tui/menus/advanced.sh`)
+- **Quick profile DWM Arch repos** — `_qp_dwm` and `_qp_i3` set `ENABLE_ARCH_REPOS` to `yes` so pre-configured profiles don't hit the same missing-package error (`scripts/tui/menus/quick_profiles.sh`)
+- **Power User recipe variable leak** — `load_recipe()` now defaults all arrays to empty if recipe doesn't set them; prevents stale data from previous recipe loads
+- **Kernel keyboard support** — `USB_HID=m` changed to `USB_HID=y` so USB keyboards work at boot without initramfs module
+
+### Added
+- **Binary package artifacts** — source-built packages now produce `.pkg.tar.zst` files in `build/artifacts/`; `cache_hit()` can reuse them on rebuild with matching flags
+- **Virtual package resolution** — recipes can declare `provides=(virtual/libc)` to satisfy dependencies that request a virtual rather than a concrete package; `resolve_deps()` maps virtuals to providers automatically
+
+### Security
+- **anvil temp files** — TUI transport uses `chmod 700` directories for JSON input/output; matches installer's security model
+- **anvil tty isolation** — `forge-tui` renders to `/dev/tty` with explicit redirect; no terminal hijacking
+
 ## v9.2.5.3 (2026-06-28) — ArtixForge
 
 ### Changed

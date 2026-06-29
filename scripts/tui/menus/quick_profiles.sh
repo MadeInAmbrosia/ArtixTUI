@@ -90,8 +90,8 @@ _qp_hyprland(){ _qp_wayland "hyprland" "yes" "git firefox alacritty waybar wofi 
 _qp_sway()    { _qp_wayland "sway"     "no"  "git firefox alacritty waybar wofi swaybg swaylock fzf zoxide starship eza btop tmux"; state_set QUICK_PROFILE "Sway";     _qp_confirm "Sway"; }
 _qp_niri()    { _qp_wayland "niri"     "no"  "git firefox alacritty waybar fuzzel swaybg swaylock fzf zoxide starship eza btop tmux"; state_set QUICK_PROFILE "Niri";     _qp_confirm "Niri"; }
 
-_qp_i3()      { _qp_desktop "i3wm"  "lightdm" "xlibre" "no" "git firefox alacritty fzf zoxide starship eza btop tmux"; state_set QUICK_PROFILE "i3wm";  _qp_confirm "i3wm"; }
-_qp_dwm()     { _qp_desktop "dwm"   "lightdm" "xlibre" "no" "git firefox st fzf zoxide starship eza tmux";           state_set QUICK_PROFILE "dwm";   _qp_confirm "dwm"; }
+_qp_i3()      { _qp_desktop "i3wm"  "lightdm" "xlibre" "yes" "git firefox alacritty fzf zoxide starship eza btop tmux"; state_set QUICK_PROFILE "i3wm";  _qp_confirm "i3wm"; }
+_qp_dwm()     { _qp_desktop "dwm"   "lightdm" "xlibre" "yes" "git firefox st fzf zoxide starship eza tmux";           state_set QUICK_PROFILE "dwm";   _qp_confirm "dwm"; }
 
 _qp_lxqt()    { _qp_desktop "lxqt"    "sddm"    "xlibre" "no" "git firefox alacritty fzf zoxide starship eza btop tmux"; state_set QUICK_PROFILE "LXQt";    _qp_confirm "LXQt"; }
 _qp_lxde()    { _qp_desktop "lxde"    "lightdm" "xlibre" "no" "git firefox alacritty fzf zoxide starship eza btop tmux"; state_set QUICK_PROFILE "LXDE";    _qp_confirm "LXDE"; }

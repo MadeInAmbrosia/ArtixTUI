@@ -9,6 +9,11 @@ load_profile() {
     export ARTIX_PROFILE="${profile_name}"
 }
 
+use_enable() {
+    local flag="${1}"
+    [[ " ${selected_features[*]:-} " =~ " ${flag} " ]] && return 0 || return 1
+}
+
 apply_pkg_flags() {
     ARTIX_CFLAGS="${PKG_CFLAGS:-${ARTIX_CFLAGS}}"
     ARTIX_CXXFLAGS="${PKG_CXXFLAGS:-${ARTIX_CXXFLAGS}}"

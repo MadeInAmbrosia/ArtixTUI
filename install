@@ -510,8 +510,9 @@ main() {
         export ARTIX_DEBUG='true'
         exec 19> "${BASE_DIR}/artix-debug.log"
         export BASH_XTRACEFD=19
-        export PS4='+ ${BASH_SOURCE}:${LINENO}:${FUNCNAME[0]}: '
+        export PS4='+ ${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]}: '
         set -x
+        trap 'printf "!!! ERROR at %s:%s in %s (rc=%s)\n" "${BASH_SOURCE##*/}" "${LINENO}" "${FUNCNAME[0]:-main}" "$?" >&19' ERR
     fi
 
     check_installer_version

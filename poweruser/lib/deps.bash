@@ -5,7 +5,16 @@ resolve_deps() {
     local -a pkgs=("$@")
     local -A in_degree=()
     local -A edges=()
+    local -A providers=()
     local pkg dep
+
+    # Build provider map from all recipes
+    for pkg in "${pkgs[@]}"; do
+        load_recipe "${pkg}"
+        for provided in "${provides[@]}"; do
+            providers["${provided}"]="${pkg}"
+        done
+    done
 
     for pkg in "${pkgs[@]}"; do
         in_degree["${pkg}"]=0
@@ -15,8 +24,12 @@ resolve_deps() {
     for pkg in "${pkgs[@]}"; do
         load_recipe "${pkg}"
         for dep in "${depends[@]}" "${makedepends[@]}"; do
-            if [[ " ${pkgs[*]} " =~ " ${dep} " ]]; then
-                edges["${dep}"]+="${pkg} "
+            local resolved="${dep}"
+            if [[ -n "${providers["${dep}"]:-}" ]]; then
+                resolved="${providers["${dep}"]}"
+            fi
+            if [[ " ${pkgs[*]} " =~ " ${resolved} " ]]; then
+                edges["${resolved}"]+="${pkg} "
                 in_degree["${pkg}"]=$((in_degree["${pkg}"] + 1))
             fi
         done
