@@ -238,7 +238,7 @@ _submenu_disk() {
             "BTRFS layout"*)       tui_select_btrfs_layout ;;
             "Swap"*)               tui_configure_swap ;;
             "LUKS encryption"*)    tui_select_luks ;;
-            "LVM"*)                tui_select_luks ;;
+            "LVM"*)                tui_select_lvm ;;
             Back*) return ;;
         esac
     done

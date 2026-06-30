@@ -61,34 +61,20 @@ _forge() {
         _out="$_dir/output.json"
         printf '%s\n' "$1" > "$_tmp"
         "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty 2>/dev/null
-        _FORGE_LAST_OUT="$_out"
+        cat "$_out" 2>/dev/null
     fi
 }
 
 _forge_result() {
-    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
-        local _json
-        _json=$(_forge "$1")
-        jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
-    else
-        _forge "$1"
-        local _json
-        _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
-        jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
-    fi
+    local _json
+    _json=$(_forge "$1")
+    jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
 }
 
 _forge_cancelled() {
-    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
-        local _json
-        _json=$(_forge "$1")
-        [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
-    else
-        _forge "$1"
-        local _json
-        _json=$(cat "$_FORGE_LAST_OUT" 2>/dev/null)
-        [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
-    fi
+    local _json
+    _json=$(_forge "$1")
+    [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
 }
 
 if [[ -n "$FORGE_TUI_DAEMON" ]]; then

@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-tui_select_luks() {
+tui_toggle_lvm() {
+    if tui_yesno "LVM" "Enable Logical Volume Management (LVM)?"; then
+        state_set USE_LVM "yes"
+    else
+        state_set USE_LVM "no"
+    fi
+}
+
+tui_toggle_luks() {
     if tui_yesno "Disk Encryption" "Enable LUKS full disk encryption?"; then
         state_set USE_LUKS "yes"
         local pass
         pass=$(tui_password_confirm "LUKS Passphrase" "Enter passphrase:" "Confirm passphrase:") || return 1
         state_set LUKS_PASS "${pass}"
-        
         if tui_yesno "LUKS Keyfile" "Use a keyfile to avoid typing your password twice at boot?"; then
             state_set LUKS_KEYFILE "yes"
+        else
+            state_set LUKS_KEYFILE "no"
         fi
     else
         state_set USE_LUKS "no"
-    fi
-
-    if tui_yesno "LVM" "Enable Logical Volume Management (LVM)?"; then
-        state_set USE_LVM "yes"
-    else
-        state_set USE_LVM "no"
+        state_set LUKS_PASS ""
+        state_set LUKS_KEYFILE "no"
     fi
 }
 
