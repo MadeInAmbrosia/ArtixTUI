@@ -475,8 +475,8 @@ tui_collect_install_config() {
                     "$(state_get USE_LVM)" "$(state_get HOSTNAME)" "$(state_get TIMEZONE)" \
                     "$(state_get LOCALE)" "$(state_get KEYMAP)" "$(state_get PRIV_ESCALATION)" \
                     "$(state_get ENABLE_ARCH_REPOS)" "$(state_get POWER_USER)" "$(state_get EXTRAS)"
-                tui_msg "Installation Summary" "${summary}"
-                tui_show_sanity_warnings
+                tui_msg "Installation Summary" "${summary}" || true
+                tui_show_sanity_warnings || true
                 ;;
         esac
     done
