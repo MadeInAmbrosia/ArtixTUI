@@ -35,30 +35,16 @@ tui_configure_users() {
             "Done – return to installer") || break
 
         case "${choice}" in
-            "Add a user"*)
-                tui_add_user
-                ;;
-            "Edit a user"*)
-                tui_edit_user
-                ;;
-            "Remove a user"*)
-                tui_remove_user
-                ;;
-            "Done"*)
-                break
-                ;;
+            "Add a user"*)  tui_add_user ;;
+            "Edit a user"*)  tui_edit_user ;;
+            "Remove a user"*) tui_remove_user ;;
+            "Done"*)         break ;;
         esac
     done
 
     if [[ ${USER_COUNT:-0} -eq 0 ]]; then
         tui_msg_quick "No Users" "At least one user account is required."
         tui_add_user
-    fi
-
-    if ! tui_yesno "Root Password" "Set a root password?"; then
-        state_set ROOT_PASS ""
-    else
-        tui_select_root_password
     fi
 }
 
