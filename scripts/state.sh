@@ -84,25 +84,14 @@ state_get() {
 
 state_set() {
     ensure_state_dirs
-    local key="${1}"
-    local value="${2}"
+    local key="${1}" value="${2}"
     export "${key}=${value}"
-    local tmpfile="${STATE_FILE}.tmp.$$"
-    if [[ -f "${STATE_FILE}" ]]; then
-        while IFS= read -r line; do
-            if [[ "${line}" =~ ^${key}= ]]; then
-                printf '%s=%q\n' "${key}" "${value}" >> "${tmpfile}"
-            else
-                printf '%s\n' "${line}" >> "${tmpfile}"
-            fi
-        done < "${STATE_FILE}"
+
+    if [[ -f "${STATE_FILE}" ]] && grep -q "^${key}=" "${STATE_FILE}" 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "${STATE_FILE}"
     else
-        : > "${tmpfile}"
+        printf '%s=%s\n' "${key}" "${value}" >> "${STATE_FILE}"
     fi
-    if ! grep -qE "^${key}=" "${STATE_FILE}" 2>/dev/null; then
-        printf '%s=%q\n' "${key}" "${value}" >> "${tmpfile}"
-    fi
-    mv "${tmpfile}" "${STATE_FILE}"
 }
 
 stage_mark_done() {
