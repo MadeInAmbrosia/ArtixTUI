@@ -448,7 +448,7 @@ main() {
     fi
 
     _artix_welcome
-    sleep 0.2
+    sleep 1
 
     if [[ "${1:-}" == "--non-interactive" ]]; then
         source "${SCRIPT_DIR}/noninteractive.sh"
