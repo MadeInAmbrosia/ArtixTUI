@@ -182,22 +182,24 @@ tui_select_theme() {
 
 _submenu_disk() {
     while true; do
+        local -a items=()
+        items+=("Target disk        [$(state_get DISK none)]")
+        items+=("Partition scheme   [$(if [[ -n "$(state_get EFI_PART '')" ]]; then echo manual; else echo whole-disk; fi)]")
+        items+=("Filesystem         [$(state_get FS_TYPE ext4)]")
+        [[ "$(state_get FS_TYPE ext4)" == "btrfs" ]] && items+=("BTRFS layout       [$(state_get BTRFS_LAYOUT standard)]")
+        items+=("Swap               [$(state_get SWAP_ENABLED no), $(state_get SWAP_SIZE 0)]")
+        items+=("LUKS encryption    [$(state_get USE_LUKS no)]")
+        items+=("LVM                [$(state_get USE_LVM no)]")
+        items+=("Back")
+
         local choice
-        choice=$(tui_menu "Disk & Storage" "Configure disk and filesystem:" \
-            "Target disk        [$(state_get DISK none)]" \
-            "Partition scheme   [$(if [[ -n "$(state_get EFI_PART '')" ]]; then echo manual; else echo whole-disk; fi)]" \
-            "Filesystem         [$(state_get FS_TYPE ext4)]" \
-            "$(if [[ "$(state_get FS_TYPE ext4)" == "btrfs" ]]; then echo "BTRFS layout       [$(state_get BTRFS_LAYOUT standard)]"; fi)" \
-            "Swap               [$(state_get SWAP_ENABLED no), $(state_get SWAP_SIZE 0)]" \
-            "LUKS encryption    [$(state_get USE_LUKS no)]" \
-            "LVM                [$(state_get USE_LVM no)]" \
-            "Back") || return
+        choice=$(tui_menu "Disk & Storage" "Configure disk and filesystem:" "${items[@]}") || return
         case "${choice}" in
             "Target disk"*)        tui_select_disk ;;
             "Partition scheme"*)   tui_partition_setup ;;
             "Filesystem"*)         tui_select_filesystem ;;
             "BTRFS layout"*)       tui_select_btrfs_layout ;;
-            "Swap"*)               tui_partition_setup ;;
+            "Swap"*)               tui_configure_swap ;;
             "LUKS encryption"*)    tui_select_luks ;;
             "LVM"*)                tui_select_luks ;;
             Back*) return ;;
