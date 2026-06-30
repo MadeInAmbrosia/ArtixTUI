@@ -45,11 +45,8 @@ log_error() {
 
 _forge() {
     if [[ -n "$FORGE_TUI_DAEMON" ]]; then
-        # Daemon mode: send JSON to Unix socket, read response
         if [[ ! -S "$FORGE_TUI_SOCKET" ]]; then
-            # Start daemon in background
             "$FORGE_TUI" --daemon --socket "$FORGE_TUI_SOCKET" &
-            # Wait for socket to appear
             for _ in {1..50}; do
                 [[ -S "$FORGE_TUI_SOCKET" ]] && break
                 sleep 0.05
@@ -57,7 +54,6 @@ _forge() {
         fi
         printf '%s\n' "$1" | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null
     else
-        # One-shot mode: temp file, launch process
         local _dir _tmp _out
         _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
         chmod 700 "$_dir"
@@ -98,7 +94,6 @@ _forge_cancelled() {
 if [[ -n "$FORGE_TUI_DAEMON" ]]; then
     trap '[[ -S "$FORGE_TUI_SOCKET" ]] && printf '"'"'{"widget":"quit"}\n'"'"' | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null; rm -f "$FORGE_TUI_SOCKET"' EXIT
 fi
-
 
 tui_msg() {
     local title="${1}" msg="${2}"
@@ -206,15 +201,12 @@ tui_radiolist() { tui_menu "$@"; }
 tui_spin() {
     local title="${1}" cmd="${2}"
     if [[ -n "$FORGE_TUI_DAEMON" ]]; then
-        # Daemon mode: daemon runs cmd, streams output back line-by-line
         local escaped_cmd
         escaped_cmd=$(jq -n --arg c "$cmd" '$c')
-        # Send progress request, read lines until result marker
         printf '{"widget":"progress","title":"%s","command":["bash","-c",%s]}\n' \
             "${title//\"/\\\"}" "${escaped_cmd}" \
             | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null \
             | while IFS= read -r line; do
-                # Check for end-of-stream marker
                 if [[ "$line" == '{"result":"done"}' ]] || [[ "$line" == '{"result":'* ]]; then
                     break
                 fi
@@ -233,6 +225,28 @@ tui_show_file() {
 
 tui_edit() {
     local title="${1}" file="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(_theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     _forge '{"widget":"text","title":"'"${title//\"/\\\"}"'","file":"'"${file}"'"}' >/dev/null
+}
+
+tui_disk() {
+    local title="${1}" disk="${2}" partitions_json="${3:-}" free_space_json="${4:-}" readonly="${5:-false}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    _forge_result '{"widget":"disk","title":"'"${title//\"/\\\"}"'","disk":"'"${disk}"'","partitions":'"${partitions_json:-[]}"',"free_space":'"${free_space_json:-[]}"',"readonly":'"${readonly}"'}'
+}
+
+tui_multiselect() {
+    local title="${1}" msg="${2}" placeholder="${3:-}" min="${4:-0}" max="${5:-0}"
+    shift 5 2>/dev/null || shift 3
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+    local json
+    json='{"widget":"multiselect","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"''
+    [[ -n "$placeholder" ]] && json+=',"placeholder":"'"${placeholder//\"/\\\"}"'"'
+    [[ "$min" != "0" ]] && json+=',"min":'"${min}"
+    [[ "$max" != "0" ]] && json+=',"max":'"${max}"
+    json+='}'
+    _forge_result "$json"
 }

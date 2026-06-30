@@ -1,5 +1,19 @@
 # Changelog
 
+## v9.2.6.2 (2026-07-01) — ArtixForge
+
+### Changed
+- **TUI navigation rewritten** — linear 25-prompt sequence replaced with hub-and-spoke menu; all categories visible at once with current values shown in labels; submenus for each category; proceed/summary available at any time (`scripts/tui/menus/main.sh`)
+- **Disk prompt moved upfront** — if no disk is selected, `tui_select_disk` and `tui_partition_setup` run immediately before the hub menu appears
+- **forge-tui upgraded to 0.3.0** — Chisel text editor, disk partition editor, multiselect widget, password strength meter, shared helpers for consistent cancel behavior and navigation footers (`scripts/tui/core.sh`)
+- **New TUI wrappers** — `tui_edit`, `tui_disk`, `tui_multiselect` added to `core.sh` for the 0.3.0 widgets
+
+### Added
+- **Hub menu** — `tui_collect_install_config` now presents a single scrolling menu with all configuration categories and their current values
+- **Submenus** — `_submenu_disk`, `_submenu_bootloader`, `_submenu_kernel`, `_submenu_init`, `_submenu_desktop`, `_submenu_network_audio`, `_submenu_users`, `_submenu_extras`, `_submenu_identity`
+- **Minimum config check** — hub prevents proceeding without a disk selected and at least one user account
+- **Summary on demand** — "View summary" option in hub shows full configuration without leaving the menu
+
 ## v9.2.6.1 (2026-06-29) — ArtixForge
 
 ### Changed
