@@ -273,6 +273,15 @@ _gui_launch() {
 
 start_auto_install() {
     rm -f /tmp/artix-installer/state.conf
+    local var
+    for var in DISK FS_TYPE BOOTLOADER KERNEL_CHOICE INIT WM_DE \
+               NETWORK_STACK AUDIO_STACK PRIV_ESCALATION HOSTNAME \
+               TIMEZONE LOCALE KEYMAP SWAP_ENABLED SWAP_SIZE \
+               USE_LUKS USE_LVM GENERATE_UKI ENABLE_ARCH_REPOS POWER_USER \
+               EXTRAS DISPLAY_MANAGER X_STACK MICROCODE_OVERRIDE USER_SHELL \
+               USER_COUNT ROOT_PASS LUKS_PASS; do
+        unset "${var}"
+    done
     tui_collect_install_config
     tui_show_summary
     if ! tui_yesno "Begin Installation" "Proceed with installation?"; then
