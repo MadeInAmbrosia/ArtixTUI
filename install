@@ -144,9 +144,9 @@ detect_boot_mode() {
 }
 
 _artix_welcome() {
-    tui_msg_quick "ArtixForge" "
+    tui_msg_quick "Artix Linux" "
    __________________________
- < Artix Linux - Simple. Fast. Systemd-free. >
+ < Simple. Fast. Systemd-free. >
   --------------------------
          \\    .--.
           \\  |o_o |
