@@ -94,6 +94,39 @@ tui_partition_setup() {
     fi
 }
 
+tui_configure_swap() {
+    if tui_yesno "Swap" "Create or change swap?"; then
+        if [[ -n "$(state_get EFI_PART '')" ]]; then
+            local disk
+            disk="$(state_get DISK)"
+            local -a parts=()
+            while IFS= read -r line; do
+                parts+=("$line")
+            done < <(lsblk -nlo NAME,SIZE,TYPE,MOUNTPOINT "${disk}" | grep -E 'part' || true)
+            local swap_choice
+            swap_choice=$(printf '%s\n' "${parts[@]}" | tui_menu "Swap Partition" "Select swap partition:") || true
+            if [[ -n "${swap_choice}" ]]; then
+                state_set SWAP_PART "/dev/$(echo "${swap_choice}" | awk '{print $1}')"
+                state_set SWAP_ENABLED "yes"
+            else
+                state_set SWAP_ENABLED "no"
+            fi
+        else
+            local mem_gib default_swap swap_size
+            mem_gib=$(awk '/MemTotal/ {printf "%d", ($2 / 1024 / 1024) + 1}' /proc/meminfo)
+            if   [[ "${mem_gib}" -le 8 ]]; then default_swap='4G'
+            elif [[ "${mem_gib}" -le 16 ]]; then default_swap='8G'
+            else default_swap='16G'; fi
+            swap_size=$(tui_input "Swap Size" "Recommended: ${default_swap}" "${default_swap}") || return
+            state_set SWAP_ENABLED "yes"
+            state_set SWAP_SIZE "${swap_size}"
+        fi
+    else
+        state_set SWAP_ENABLED "no"
+        state_set SWAP_SIZE "0"
+    fi
+}
+
 tui_select_init() {
     local init
     init=$(tui_menu "Init System" "Select init system:" \
@@ -184,7 +217,11 @@ _submenu_disk() {
     while true; do
         local -a items=()
         items+=("Target disk        [$(state_get DISK none)]")
-        items+=("Partition scheme   [$(if [[ -n "$(state_get EFI_PART '')" ]]; then echo manual; else echo whole-disk; fi)]")
+        if [[ -n "$(state_get EFI_PART '')" ]]; then
+            items+=("Partition scheme   [manual]")
+        else
+            items+=("Partition scheme   [whole-disk]")
+        fi
         items+=("Filesystem         [$(state_get FS_TYPE ext4)]")
         [[ "$(state_get FS_TYPE ext4)" == "btrfs" ]] && items+=("BTRFS layout       [$(state_get BTRFS_LAYOUT standard)]")
         items+=("Swap               [$(state_get SWAP_ENABLED no), $(state_get SWAP_SIZE 0)]")
@@ -209,11 +246,12 @@ _submenu_disk() {
 
 _submenu_bootloader() {
     while true; do
+        local -a items=()
+        items+=("Bootloader         [$(state_get BOOTLOADER grub)]")
+        items+=("UKI                [$(state_get GENERATE_UKI no)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "Bootloader" "Configure bootloader:" \
-            "Bootloader         [$(state_get BOOTLOADER grub)]" \
-            "UKI                [$(state_get GENERATE_UKI no)]" \
-            "Back") || return
+        choice=$(tui_menu "Bootloader" "Configure bootloader:" "${items[@]}") || return
         case "${choice}" in
             "Bootloader"*) tui_select_bootloader ;;
             "UKI"*)        tui_select_uki ;;
@@ -224,14 +262,15 @@ _submenu_bootloader() {
 
 _submenu_kernel() {
     while true; do
+        local -a items=()
+        items+=("Kernel             [$(state_get KERNEL_CHOICE linux)]")
+        items+=("Microcode          [$(state_get MICROCODE_OVERRIDE auto)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "Kernel & Microcode" "Configure kernel:" \
-            "Kernel             [$(state_get KERNEL_CHOICE linux)]" \
-            "Microcode          [$(state_get MICROCODE_OVERRIDE auto)]" \
-            "Back") || return
+        choice=$(tui_menu "Kernel & Microcode" "Configure kernel:" "${items[@]}") || return
         case "${choice}" in
-            "Kernel"*)    tui_select_kernel ;;
-            "Microcode"*) tui_select_microcode ;;
+            "Kernel"*)    tui_select_kernel || true ;;
+            "Microcode"*) tui_select_microcode || true ;;
             Back*) return ;;
         esac
     done
@@ -239,10 +278,11 @@ _submenu_kernel() {
 
 _submenu_init() {
     while true; do
+        local -a items=()
+        items+=("Init system        [$(state_get INIT openrc)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "Init System" "Configure init system:" \
-            "Init system        [$(state_get INIT openrc)]" \
-            "Back") || return
+        choice=$(tui_menu "Init System" "Configure init system:" "${items[@]}") || return
         case "${choice}" in
             "Init system"*) tui_select_init ;;
             Back*) return ;;
@@ -252,12 +292,13 @@ _submenu_init() {
 
 _submenu_desktop() {
     while true; do
+        local -a items=()
+        items+=("Desktop / WM       [$(state_get WM_DE none)]")
+        items+=("Display Manager    [$(state_get DISPLAY_MANAGER none)]")
+        items+=("Display Stack      [$(state_get X_STACK xorg)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "Desktop" "Configure desktop environment:" \
-            "Desktop / WM       [$(state_get WM_DE none)]" \
-            "Display Manager    [$(state_get DISPLAY_MANAGER none)]" \
-            "Display Stack      [$(state_get X_STACK xorg)]" \
-            "Back") || return
+        choice=$(tui_menu "Desktop" "Configure desktop environment:" "${items[@]}") || return
         case "${choice}" in
             "Desktop / WM"*)    tui_select_desktop ;;
             "Display Manager"*) tui_select_display_manager ;;
@@ -269,11 +310,12 @@ _submenu_desktop() {
 
 _submenu_network_audio() {
     while true; do
+        local -a items=()
+        items+=("Network stack      [$(state_get NETWORK_STACK networkmanager)]")
+        items+=("Audio stack        [$(state_get AUDIO_STACK pipewire)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "Network & Audio" "Configure network and audio:" \
-            "Network stack      [$(state_get NETWORK_STACK networkmanager)]" \
-            "Audio stack        [$(state_get AUDIO_STACK pipewire)]" \
-            "Back") || return
+        choice=$(tui_menu "Network & Audio" "Configure network and audio:" "${items[@]}") || return
         case "${choice}" in
             "Network stack"*) tui_select_network_stack ;;
             "Audio stack"*)   tui_select_audio_stack ;;
@@ -284,13 +326,16 @@ _submenu_network_audio() {
 
 _submenu_users() {
     while true; do
+        local -a items=()
+        items+=("User accounts      [$(state_get USER_COUNT 1) user(s)]")
+        local root_label="not set"
+        [[ -n "$(state_get ROOT_PASS '')" ]] && root_label="set"
+        items+=("Root password      [${root_label}]")
+        items+=("Privilege escalation [$(state_get PRIV_ESCALATION sudo)]")
+        items+=("User shell         [$(state_get USER_SHELL bash)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "Users & Privilege" "Configure users:" \
-            "User accounts      [$(state_get USER_COUNT 1) user(s)]" \
-            "Root password      [$(if [[ -n "$(state_get ROOT_PASS '')" ]]; then echo set; else echo not set; fi)]" \
-            "Privilege escalation [$(state_get PRIV_ESCALATION sudo)]" \
-            "User shell         [$(state_get USER_SHELL bash)]" \
-            "Back") || return
+        choice=$(tui_menu "Users & Privilege" "Configure users:" "${items[@]}") || return
         case "${choice}" in
             "User accounts"*)       tui_configure_users ;;
             "Root password"*)       tui_select_root_password ;;
@@ -303,14 +348,15 @@ _submenu_users() {
 
 _submenu_extras() {
     while true; do
+        local -a items=()
+        items+=("Extra packages     [$(state_get EXTRAS)]")
+        items+=("Arch repositories  [$(state_get ENABLE_ARCH_REPOS no)]")
+        items+=("AURIS              [$(state_get ENABLE_AURIS no)]")
+        items+=("Offline mode       [$(state_get ALLOW_OFFLINE no)]")
+        items+=("Power User mode    [$(state_get POWER_USER no)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "Extras & Repositories" "Configure extras:" \
-            "Extra packages     [$(state_get EXTRAS)]" \
-            "Arch repositories  [$(state_get ENABLE_ARCH_REPOS no)]" \
-            "AURIS              [$(state_get ENABLE_AURIS no)]" \
-            "Offline mode       [$(state_get ALLOW_OFFLINE no)]" \
-            "Power User mode    [$(state_get POWER_USER no)]" \
-            "Back") || return
+        choice=$(tui_menu "Extras & Repositories" "Configure extras:" "${items[@]}") || return
         case "${choice}" in
             "Extra packages"*)     tui_select_extras ;;
             "Arch repositories"*)  tui_select_arch_repos ;;
@@ -324,13 +370,14 @@ _submenu_extras() {
 
 _submenu_identity() {
     while true; do
+        local -a items=()
+        items+=("Hostname           [$(state_get HOSTNAME artix)]")
+        items+=("Timezone           [$(state_get TIMEZONE Europe/Belgrade)]")
+        items+=("Locale             [$(state_get LOCALE en_US.UTF-8)]")
+        items+=("Keyboard layout    [$(state_get KEYMAP us)]")
+        items+=("Back")
         local choice
-        choice=$(tui_menu "System Identity" "Configure system identity:" \
-            "Hostname           [$(state_get HOSTNAME artix)]" \
-            "Timezone           [$(state_get TIMEZONE Europe/Belgrade)]" \
-            "Locale             [$(state_get LOCALE en_US.UTF-8)]" \
-            "Keyboard layout    [$(state_get KEYMAP us)]" \
-            "Back") || return
+        choice=$(tui_menu "System Identity" "Configure system identity:" "${items[@]}") || return
         case "${choice}" in
             "Hostname"*)        tui_select_hostname ;;
             "Timezone"*)        tui_select_timezone ;;
@@ -368,20 +415,25 @@ tui_collect_install_config() {
     fi
 
     while true; do
+        local -a hub_items=()
+        hub_items+=("Disk & Storage      [fs: $(state_get FS_TYPE ext4), swap: $(state_get SWAP_ENABLED no)]")
+        hub_items+=("Bootloader          [$(state_get BOOTLOADER grub), UKI: $(state_get GENERATE_UKI no)]")
+        hub_items+=("Kernel & Microcode  [$(state_get KERNEL_CHOICE linux)]")
+        hub_items+=("Init System         [$(state_get INIT openrc)]")
+        hub_items+=("Desktop             [$(state_get WM_DE none), dm: $(state_get DISPLAY_MANAGER none)]")
+        hub_items+=("Network & Audio     [net: $(state_get NETWORK_STACK networkmanager), aud: $(state_get AUDIO_STACK pipewire)]")
+        hub_items+=("Users & Privilege   [$(state_get USER_COUNT 0) user(s), priv: $(state_get PRIV_ESCALATION sudo)]")
+        hub_items+=("Extras & Repos      [arch: $(state_get ENABLE_ARCH_REPOS no), pw: $(state_get POWER_USER no)]")
+        hub_items+=("System Identity     [host: $(state_get HOSTNAME artix)]")
+        hub_items+=("▸ Quick Profile")
+        hub_items+=("▸ Proceed with installation")
+        hub_items+=("▸ View summary")
+
         local choice
-        choice=$(tui_menu "ArtixForge Configuration" "Select a category to configure, or proceed:" \
-            "Disk & Storage      [fs: $(state_get FS_TYPE ext4), swap: $(state_get SWAP_ENABLED no)]" \
-            "Bootloader          [$(state_get BOOTLOADER grub), UKI: $(state_get GENERATE_UKI no)]" \
-            "Kernel & Microcode  [$(state_get KERNEL_CHOICE linux)]" \
-            "Init System         [$(state_get INIT openrc)]" \
-            "Desktop             [$(state_get WM_DE none), dm: $(state_get DISPLAY_MANAGER none)]" \
-            "Network & Audio     [net: $(state_get NETWORK_STACK networkmanager), aud: $(state_get AUDIO_STACK pipewire)]" \
-            "Users & Privilege   [$(state_get USER_COUNT 0) user(s), priv: $(state_get PRIV_ESCALATION sudo)]" \
-            "Extras & Repos      [arch: $(state_get ENABLE_ARCH_REPOS no), pw: $(state_get POWER_USER no)]" \
-            "System Identity     [host: $(state_get HOSTNAME artix)]" \
-            "▸ Quick Profile" \
-            "▸ Proceed with installation" \
-            "▸ View summary") || { tui_msg_quick "Cancelled" "Installation cancelled."; exit 0; }
+        choice=$(tui_menu "ArtixForge Configuration" "Select a category to configure, or proceed:" "${hub_items[@]}") || {
+            tui_msg_quick "Cancelled" "Installation cancelled."
+            exit 0
+        }
 
         case "${choice}" in
             "Disk & Storage"*)      _submenu_disk ;;
@@ -395,9 +447,7 @@ tui_collect_install_config() {
             "System Identity"*)     _submenu_identity ;;
             "▸ Quick Profile"*)
                 if tui_quick_install; then
-                    if [[ "$(state_get POWER_USER no)" == "yes" ]]; then
-                        tui_select_poweruser
-                    fi
+                    [[ "$(state_get POWER_USER no)" == "yes" ]] && tui_select_poweruser
                     tui_show_sanity_warnings
                     return 0
                 fi
