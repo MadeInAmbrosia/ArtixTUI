@@ -44,7 +44,7 @@ _qp_confirm() {
     tui_select_keyboard_layout
     tui_select_username
     tui_select_user_password
-    tui_select_root_password
+    tui_select_root_password || true
 
     local summary
     printf -v summary \

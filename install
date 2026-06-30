@@ -104,7 +104,6 @@ source_tree() {
     for dir in "$@"; do
         [[ -d "${SCRIPT_DIR}/${dir}" ]] || { printf '[!] missing directory: %s\n' "${dir}" >&2; return 1; }
         while IFS= read -r -d '' file; do
-            printf '[*] Sourcing: %s\n' "${file}" >&2
             source "${file}" || { printf '[!] Failed to source: %s\n' "${file}" >&2; return 1; }
         done < <(find "${SCRIPT_DIR}/${dir}" -maxdepth 1 -type f -name '*.sh' -print0 | sort -z)
     done
@@ -142,6 +141,21 @@ detect_boot_mode() {
     fi
     export ARTIX_BOOT_MODE
     state_set ARTIX_BOOT_MODE "${ARTIX_BOOT_MODE}"
+}
+
+_artix_welcome() {
+    tui_msg_quick "ArtixForge" "
+   __________________________
+ < Artix Linux - Simple. Fast. Systemd-free. >
+  --------------------------
+         \\    .--.
+          \\  |o_o |
+             |:_/ |
+            //   \\ \\
+           (|     | )
+          /'\\_   _/\`\\
+          \\___)=(___/
+"
 }
 
 main_menu() {
@@ -412,7 +426,7 @@ main() {
     detect_boot_mode
 
     if ! command -v jq &>/dev/null; then
-        pacman -Sy --noconfirm jq 2>/dev/null || {
+        pacman -Sy --noconfirm --quiet jq 2>/dev/null || {
             printf '[!] Failed to install jq. Install it manually and retry.\n' >&2
             exit 1
         }
@@ -426,6 +440,15 @@ main() {
             exit 1
         fi
     fi
+
+    if ! command -v nc &>/dev/null; then
+        pacman -Sy --noconfirm --quiet openbsd-netcat 2>/dev/null || {
+            printf '[!] Failed to install netcat. Daemon mode will be unavailable.\n' >&2
+        }
+    fi
+
+    _artix_welcome
+    sleep 0.2
 
     if [[ "${1:-}" == "--non-interactive" ]]; then
         source "${SCRIPT_DIR}/noninteractive.sh"

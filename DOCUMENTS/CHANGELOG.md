@@ -1,5 +1,22 @@
 # Changelog
 
+## v9.2.6.3 (2026-07-01) — ArtixForge
+
+### Added
+- **Welcome screen** — ASCII Tux with speech bubble displayed on launch before main menu
+- **netcat dependency** — `openbsd-netcat` installed automatically if missing; required for daemon mode Unix socket communication
+
+### Changed
+- **Silent boot** — `pacman` calls in `main()` now use `--quiet` to suppress download progress and package lists; only errors visible
+- **Silent sourcing** — `source_tree()` no longer prints every sourced file; only errors are reported
+- **Hub label caching** — hub menu labels only rebuild when a submenu was entered; eliminates redundant `state_get` and `jq` calls on every hub redraw (`scripts/tui/menus/main.sh`)
+
+### Fixed
+- **TUI crash on cancel** — all submenu calls guarded with `|| true`; pressing Esc in any configuration widget returns to the submenu instead of crashing the installer (`scripts/tui/menus/main.sh`, `scripts/tui/menus/quick_profiles.sh`)
+- **Root password ambush** — root password prompt removed from `tui_configure_users`; only accessible via the Users submenu (`scripts/tui/menus/user.sh`)
+- **Sanity warnings on summary** — viewing the installation summary no longer triggers sanity warnings; warnings only shown when proceeding with installation (`scripts/tui/menus/main.sh`)
+- **State persistence performance** — `state_set` now uses `sed -i` for in-place updates instead of full file copy on every write (`scripts/state.sh`)
+
 ## v9.2.6.2 (2026-07-01) — ArtixForge
 
 ### Changed

@@ -62,7 +62,7 @@ tui_partition_setup() {
     fi
 
     local efi_choice
-    efi_choice=$(printf '%s\n' "${parts[@]}" | tui_menu "EFI Partition" "Select EFI system partition (≥512 MiB):") || die "EFI partition required"
+    efi_choice=$(printf '%s\n' "${parts[@]}" | tui_menu "EFI Partition" "Select EFI system partition (>=512 MiB):") || die "EFI partition required"
     local efi_part="/dev/$(echo "${efi_choice}" | awk '{print $1}')"
     state_set EFI_PART "${efi_part}"
 
@@ -237,7 +237,7 @@ _submenu_disk() {
             "Filesystem"*)         tui_select_filesystem ;;
             "BTRFS layout"*)       tui_select_btrfs_layout ;;
             "Swap"*)               tui_configure_swap ;;
-            "LUKS encryption"*)    tui_toggle_luks ;;
+            "LUKS encryption"*)    tui_toggle_luks || true ;;
             "LVM"*)                tui_toggle_lvm ;;
             Back*) return ;;
         esac
@@ -284,7 +284,7 @@ _submenu_init() {
         local choice
         choice=$(tui_menu "Init System" "Configure init system:" "${items[@]}") || return
         case "${choice}" in
-            "Init system"*) tui_select_init ;;
+            "Init system"*) tui_select_init || true ;;
             Back*) return ;;
         esac
     done
@@ -300,9 +300,9 @@ _submenu_desktop() {
         local choice
         choice=$(tui_menu "Desktop" "Configure desktop environment:" "${items[@]}") || return
         case "${choice}" in
-            "Desktop / WM"*)    tui_select_desktop ;;
-            "Display Manager"*) tui_select_display_manager ;;
-            "Display Stack"*)   tui_select_xstack ;;
+            "Desktop / WM"*)    tui_select_desktop || true ;;
+            "Display Manager"*) tui_select_display_manager || true ;;
+            "Display Stack"*)   tui_select_xstack || true ;;
             Back*) return ;;
         esac
     done
@@ -317,8 +317,8 @@ _submenu_network_audio() {
         local choice
         choice=$(tui_menu "Network & Audio" "Configure network and audio:" "${items[@]}") || return
         case "${choice}" in
-            "Network stack"*) tui_select_network_stack ;;
-            "Audio stack"*)   tui_select_audio_stack ;;
+            "Network stack"*) tui_select_network_stack || true ;;
+            "Audio stack"*)   tui_select_audio_stack || true ;;
             Back*) return ;;
         esac
     done
@@ -337,10 +337,10 @@ _submenu_users() {
         local choice
         choice=$(tui_menu "Users & Privilege" "Configure users:" "${items[@]}") || return
         case "${choice}" in
-            "User accounts"*)       tui_configure_users ;;
-            "Root password"*)       tui_select_root_password ;;
-            "Privilege escalation"*) tui_select_priv_escalation ;;
-            "User shell"*)          tui_select_shell ;;
+            "User accounts"*)       tui_configure_users || true ;;
+            "Root password"*)       tui_select_root_password || true ;;
+            "Privilege escalation"*) tui_select_priv_escalation || true ;;
+            "User shell"*)          tui_select_shell || true ;;
             Back*) return ;;
         esac
     done
@@ -358,11 +358,11 @@ _submenu_extras() {
         local choice
         choice=$(tui_menu "Extras & Repositories" "Configure extras:" "${items[@]}") || return
         case "${choice}" in
-            "Extra packages"*)     tui_select_extras ;;
-            "Arch repositories"*)  tui_select_arch_repos ;;
-            "AURIS"*)              tui_select_auris ;;
-            "Offline mode"*)       tui_select_offline_mode ;;
-            "Power User mode"*)    tui_select_poweruser ;;
+            "Extra packages"*)     tui_select_extras || true ;;
+            "Arch repositories"*)  tui_select_arch_repos || true ;;
+            "AURIS"*)              tui_select_auris || true ;;
+            "Offline mode"*)       tui_select_offline_mode || true ;;
+            "Power User mode"*)    tui_select_poweruser || true ;;
             Back*) return ;;
         esac
     done
@@ -379,10 +379,10 @@ _submenu_identity() {
         local choice
         choice=$(tui_menu "System Identity" "Configure system identity:" "${items[@]}") || return
         case "${choice}" in
-            "Hostname"*)        tui_select_hostname ;;
-            "Timezone"*)        tui_select_timezone ;;
-            "Locale"*)          tui_select_locale ;;
-            "Keyboard layout"*) tui_select_keyboard_layout ;;
+            "Hostname"*)        tui_select_hostname || true ;;
+            "Timezone"*)        tui_select_timezone || true ;;
+            "Locale"*)          tui_select_locale || true ;;
+            "Keyboard layout"*) tui_select_keyboard_layout || true ;;
             Back*) return ;;
         esac
     done
@@ -414,8 +414,11 @@ tui_collect_install_config() {
         tui_partition_setup
     fi
 
-    while true; do
-        local -a hub_items=()
+    local -a hub_items=()
+    local hub_dirty=1
+
+    _rebuild_hub() {
+        hub_items=()
         hub_items+=("Disk & Storage      [fs: $(state_get FS_TYPE ext4), swap: $(state_get SWAP_ENABLED no)]")
         hub_items+=("Bootloader          [$(state_get BOOTLOADER grub), UKI: $(state_get GENERATE_UKI no)]")
         hub_items+=("Kernel & Microcode  [$(state_get KERNEL_CHOICE linux)]")
@@ -428,6 +431,11 @@ tui_collect_install_config() {
         hub_items+=("▸ Quick Profile")
         hub_items+=("▸ Proceed with installation")
         hub_items+=("▸ View summary")
+        hub_dirty=0
+    }
+
+    while true; do
+        [[ $hub_dirty -eq 1 ]] && _rebuild_hub
 
         local choice
         choice=$(tui_menu "ArtixForge Configuration" "Select a category to configure, or proceed:" "${hub_items[@]}") || {
@@ -436,21 +444,22 @@ tui_collect_install_config() {
         }
 
         case "${choice}" in
-            "Disk & Storage"*)      _submenu_disk ;;
-            "Bootloader"*)          _submenu_bootloader ;;
-            "Kernel & Microcode"*)  _submenu_kernel ;;
-            "Init System"*)         _submenu_init ;;
-            "Desktop"*)             _submenu_desktop ;;
-            "Network & Audio"*)     _submenu_network_audio ;;
-            "Users & Privilege"*)   _submenu_users ;;
-            "Extras & Repos"*)      _submenu_extras ;;
-            "System Identity"*)     _submenu_identity ;;
+            "Disk & Storage"*)      _submenu_disk ; hub_dirty=1 ;;
+            "Bootloader"*)          _submenu_bootloader ; hub_dirty=1 ;;
+            "Kernel & Microcode"*)  _submenu_kernel ; hub_dirty=1 ;;
+            "Init System"*)         _submenu_init ; hub_dirty=1 ;;
+            "Desktop"*)             _submenu_desktop ; hub_dirty=1 ;;
+            "Network & Audio"*)     _submenu_network_audio ; hub_dirty=1 ;;
+            "Users & Privilege"*)   _submenu_users ; hub_dirty=1 ;;
+            "Extras & Repos"*)      _submenu_extras ; hub_dirty=1 ;;
+            "System Identity"*)     _submenu_identity ; hub_dirty=1 ;;
             "▸ Quick Profile"*)
                 if tui_quick_install; then
                     [[ "$(state_get POWER_USER no)" == "yes" ]] && tui_select_poweruser
                     tui_show_sanity_warnings
                     return 0
                 fi
+                hub_dirty=1
                 ;;
             "▸ Proceed with installation"*)
                 if [[ -z "$(state_get DISK '')" ]]; then
@@ -459,7 +468,7 @@ tui_collect_install_config() {
                 fi
                 if [[ "$(state_get USER_COUNT 0)" -eq 0 ]]; then
                     tui_msg_quick "Users Required" "Please create at least one user account."
-                    tui_configure_users
+                    tui_configure_users || true
                 fi
                 tui_show_sanity_warnings
                 return 0
@@ -476,7 +485,6 @@ tui_collect_install_config() {
                     "$(state_get LOCALE)" "$(state_get KEYMAP)" "$(state_get PRIV_ESCALATION)" \
                     "$(state_get ENABLE_ARCH_REPOS)" "$(state_get POWER_USER)" "$(state_get EXTRAS)"
                 tui_msg "Installation Summary" "${summary}" || true
-                tui_show_sanity_warnings || true
                 ;;
         esac
     done
