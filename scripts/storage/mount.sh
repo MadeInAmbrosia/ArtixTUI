@@ -122,9 +122,8 @@ mount_filesystems() {
                     ;;
             esac
 
-            umount /mnt
-            mount -o noatime,compress=zstd,subvol=@ "${root_part}" /mnt
-            mountpoint -q /mnt || die 'failed to mount root filesystem'
+            mount -o remount,noatime,compress=zstd,subvol=@ "${root_part}" /mnt
+            mountpoint -q /mnt || die 'failed to remount root filesystem with subvol'
 
             case "${btrfs_layout}" in
                 flat) ;;
@@ -153,11 +152,8 @@ mount_filesystems() {
     efi_fs="$(blkid -o value -s TYPE "${efi_part}" 2>/dev/null || true)"
 
     case "${efi_fs}" in
-        vfat|fat32)
-            ;;
-        *)
-            die "EFI partition is not FAT32 (detected: ${efi_fs:-unknown})"
-            ;;
+        vfat|fat32) ;;
+        *) die "EFI partition is not FAT32 (detected: ${efi_fs:-unknown})" ;;
     esac
 
     log_info "Mounting EFI partition..."

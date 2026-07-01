@@ -12,6 +12,7 @@ FORGE_TUI_SOCKET="${FORGE_TUI_SOCKET:-/tmp/forge-tui.sock}"
 FORGE_TUI_DAEMON="${FORGE_TUI_DAEMON:-}"
 
 [[ -t 1 ]] || FORGE_TUI_DAEMON=""
+[[ -n "${FORGE_TUI_DAEMON:-}" ]] && command -v nc &>/dev/null && FORGE_TUI_DAEMON=1 || FORGE_TUI_DAEMON=""
 
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
@@ -62,6 +63,7 @@ _forge() {
         printf '%s\n' "$1" > "$_tmp"
         "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty 2>/dev/null
         cat "$_out" 2>/dev/null
+        rm -rf "$_dir"
     fi
 }
 

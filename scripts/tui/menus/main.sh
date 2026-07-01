@@ -214,175 +214,220 @@ tui_select_theme() {
 }
 
 _submenu_disk() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Target disk        [$(state_get DISK none)]")
-        if [[ -n "$(state_get EFI_PART '')" ]]; then
-            items+=("Partition scheme   [manual]")
-        else
-            items+=("Partition scheme   [whole-disk]")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Target disk        [$(state_get DISK none)]")
+            if [[ -n "$(state_get EFI_PART '')" ]]; then
+                items+=("Partition scheme   [manual]")
+            else
+                items+=("Partition scheme   [whole-disk]")
+            fi
+            items+=("Filesystem         [$(state_get FS_TYPE ext4)]")
+            [[ "$(state_get FS_TYPE ext4)" == "btrfs" ]] && items+=("BTRFS layout       [$(state_get BTRFS_LAYOUT standard)]")
+            items+=("Swap               [$(state_get SWAP_ENABLED no), $(state_get SWAP_SIZE 0)]")
+            items+=("LUKS encryption    [$(state_get USE_LUKS no)]")
+            items+=("LVM                [$(state_get USE_LVM no)]")
+            items+=("Back")
+            submenu_dirty=0
         fi
-        items+=("Filesystem         [$(state_get FS_TYPE ext4)]")
-        [[ "$(state_get FS_TYPE ext4)" == "btrfs" ]] && items+=("BTRFS layout       [$(state_get BTRFS_LAYOUT standard)]")
-        items+=("Swap               [$(state_get SWAP_ENABLED no), $(state_get SWAP_SIZE 0)]")
-        items+=("LUKS encryption    [$(state_get USE_LUKS no)]")
-        items+=("LVM                [$(state_get USE_LVM no)]")
-        items+=("Back")
 
         local choice
         choice=$(tui_menu "Disk & Storage" "Configure disk and filesystem:" "${items[@]}") || return
         case "${choice}" in
-            "Target disk"*)        tui_select_disk ;;
-            "Partition scheme"*)   tui_partition_setup ;;
-            "Filesystem"*)         tui_select_filesystem ;;
-            "BTRFS layout"*)       tui_select_btrfs_layout ;;
-            "Swap"*)               tui_configure_swap ;;
-            "LUKS encryption"*)    tui_toggle_luks || true ;;
-            "LVM"*)                tui_toggle_lvm ;;
+            "Target disk"*)        tui_select_disk ; submenu_dirty=1 ;;
+            "Partition scheme"*)   tui_partition_setup ; submenu_dirty=1 ;;
+            "Filesystem"*)         tui_select_filesystem ; submenu_dirty=1 ;;
+            "BTRFS layout"*)       tui_select_btrfs_layout ; submenu_dirty=1 ;;
+            "Swap"*)               tui_configure_swap ; submenu_dirty=1 ;;
+            "LUKS encryption"*)    tui_toggle_luks || true ; submenu_dirty=1 ;;
+            "LVM"*)                tui_toggle_lvm ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_bootloader() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Bootloader         [$(state_get BOOTLOADER grub)]")
-        items+=("UKI                [$(state_get GENERATE_UKI no)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Bootloader         [$(state_get BOOTLOADER grub)]")
+            items+=("UKI                [$(state_get GENERATE_UKI no)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "Bootloader" "Configure bootloader:" "${items[@]}") || return
         case "${choice}" in
-            "Bootloader"*) tui_select_bootloader ;;
-            "UKI"*)        tui_select_uki ;;
+            "Bootloader"*) tui_select_bootloader ; submenu_dirty=1 ;;
+            "UKI"*)        tui_select_uki ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_kernel() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Kernel             [$(state_get KERNEL_CHOICE linux)]")
-        items+=("Microcode          [$(state_get MICROCODE_OVERRIDE auto)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Kernel             [$(state_get KERNEL_CHOICE linux)]")
+            items+=("Microcode          [$(state_get MICROCODE_OVERRIDE auto)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "Kernel & Microcode" "Configure kernel:" "${items[@]}") || return
         case "${choice}" in
-            "Kernel"*)    tui_select_kernel || true ;;
-            "Microcode"*) tui_select_microcode || true ;;
+            "Kernel"*)    tui_select_kernel || true ; submenu_dirty=1 ;;
+            "Microcode"*) tui_select_microcode || true ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_init() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Init system        [$(state_get INIT openrc)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Init system        [$(state_get INIT openrc)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "Init System" "Configure init system:" "${items[@]}") || return
         case "${choice}" in
-            "Init system"*) tui_select_init || true ;;
+            "Init system"*) tui_select_init || true ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_desktop() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Desktop / WM       [$(state_get WM_DE none)]")
-        items+=("Display Manager    [$(state_get DISPLAY_MANAGER none)]")
-        items+=("Display Stack      [$(state_get X_STACK xorg)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Desktop / WM       [$(state_get WM_DE none)]")
+            items+=("Display Manager    [$(state_get DISPLAY_MANAGER none)]")
+            items+=("Display Stack      [$(state_get X_STACK xorg)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "Desktop" "Configure desktop environment:" "${items[@]}") || return
         case "${choice}" in
-            "Desktop / WM"*)    tui_select_desktop || true ;;
-            "Display Manager"*) tui_select_display_manager || true ;;
-            "Display Stack"*)   tui_select_xstack || true ;;
+            "Desktop / WM"*)    tui_select_desktop || true ; submenu_dirty=1 ;;
+            "Display Manager"*) tui_select_display_manager || true ; submenu_dirty=1 ;;
+            "Display Stack"*)   tui_select_xstack || true ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_network_audio() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Network stack      [$(state_get NETWORK_STACK networkmanager)]")
-        items+=("Audio stack        [$(state_get AUDIO_STACK pipewire)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Network stack      [$(state_get NETWORK_STACK networkmanager)]")
+            items+=("Audio stack        [$(state_get AUDIO_STACK pipewire)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "Network & Audio" "Configure network and audio:" "${items[@]}") || return
         case "${choice}" in
-            "Network stack"*) tui_select_network_stack || true ;;
-            "Audio stack"*)   tui_select_audio_stack || true ;;
+            "Network stack"*) tui_select_network_stack || true ; submenu_dirty=1 ;;
+            "Audio stack"*)   tui_select_audio_stack || true ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_users() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("User accounts      [$(state_get USER_COUNT 1) user(s)]")
-        local root_label="not set"
-        [[ -n "$(state_get ROOT_PASS '')" ]] && root_label="set"
-        items+=("Root password      [${root_label}]")
-        items+=("Privilege escalation [$(state_get PRIV_ESCALATION sudo)]")
-        items+=("User shell         [$(state_get USER_SHELL bash)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("User accounts      [$(state_get USER_COUNT 1) user(s)]")
+            local root_label="not set"
+            [[ -n "$(state_get ROOT_PASS '')" ]] && root_label="set"
+            items+=("Root password      [${root_label}]")
+            items+=("Privilege escalation [$(state_get PRIV_ESCALATION sudo)]")
+            items+=("User shell         [$(state_get USER_SHELL bash)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "Users & Privilege" "Configure users:" "${items[@]}") || return
         case "${choice}" in
-            "User accounts"*)       tui_configure_users || true ;;
-            "Root password"*)       tui_select_root_password || true ;;
-            "Privilege escalation"*) tui_select_priv_escalation || true ;;
-            "User shell"*)          tui_select_shell || true ;;
+            "User accounts"*)       tui_configure_users || true ; submenu_dirty=1 ;;
+            "Root password"*)       tui_select_root_password || true ; submenu_dirty=1 ;;
+            "Privilege escalation"*) tui_select_priv_escalation || true ; submenu_dirty=1 ;;
+            "User shell"*)          tui_select_shell || true ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_extras() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Extra packages     [$(state_get EXTRAS)]")
-        items+=("Arch repositories  [$(state_get ENABLE_ARCH_REPOS no)]")
-        items+=("AURIS              [$(state_get ENABLE_AURIS no)]")
-        items+=("Offline mode       [$(state_get ALLOW_OFFLINE no)]")
-        items+=("Power User mode    [$(state_get POWER_USER no)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Extra packages     [$(state_get EXTRAS)]")
+            items+=("Arch repositories  [$(state_get ENABLE_ARCH_REPOS no)]")
+            items+=("AURIS              [$(state_get ENABLE_AURIS no)]")
+            items+=("Offline mode       [$(state_get ALLOW_OFFLINE no)]")
+            items+=("Power User mode    [$(state_get POWER_USER no)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "Extras & Repositories" "Configure extras:" "${items[@]}") || return
         case "${choice}" in
-            "Extra packages"*)     tui_select_extras || true ;;
-            "Arch repositories"*)  tui_select_arch_repos || true ;;
-            "AURIS"*)              tui_select_auris || true ;;
-            "Offline mode"*)       tui_select_offline_mode || true ;;
-            "Power User mode"*)    tui_select_poweruser || true ;;
+            "Extra packages"*)     tui_select_extras || true ; submenu_dirty=1 ;;
+            "Arch repositories"*)  tui_select_arch_repos || true ; submenu_dirty=1 ;;
+            "AURIS"*)              tui_select_auris || true ; submenu_dirty=1 ;;
+            "Offline mode"*)       tui_select_offline_mode || true ; submenu_dirty=1 ;;
+            "Power User mode"*)    tui_select_poweruser || true ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
 }
 
 _submenu_identity() {
+    local -a items=()
+    local submenu_dirty=1
     while true; do
-        local -a items=()
-        items+=("Hostname           [$(state_get HOSTNAME artix)]")
-        items+=("Timezone           [$(state_get TIMEZONE Europe/Belgrade)]")
-        items+=("Locale             [$(state_get LOCALE en_US.UTF-8)]")
-        items+=("Keyboard layout    [$(state_get KEYMAP us)]")
-        items+=("Back")
+        if [[ $submenu_dirty -eq 1 ]]; then
+            items=()
+            items+=("Hostname           [$(state_get HOSTNAME artix)]")
+            items+=("Timezone           [$(state_get TIMEZONE Europe/Belgrade)]")
+            items+=("Locale             [$(state_get LOCALE en_US.UTF-8)]")
+            items+=("Keyboard layout    [$(state_get KEYMAP us)]")
+            items+=("Back")
+            submenu_dirty=0
+        fi
         local choice
         choice=$(tui_menu "System Identity" "Configure system identity:" "${items[@]}") || return
         case "${choice}" in
-            "Hostname"*)        tui_select_hostname || true ;;
-            "Timezone"*)        tui_select_timezone || true ;;
-            "Locale"*)          tui_select_locale || true ;;
-            "Keyboard layout"*) tui_select_keyboard_layout || true ;;
+            "Hostname"*)        tui_select_hostname || true ; submenu_dirty=1 ;;
+            "Timezone"*)        tui_select_timezone || true ; submenu_dirty=1 ;;
+            "Locale"*)          tui_select_locale || true ; submenu_dirty=1 ;;
+            "Keyboard layout"*) tui_select_keyboard_layout || true ; submenu_dirty=1 ;;
             Back*) return ;;
         esac
     done
@@ -416,6 +461,7 @@ tui_collect_install_config() {
 
     local -a hub_items=()
     local hub_dirty=1
+    local cached_summary=""
 
     _rebuild_hub() {
         hub_items=()
@@ -432,6 +478,17 @@ tui_collect_install_config() {
         hub_items+=("▸ Proceed with installation")
         hub_items+=("▸ View summary")
         hub_dirty=0
+
+        # Cache summary while we have all state values
+        printf -v cached_summary \
+            "Disk: %s\nFilesystem: %s\nBootloader: %s\nUKI: %s\nKernel: %s\nInit: %s\nDesktop: %s\nDisplay Manager: %s\nNetwork: %s\nAudio: %s\nX Stack: %s\nLUKS: %s\nLVM: %s\nHostname: %s\nTimezone: %s\nLocale: %s\nKeymap: %s\nPrivilege: %s\nArch Repos: %s\nPower User: %s\nExtras: %s" \
+            "$(state_get DISK)" "$(state_get FS_TYPE)" "$(state_get BOOTLOADER)" \
+            "$(state_get GENERATE_UKI)" "$(state_get KERNEL_CHOICE)" "$(state_get INIT)" \
+            "$(state_get WM_DE)" "$(state_get DISPLAY_MANAGER)" "$(state_get NETWORK_STACK)" \
+            "$(state_get AUDIO_STACK)" "$(state_get X_STACK)" "$(state_get USE_LUKS)" \
+            "$(state_get USE_LVM)" "$(state_get HOSTNAME)" "$(state_get TIMEZONE)" \
+            "$(state_get LOCALE)" "$(state_get KEYMAP)" "$(state_get PRIV_ESCALATION)" \
+            "$(state_get ENABLE_ARCH_REPOS)" "$(state_get POWER_USER)" "$(state_get EXTRAS)"
     }
 
     while true; do
@@ -474,17 +531,8 @@ tui_collect_install_config() {
                 return 0
                 ;;
             "▸ View summary"*)
-                local summary
-                printf -v summary \
-                    "Disk: %s\nFilesystem: %s\nBootloader: %s\nUKI: %s\nKernel: %s\nInit: %s\nDesktop: %s\nDisplay Manager: %s\nNetwork: %s\nAudio: %s\nX Stack: %s\nLUKS: %s\nLVM: %s\nHostname: %s\nTimezone: %s\nLocale: %s\nKeymap: %s\nPrivilege: %s\nArch Repos: %s\nPower User: %s\nExtras: %s" \
-                    "$(state_get DISK)" "$(state_get FS_TYPE)" "$(state_get BOOTLOADER)" \
-                    "$(state_get GENERATE_UKI)" "$(state_get KERNEL_CHOICE)" "$(state_get INIT)" \
-                    "$(state_get WM_DE)" "$(state_get DISPLAY_MANAGER)" "$(state_get NETWORK_STACK)" \
-                    "$(state_get AUDIO_STACK)" "$(state_get X_STACK)" "$(state_get USE_LUKS)" \
-                    "$(state_get USE_LVM)" "$(state_get HOSTNAME)" "$(state_get TIMEZONE)" \
-                    "$(state_get LOCALE)" "$(state_get KEYMAP)" "$(state_get PRIV_ESCALATION)" \
-                    "$(state_get ENABLE_ARCH_REPOS)" "$(state_get POWER_USER)" "$(state_get EXTRAS)"
-                tui_msg "Installation Summary" "${summary}" || true
+                [[ $hub_dirty -eq 1 ]] && _rebuild_hub
+                tui_msg "Installation Summary" "${cached_summary}" || true
                 ;;
         esac
     done

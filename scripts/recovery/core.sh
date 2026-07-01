@@ -15,11 +15,19 @@ recovery_mount_all() {
 
     local -a luks_parts=()
     local part
-    while IFS= read -r part; do
-        if cryptsetup isLuks "$part" &>/dev/null; then
-            luks_parts+=("$part")
-        fi
-    done < <(lsblk -n -o PATH "${target_disk}" 2>/dev/null || lsblk -n -o PATH)
+    if [[ -n "${target_disk}" ]]; then
+        while IFS= read -r part; do
+            if cryptsetup isLuks "$part" &>/dev/null; then
+                luks_parts+=("$part")
+            fi
+        done < <(lsblk -n -o PATH "${target_disk}")
+    else
+        while IFS= read -r part; do
+            if cryptsetup isLuks "$part" &>/dev/null; then
+                luks_parts+=("$part")
+            fi
+        done < <(lsblk -n -o PATH)
+    fi
 
     if [[ ${#luks_parts[@]} -gt 0 ]]; then
         tui_msg "LUKS Container Found" "Found encrypted partition(s): ${luks_parts[*]}"
@@ -69,7 +77,13 @@ recovery_mount_all() {
     fi
 
     if [[ -z "${root_candidate}" ]]; then
-        log_info "No LUKS/LVM root found — scanning partitions..."
+        log_info "Scanning partitions for root filesystem..."
+        local scan_cmd
+        if [[ -n "${target_disk}" ]]; then
+            scan_cmd="lsblk -no PATH ${target_disk}"
+        else
+            scan_cmd="lsblk -no PATH | grep -v '/dev/loop'"
+        fi
         while IFS= read -r dev; do
             local fs_type
             fs_type=$(blkid -o value -s TYPE "${dev}" 2>/dev/null || true)
@@ -77,7 +91,7 @@ recovery_mount_all() {
                 root_candidate="${dev}"
                 break
             fi
-        done < <(lsblk -no PATH "${target_disk}" 2>/dev/null || lsblk -no PATH | grep -v '/dev/loop')
+        done < <(eval "$scan_cmd")
     fi
 
     if [[ -z "${root_candidate}" ]]; then

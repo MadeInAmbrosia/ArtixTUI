@@ -261,12 +261,17 @@ run_iso_build() {
 
 _gui_launch() {
     local venv_dir="/tmp/artix-gui-venv"
-    if [[ ! -d "${venv_dir}" ]]; then
+
+    if [[ -d /usr/share/artixforge/gui-venv ]]; then
+        cp -a /usr/share/artixforge/gui-venv "${venv_dir}"
+        log_info "Using pre-built GUI environment"
+    elif [[ ! -d "${venv_dir}" ]]; then
         log_info "Setting up Python virtual environment for GUI..."
         pacman -S --noconfirm --needed python-virtualenv gtk4 libadwaita python-gobject python-jsonschema
         python3 -m venv "${venv_dir}" --system-site-packages
         "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
     fi
+
     unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
     export GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
     export GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"

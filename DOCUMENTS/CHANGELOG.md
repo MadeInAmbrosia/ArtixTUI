@@ -1,5 +1,17 @@
 # Changelog
 
+## v9.2.6.4 (2026-07-01) — ArtixForge
+
+### Changed
+- **Daemon mode auto-enabled** — if stdout is a TTY and `nc` is present, `FORGE_TUI_DAEMON=1` set automatically; no user opt-in required (`scripts/tui/core.sh`)
+- **Temp directory cleanup** — one-shot `_forge` calls now remove their temp directory immediately after reading the output file (`scripts/tui/core.sh`)
+- **BTRFS mount optimization** — subvolume creation uses `mount -o remount` instead of unmount/remount; saves one full mount cycle (`scripts/storage/mount.sh`)
+
+### Added
+- **Submenu label caching** — all 8 submenus now cache their menu items and only rebuild when state changes; eliminates redundant `state_get` calls during submenu navigation (`scripts/tui/menus/main.sh`)
+- **Summary caching** — hub rebuilds summary string alongside labels; "View summary" displays cached string instead of re-querying 21 `state_get` calls (`scripts/tui/menus/main.sh`)
+- **Recovery lsblk scoping** — when a target disk is selected, all partition scans are scoped to that disk; no redundant full-system scans (`scripts/recovery/core.sh`)
+
 ## v9.2.6.3 (2026-07-01) — ArtixForge
 
 ### Added
