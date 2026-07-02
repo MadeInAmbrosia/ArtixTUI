@@ -202,19 +202,25 @@ _tkg_source_config() {
     cpu_gov=$(tui_menu "TKG CPU Governor" "Default CPU governor:" "schedutil" "performance" "ondemand") || cpu_gov="ondemand"
     state_set TKG_CPU_GOV "${cpu_gov}"
 
-    local -a tkg_patches=(
-        "glitched_base"  "Zen/Xanmod base tweaks"
-        "zenify"         "Zenify patches (depends on glitched base)"
-        "clear_patches"  "Clear Linux patches"
-        "openrgb"        "OpenRGB support"
-        "acs_override"   "ACS override"
-        "fsync"          "Fsync support"
-        "mglru"          "MGLRU"
-        "ntsync"         "NTsync"
-    )
+    tui_msg_quick "TKG Patches" "glitched_base  = Zen/Xanmod base tweaks
+zenify         = Zenify patches (depends on glitched base)
+clear_patches  = Clear Linux patches
+openrgb        = OpenRGB support
+acs_override   = ACS override
+fsync          = Fsync support
+mglru          = MGLRU
+ntsync         = NTsync"
 
-    local selected
-    selected=$(tui_multiselect "TKG Patches" "Select patches to apply (Space to toggle, Enter to confirm):" "Search patches..." 0 0 "${tkg_patches[@]}")
+    local -a tkg_patches=(
+        "glitched_base"
+        "zenify"
+        "clear_patches"
+        "openrgb"
+        "acs_override"
+        "fsync"
+        "mglru"
+        "ntsync"
+    )
 
     state_set TKG_GLITCHED_BASE "false"
     state_set TKG_ZENIFY "false"
@@ -224,6 +230,9 @@ _tkg_source_config() {
     state_set TKG_FSYNC "false"
     state_set TKG_MGLRU "false"
     state_set TKG_NTSYNC "false"
+
+    local selected
+    selected=$(tui_multiselect "TKG Patches" "Select patches to apply:" "Search patches..." 0 0 "${tkg_patches[@]}")
 
     if [[ "${selected}" =~ "glitched_base" ]]; then state_set TKG_GLITCHED_BASE "true"; fi
     if [[ "${selected}" =~ "zenify" ]]; then state_set TKG_ZENIFY "true"; fi
