@@ -68,14 +68,32 @@ _forge() {
 }
 
 _forge_result() {
-    local _json
+    local _json _result
     _json=$(_forge "$1")
-    jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
+    
+    if [[ -z "${_json}" ]]; then
+        log_warn "forge-tui returned empty response"
+        return 1
+    fi
+    
+    if [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]; then
+        return 1
+    fi
+    
+    _result=$(jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null)
+    printf '%s\n' "${_result}"
+    return 0
 }
 
 _forge_cancelled() {
     local _json
     _json=$(_forge "$1")
+    
+    if [[ -z "${_json}" ]]; then
+        log_warn "forge-tui returned empty response"
+        return 1
+    fi
+    
     [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
 }
 
