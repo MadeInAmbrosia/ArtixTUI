@@ -1,5 +1,25 @@
 # Changelog
 
+## v9.2.7.1 (2026-07-02) — ArtixForge
+
+### Changed
+- **TUI rewritten in Rust** — entire Bash TUI system replaced with native `forge-tui` widgets; `scripts/tui/menus/` deleted; only `core.sh`, `menu.sh`, and `summary.sh` remain in `scripts/tui/`
+- **Hub widget** — two-panel configuration dashboard with live summary strings, conditional visibility, F-key actions, and inline editing via real widget dispatch (`src/widgets/hub.rs`)
+- **`tui_collect_install_config`** — now a thin loop: seed defaults, call `tui_afhub`, apply returned state map, check user count, proceed; ~40 lines total (`scripts/tui/menu.sh`)
+- **Configuration flow** — hub handles all navigation, editing, and state management internally; Bash builds categories JSON with `state_get` values and passes it to `tui_hub`
+- **Theme in hub** — title/accent color selection moved into hub as native menu items; `tui_select_theme` eliminated
+
+### Added
+- **Native kernel picker** — cascading submenus for standard, CachyOS, and TKG kernels including scheduler selection and source config (`src/artixforge/install/kernel.rs`)
+- **Native user manager** — full add/edit/delete user widget with inline shell selection, groups checklist, sudo toggle, and JSON serialization (`src/artixforge/install/users.rs`)
+- **Native quick profiles** — all 18 quick profiles implemented in Rust with variant submenus for KDE, XFCE, and Server; profile confirmation with summary display (`src/artixforge/install/quick_profiles.rs`)
+- **Native sanity warnings** — configuration validation widget that checks 40+ warning conditions and displays results (`src/artixforge/install/sanity.rs`)
+- **File picker widget** — directory browser with keyboard navigation, file filtering, and path return (`src/widgets/file_picker.rs`)
+
+### Removed
+- **Bash hub-and-submenu system** — all `_submenu_*` functions, `submenu_dirty` flags, `|| true` guards, hub label caching, and summary caching eliminated (~800 lines)
+- **`scripts/tui/menus/`** — all 8 menu files deleted (`desktop.sh`, `extras.sh`, `network_audio.sh`, `advanced.sh`, `quick_profiles.sh`, `sanity.sh`, `user.sh`, `poweruser.sh`)
+
 ## v9.2.7.0 (2026-07-02) — ArtixForge
 
 ### Added
