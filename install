@@ -198,6 +198,8 @@ main_menu() {
         esac
     done
 
+    DEBUG='false'
+
     if tui_yesno "Debug Mode" "Enable debug mode (verbose logging)?"; then
         DEBUG='true'
     else
