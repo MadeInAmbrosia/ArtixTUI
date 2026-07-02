@@ -4,6 +4,13 @@ set -Eeuo pipefail
 # SAFETY FILTER!!!
 readonly EXTRAS_SAFETY_FILTER='linux-.*|systemd.*|plasma.*|grub|mkinitcpio|.*-openrc|.*-runit|.*-dinit|.*-s6|sddm|lightdm|gdm|xorg-.*|xlibre-.*|wayland|hyprland|sway|niri|pipewire|pulseaudio|networkmanager|connman|dhcpcd|efibootmgr|filesystem|pacman|bash|coreutils|util-linux'
 
+_EXTRAS_CACHE=""
+_extras_cache_init() {
+    [[ -n "${_EXTRAS_CACHE}" ]] && return
+    _EXTRAS_CACHE=$(pacman -Sl {world,galaxy} 2>/dev/null | awk '{print $2}' | grep -vE "${EXTRAS_SAFETY_FILTER}" | sort -u)
+}
+
+
 declare -A WAYLAND_TOOLS=(
     ["mango"]="swaybg swaylock waybar wofi foot"
     ["hyprland"]="hyprpaper hyprlock waybar wofi foot"
@@ -18,21 +25,15 @@ _wayland_extras_for() {
 }
 
 tui_search_extras() {
-    log_info "Building safe package index..."
+    _extras_cache_init
 
-    local full_list
-    full_list=$(pacman -Sl {world,galaxy} 2>/dev/null \
-        | awk '{print $2}' \
-        | grep -vE "${EXTRAS_SAFETY_FILTER}" \
-        | sort -u)
-
-    if [[ -z "${full_list}" ]]; then
+    if [[ -z "${_EXTRAS_CACHE}" ]]; then
         tui_msg_quick "Error" "Could not load package list from pacman."
         return 1
     fi
 
     local selected
-    selected=$(printf '%s\n' "${full_list}" \
+    selected=$(printf '%s\n' "${_EXTRAS_CACHE}" \
         | tui_filter "Package Search" "Type to search packages (Tab to mark, Enter to confirm)" \
             --no-limit --placeholder "e.g. firefox, cmatrix, neovim...") || return 1
 

@@ -185,8 +185,58 @@ EOF
 
 basestrap_kernel_tkg() {
     local -n pkgs_ref="${1}"
+    if [[ "$(state_get TKG_BINARY no)" == "yes" ]]; then
+        log_info "TKG binary selected — no build dependencies needed"
+        return 0
+    fi
     log_info "Setting up TKG build dependencies..."
     pkgs_ref+=(bc cpio flex libelf pahole base-devel git dkms)
+}
+
+basestrap_install_tkg_binary() {
+    local sched
+    sched="$(state_get TKG_SCHEDULER eevdf)"
+    log_info "Downloading TKG binary kernel (${sched})..."
+
+    local api_url="https://api.github.com/repos/Frogging-Family/linux-tkg/releases/latest"
+    local release_json
+    release_json=$(curl -sL "${api_url}") || {
+        log_error "Failed to fetch TKG release info from GitHub"
+        return 1
+    }
+
+    local kernel_url headers_url
+    kernel_url=$(echo "${release_json}" | jq -r '.assets[] | select(.name | test("linux[0-9]+-tkg-'"${sched}"'-llvm-[0-9].*-x86_64\\.pkg\\.tar\\.zst")) | .browser_download_url' | grep -v headers | head -n1)
+    headers_url=$(echo "${release_json}" | jq -r '.assets[] | select(.name | test("linux[0-9]+-tkg-'"${sched}"'-llvm-headers-.*\\.pkg\\.tar\\.zst")) | .browser_download_url' | head -n1)
+
+    if [[ -z "${kernel_url}" || -z "${headers_url}" ]]; then
+        log_error "Could not find TKG binary packages for scheduler: ${sched}"
+        log_error "Kernel URL: ${kernel_url:-not found}"
+        log_error "Headers URL: ${headers_url:-not found}"
+        return 1
+    fi
+
+    log_info "Downloading kernel from: ${kernel_url}"
+    curl -L -o /tmp/tkg-kernel.pkg.tar.zst "${kernel_url}" || { log_error "Failed to download TKG kernel"; return 1; }
+
+    log_info "Downloading headers from: ${headers_url}"
+    curl -L -o /tmp/tkg-headers.pkg.tar.zst "${headers_url}" || { log_error "Failed to download TKG headers"; return 1; }
+
+    log_info "Installing TKG kernel and headers..."
+    artix-chroot /mnt pacman -U --noconfirm /tmp/tkg-kernel.pkg.tar.zst /tmp/tkg-headers.pkg.tar.zst || {
+        log_error "Failed to install TKG binary packages"
+        return 1
+    }
+
+    rm -f /tmp/tkg-kernel.pkg.tar.zst /tmp/tkg-headers.pkg.tar.zst
+    log_info "TKG binary kernel installed successfully"
+
+    local kver
+    kver=$(artix-chroot /mnt ls -1 /boot/vmlinuz-*tkg* 2>/dev/null | head -n1 | sed 's/.*vmlinuz-//')
+    if [[ -n "${kver}" ]]; then
+        state_set KERNEL_IMAGE "vmlinuz-${kver}"
+        state_set INITRAMFS_IMAGE "initramfs-${kver}.img"
+    fi
 }
 
 basestrap_repo_auris() {

@@ -166,6 +166,116 @@ tui_select_uki() {
     fi
 }
 
+_tkg_source_config() {
+    local sched
+    sched="$(state_get TKG_SCHEDULER eevdf)"
+
+    local compiler
+    compiler=$(tui_menu "TKG Compiler" "Select compiler:" "gcc" "llvm") || compiler="gcc"
+    state_set TKG_COMPILER "${compiler}"
+
+    local optlevel
+    optlevel=$(tui_menu "TKG Optimization" "Compiler optimization level:" "1 (O2)" "2 (O3)" "3 (Os)") || optlevel="1"
+    state_set TKG_OPTLEVEL "${optlevel%% *}"
+
+    local cpu_opt
+    cpu_opt=$(tui_input "TKG CPU Target" "CPU architecture (-march=):" "native") || cpu_opt="native"
+    state_set TKG_PROCESSOR_OPT "${cpu_opt}"
+
+    local lto_mode="no"
+    if [[ "${compiler}" == "llvm" ]]; then
+        lto_mode=$(tui_menu "TKG LTO Mode" "Link-Time Optimization:" "no" "full" "thin") || lto_mode="no"
+    fi
+    state_set TKG_LTO_MODE "${lto_mode}"
+
+    if tui_yesno "TKG PREEMPT_RT" "Apply PREEMPT_RT patchset?"; then state_set TKG_PREEMPT_RT "1"; else state_set TKG_PREEMPT_RT "0"; fi
+
+    local tickless
+    tickless=$(tui_menu "TKG Tickless" "Tickless mode:" "0 (periodic)" "1 (full tickless)" "2 (idle only)") || tickless="2"
+    state_set TKG_TICKLESS "${tickless%% *}"
+
+    local timer_freq
+    timer_freq=$(tui_menu "TKG Timer Freq" "Timer frequency (Hz):" "100" "250" "300" "500" "750" "1000") || timer_freq="1000"
+    state_set TKG_TIMER_FREQ "${timer_freq}"
+
+    local cpu_gov
+    cpu_gov=$(tui_menu "TKG CPU Governor" "Default CPU governor:" "schedutil" "performance" "ondemand") || cpu_gov="ondemand"
+    state_set TKG_CPU_GOV "${cpu_gov}"
+
+    local -a tkg_patches=(
+        "glitched_base"  "Zen/Xanmod base tweaks"
+        "zenify"         "Zenify patches (depends on glitched base)"
+        "clear_patches"  "Clear Linux patches"
+        "openrgb"        "OpenRGB support"
+        "acs_override"   "ACS override"
+        "fsync"          "Fsync support"
+        "mglru"          "MGLRU"
+        "ntsync"         "NTsync"
+    )
+
+    local selected
+    selected=$(tui_multiselect "TKG Patches" "Select patches to apply (Space to toggle, Enter to confirm):" "Search patches..." 0 0 "${tkg_patches[@]}")
+
+    state_set TKG_GLITCHED_BASE "false"
+    state_set TKG_ZENIFY "false"
+    state_set TKG_CLEAR_PATCHES "false"
+    state_set TKG_OPENRGB "false"
+    state_set TKG_ACS_OVERRIDE "false"
+    state_set TKG_FSYNC "false"
+    state_set TKG_MGLRU "false"
+    state_set TKG_NTSYNC "false"
+
+    if [[ "${selected}" =~ "glitched_base" ]]; then state_set TKG_GLITCHED_BASE "true"; fi
+    if [[ "${selected}" =~ "zenify" ]]; then state_set TKG_ZENIFY "true"; fi
+    if [[ "${selected}" =~ "clear_patches" ]]; then state_set TKG_CLEAR_PATCHES "true"; fi
+    if [[ "${selected}" =~ "openrgb" ]]; then state_set TKG_OPENRGB "true"; fi
+    if [[ "${selected}" =~ "acs_override" ]]; then state_set TKG_ACS_OVERRIDE "true"; fi
+    if [[ "${selected}" =~ "fsync" ]]; then state_set TKG_FSYNC "true"; fi
+    if [[ "${selected}" =~ "mglru" ]]; then state_set TKG_MGLRU "true"; fi
+    if [[ "${selected}" =~ "ntsync" ]]; then state_set TKG_NTSYNC "true"; fi
+
+    local nr_cpus
+    nr_cpus=$(tui_input "TKG NR_CPUS" "Max CPU count:" "$(nproc)") || nr_cpus="$(nproc)"
+    state_set TKG_NR_CPUS "${nr_cpus}"
+
+    if tui_yesno "TKG Review Config" "Review full configuration file before building?"; then
+        local tmp_cfg="/tmp/tkg-customization.cfg"
+        _tkg_write_config "${tmp_cfg}"
+        tui_edit "TKG customization.cfg" "${tmp_cfg}"
+        rm -f "${tmp_cfg}"
+    fi
+}
+
+_tkg_write_config() {
+    local out="${1}"
+    local sched="${TKG_SCHEDULER:-eevdf}"
+    cat > "${out}" <<EOF
+_distro="Arch"
+_cpusched="${sched}"
+_compiler="$(state_get TKG_COMPILER gcc)"
+_compileroptlevel="$(state_get TKG_OPTLEVEL 1)"
+_processor_opt="$(state_get TKG_PROCESSOR_OPT native)"
+_lto_mode="$(state_get TKG_LTO_MODE no)"
+_preempt_rt="$(state_get TKG_PREEMPT_RT 0)"
+_tickless="$(state_get TKG_TICKLESS 2)"
+_timer_freq="$(state_get TKG_TIMER_FREQ 1000)"
+_default_cpu_gov="$(state_get TKG_CPU_GOV ondemand)"
+_glitched_base="$(state_get TKG_GLITCHED_BASE true)"
+_zenify="$(state_get TKG_ZENIFY true)"
+_clear_patches="$(state_get TKG_CLEAR_PATCHES true)"
+_openrgb="$(state_get TKG_OPENRGB true)"
+_acs_override="$(state_get TKG_ACS_OVERRIDE false)"
+_fsync_backport="$(state_get TKG_FSYNC true)"
+_mglru="$(state_get TKG_MGLRU true)"
+_ntsync="$(state_get TKG_NTSYNC false)"
+_NR_CPUS_value="$(state_get TKG_NR_CPUS $(nproc))"
+_user_patches="true"
+_user_patches_no_confirm="false"
+_config_fragments="true"
+_config_fragments_no_confirm="false"
+EOF
+}
+
 tui_select_kernel() {
     local k
     k=$(tui_menu "Kernel" "Select kernel:" \
@@ -189,6 +299,21 @@ tui_select_kernel() {
                 "linux-cachyos-deckify (BORE, Steam Deck)") || return 1
             variant="${variant%% *}"
             state_set KERNEL_CHOICE "${variant}"
+            ;;
+        tkg)
+            local tkg_sched
+            tkg_sched=$(tui_menu "TKG Scheduler" "Select CPU scheduler:" \
+                "eevdf (default)" "bmq" "bore" "pds") || return 1
+            tkg_sched="${tkg_sched%% *}"
+            state_set TKG_SCHEDULER "${tkg_sched}"
+            state_set KERNEL_CHOICE "tkg"
+
+            if tui_yesno "TKG Build" "Use prebuilt binary from GitHub releases?\n\nYes = download binary (~50MB)\nNo  = compile from source (~30 min, full customization)"; then
+                state_set TKG_BINARY "yes"
+            else
+                state_set TKG_BINARY "no"
+                _tkg_source_config
+            fi
             ;;
         *) state_set KERNEL_CHOICE "${k}" ;;
     esac
@@ -479,7 +604,6 @@ tui_collect_install_config() {
         hub_items+=("▸ View summary")
         hub_dirty=0
 
-        # Cache summary while we have all state values
         printf -v cached_summary \
             "Disk: %s\nFilesystem: %s\nBootloader: %s\nUKI: %s\nKernel: %s\nInit: %s\nDesktop: %s\nDisplay Manager: %s\nNetwork: %s\nAudio: %s\nX Stack: %s\nLUKS: %s\nLVM: %s\nHostname: %s\nTimezone: %s\nLocale: %s\nKeymap: %s\nPrivilege: %s\nArch Repos: %s\nPower User: %s\nExtras: %s" \
             "$(state_get DISK)" "$(state_get FS_TYPE)" "$(state_get BOOTLOADER)" \

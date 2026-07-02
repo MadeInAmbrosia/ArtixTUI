@@ -364,6 +364,7 @@ Attempt recovery and continue installation?"; then
             "Repair detected issues" \
             "Fix everything (kernel, initramfs, GRUB, fstab)" \
             "Repair filesystem corruption (safe or destructive)" \
+            "Edit config files" \
             "Scan for rootkits" \
             "Untrusted Recovery (rootkit hunt + malware scan)" \
             "Full reinstall (run installer)" \
@@ -384,6 +385,24 @@ Attempt recovery and continue installation?"; then
                 ;;
             "Repair filesystem"*)
                 repair_filesystem
+                ;;
+            "Edit config files")
+                local edit_choice
+                edit_choice=$(tui_menu "Edit Config" "Select file:" \
+                    "fstab" "mkinitcpio.conf" "pacman.conf" \
+                    "GRUB config" "hostname" "locale.conf" \
+                    "vconsole.conf" "Back") || continue
+                case "${edit_choice}" in
+                    "fstab")           tui_edit "fstab" "/mnt/etc/fstab" ;;
+                    "mkinitcpio.conf") tui_edit "mkinitcpio.conf" "/mnt/etc/mkinitcpio.conf" ;;
+                    "pacman.conf")     tui_edit "pacman.conf" "/mnt/etc/pacman.conf" ;;
+                    "GRUB config")     tui_edit "GRUB config" "/mnt/etc/default/grub" ;;
+                    "hostname")        tui_edit "hostname" "/mnt/etc/hostname" ;;
+                    "locale.conf")     tui_edit "locale.conf" "/mnt/etc/locale.conf" ;;
+                    "vconsole.conf")   tui_edit "vconsole.conf" "/mnt/etc/vconsole.conf" ;;
+                *) continue ;;
+                esac
+                tui_msg "Config Edited" "${edit_choice} updated."
                 ;;
             "Scan for rootkits")
                 detect_rootkits

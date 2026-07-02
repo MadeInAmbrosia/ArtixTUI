@@ -28,6 +28,7 @@ _qp_desktop() {
     state_set NETWORK_STACK "networkmanager"
     state_set AUDIO_STACK "pipewire"
     state_set X_STACK "${3:-xlibre}"
+    state_set BTRFS_LAYOUT "standard"
     state_set ENABLE_ARCH_REPOS "${4:-no}"
     state_set EXTRAS "${5:-git firefox alacritty fzf zoxide starship eza btop tmux}"
 }

@@ -50,6 +50,7 @@ tui_configure_users() {
 
 tui_add_user() {
     local idx=$(( ${USER_COUNT:-0} + 1 ))
+    state_set "USER_${idx}_GROUPS" "wheel,audio,video,storage"
     tui_edit_user_dialog "${idx}" "new"
 }
 

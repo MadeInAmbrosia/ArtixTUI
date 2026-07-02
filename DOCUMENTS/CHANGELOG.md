@@ -1,5 +1,29 @@
 # Changelog
 
+## v9.2.7.0 (2026-07-02) — ArtixForge
+
+### Added
+- **TKG kernel binary path** — prebuilt TKG kernel and headers downloaded from GitHub releases; user selects CPU scheduler (eevdf/bmq/bore/pds) and installs instantly via `pacman -U` (`scripts/install/basestraps/kernel_build.sh`)
+- **TKG kernel source configuration** — full `customization.cfg` options exposed through TUI: compiler (gcc/llvm), optimization level, CPU target, LTO mode, PREEMPT_RT, tickless mode, timer frequency, CPU governor, and 8 toggleable patch sets via `tui_multiselect` (`scripts/tui/menus/main.sh`)
+- **TKG review step** — optional Chisel editor review of generated `customization.cfg` before compilation begins
+- **Extras search cache** — `pacman -Sl` package index built once at first search and reused for all subsequent searches (`scripts/tui/menus/extras.sh`)
+- **Recovery Chisel editor** — config file editing via `tui_edit` for fstab, mkinitcpio.conf, pacman.conf, GRUB config, hostname, locale.conf, and vconsole.conf from recovery mode (`install`)
+
+### Changed
+- **TKG source build** — now writes a `customization.cfg` with user-selected options before compilation; no longer blindly applies all patches
+- **Submenu label caching** — all 8 submenus cache their menu items and only rebuild when state changes (`scripts/tui/menus/main.sh`)
+- **Hub summary caching** — installation summary built once alongside hub labels and reused for "View summary" (`scripts/tui/menus/main.sh`)
+- **Daemon mode auto-enabled** — if stdout is a TTY and `nc` is present, `FORGE_TUI_DAEMON=1` set automatically (`scripts/tui/core.sh`)
+
+### Fixed
+- **Xanmod kernel header mismatch** — `drivers.sh` now queries installed kernel package instead of re-detecting CPU level; prevents v4 headers on v3 kernel (`scripts/post/drivers.sh`)
+- **Temp directory cleanup** — one-shot `_forge` calls remove temp directory immediately after reading output (`scripts/tui/core.sh`)
+
+### Optimized
+- **State persistence** — `state_set` uses `sed -i` for in-place updates instead of full file copy on every write (`scripts/state.sh`)
+- **BTRFS mount** — subvolume creation uses `mount -o remount` instead of unmount/remount cycle (`scripts/storage/mount.sh`)
+- **Recovery lsblk** — partition scans scoped to selected disk when available (`scripts/recovery/core.sh`)
+
 ## v9.2.6.4 (2026-07-01) — ArtixForge
 
 ### Changed
