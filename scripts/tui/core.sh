@@ -265,6 +265,11 @@ tui_hub() {
     _forge_result '{"widget":"hub","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"'}'
 }
 
+tui_install_hub() {
+    local title="${1}" categories_json="${2}" actions_json="${3}" boot_mode="${4:-uefi}"
+    _forge_result '{"widget":"install_hub","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"',"boot_mode":"'"${boot_mode}"'"}'
+}
+
 tui_recovery() {
     local title="${1}" status_json="${2}" repairs_json="${3}"
     _forge_result '{"widget":"recovery","title":"'"${title//\"/\\\"}"'","status":'"${status_json}"',"repairs":'"${repairs_json}"'}'
