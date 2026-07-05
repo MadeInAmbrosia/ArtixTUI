@@ -58,4 +58,6 @@ tui_show_summary() {
         [[ -S "${FORGE_TUI_SOCKET}" ]] && printf '{"widget":"quit"}\n' | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null
         rm -f "${FORGE_TUI_SOCKET}"
     fi
+
+    trap 'if [[ -n "${FORGE_TUI_DAEMON:-}" && -S "${FORGE_TUI_SOCKET}" ]]; then printf "{\"widget\":\"quit\"}\n" | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null; rm -f "${FORGE_TUI_SOCKET}"; fi' EXIT
 }

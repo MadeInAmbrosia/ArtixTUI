@@ -11,8 +11,11 @@ FORGE_TUI="${FORGE_TUI:-forge-tui}"
 FORGE_TUI_SOCKET="${FORGE_TUI_SOCKET:-/tmp/forge-tui.sock}"
 FORGE_TUI_DAEMON="${FORGE_TUI_DAEMON:-}"
 
-[[ -t 1 ]] || FORGE_TUI_DAEMON=""
-[[ -n "${FORGE_TUI_DAEMON:-}" ]] && command -v nc &>/dev/null && FORGE_TUI_DAEMON=1 || FORGE_TUI_DAEMON=""
+if command -v nc &>/dev/null; then
+    FORGE_TUI_DAEMON=1
+else
+    FORGE_TUI_DAEMON=""
+fi
 
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
