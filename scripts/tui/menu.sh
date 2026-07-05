@@ -104,6 +104,15 @@ tui_collect_install_config() {
         tui_select_disk
     fi
 
+    if [[ -n "${FORGE_TUI_DAEMON:-}" ]]; then
+        forge-tui --daemon --socket "${FORGE_TUI_SOCKET}" &
+        for _ in {1..50}; do
+            [[ -S "${FORGE_TUI_SOCKET}" ]] && break
+            sleep 0.05
+        done
+        trap 'if [[ -n "${FORGE_TUI_DAEMON:-}" && -S "${FORGE_TUI_SOCKET}" ]]; then printf "{\"widget\":\"quit\"}\n" | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null; rm -f "${FORGE_TUI_SOCKET}"; fi' EXIT
+    fi
+
     while true; do
         local result
         result=$(tui_afhub) || { tui_msg_quick "Cancelled" "Installation cancelled."; exit 0; }
