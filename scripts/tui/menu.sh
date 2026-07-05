@@ -104,12 +104,13 @@ tui_collect_install_config() {
         tui_select_disk
     fi
 
-    if [[ -n "${FORGE_TUI_DAEMON:-}" ]]; then
+    if [[ -n "${FORGE_TUI_DAEMON_AVAILABLE:-}" ]]; then
         forge-tui --daemon --socket "${FORGE_TUI_SOCKET}" &
         for _ in {1..50}; do
             [[ -S "${FORGE_TUI_SOCKET}" ]] && break
             sleep 0.05
         done
+        export FORGE_TUI_DAEMON=1
         trap 'if [[ -n "${FORGE_TUI_DAEMON:-}" && -S "${FORGE_TUI_SOCKET}" ]]; then printf "{\"widget\":\"quit\"}\n" | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null; rm -f "${FORGE_TUI_SOCKET}"; fi' EXIT
     fi
 

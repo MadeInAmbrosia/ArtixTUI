@@ -12,9 +12,7 @@ FORGE_TUI_SOCKET="${FORGE_TUI_SOCKET:-/tmp/forge-tui.sock}"
 FORGE_TUI_DAEMON="${FORGE_TUI_DAEMON:-}"
 
 if command -v nc &>/dev/null; then
-    FORGE_TUI_DAEMON=1
-else
-    FORGE_TUI_DAEMON=""
+    FORGE_TUI_DAEMON_AVAILABLE=1
 fi
 
 _ensure_log_dirs() {
