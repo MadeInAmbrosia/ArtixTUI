@@ -259,15 +259,12 @@ start_iso_build() {
 
     source "${BASE_DIR}/iso/tui.sh"
 
-    # Run the hub
     tui_iso_hub || return 1
 
-    # If offline mode with live desktop, run target config
     if [[ "$(state_get ALLOW_OFFLINE no)" == "yes" && "$(state_get ISO_BOOT_MODE live)" == "live" ]]; then
         tui_iso_target_config
     fi
 
-    # Build
     local profile_name init kernel offline boot_mode iso_output_dir
     profile_name="$(state_get QUICK_PROFILE Custom)"
     init="$(state_get INIT openrc)"
@@ -313,14 +310,6 @@ _gui_launch() {
 
 start_auto_install() {
     rm -f /tmp/artix-installer/state.conf
-    if [[ -n "${FORGE_TUI_DAEMON:-}" ]]; then
-        forge-tui --daemon --socket "${FORGE_TUI_SOCKET}" &
-        for _ in {1..50}; do
-            [[ -S "${FORGE_TUI_SOCKET}" ]] && break
-            sleep 0.05
-        done
-        trap '[[ -S "${FORGE_TUI_SOCKET}" ]] && printf "{\"widget\":\"quit\"}\n" | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null; rm -f "${FORGE_TUI_SOCKET}"' EXIT
-    fi
     local var
     for var in DISK FS_TYPE BOOTLOADER KERNEL_CHOICE INIT WM_DE \
                NETWORK_STACK AUDIO_STACK PRIV_ESCALATION HOSTNAME \
