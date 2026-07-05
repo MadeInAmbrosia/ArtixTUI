@@ -20,229 +20,163 @@ _forge_result() {
     jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
 }
 
-_forge_cancelled() {
-    local _json
-    _json=$(_forge "$1")
-    [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
-}
+tui_anvil_hub() {
+    local actions_json
+    actions_json='[
+        {"category":"Packages","actions":[
+            {"key":"list_installed","label":"List installed packages","description":"Show source-built packages"},
+            {"key":"list_recipes","label":"List available recipes","description":"Browse all recipe files"},
+            {"key":"package_info","label":"Package info","description":"View build details for a package"},
+            {"key":"rebuild","label":"Rebuild a package","description":"Recompile a source package"},
+            {"key":"fetch_recipe","label":"Fetch recipe from repo","description":"Download a community recipe"},
+            {"key":"fetch_all","label":"Fetch all sources","description":"Download all recipe sources"}
+        ]},
+        {"category":"Recipes","actions":[
+            {"key":"create_recipe","label":"Create new recipe","description":"Start a new recipe from template"},
+            {"key":"edit_recipe","label":"Edit recipe","description":"Modify an existing recipe"},
+            {"key":"lint_recipe","label":"Lint recipe","description":"Validate recipe syntax"},
+            {"key":"checksum_recipe","label":"Checksum recipe","description":"Generate SHA256 hashes"}
+        ]},
+        {"category":"Kernel","actions":[
+            {"key":"edit_config","label":"Edit kernel config","description":"Modify the running kernel .config"},
+            {"key":"menuconfig","label":"Menuconfig","description":"Launch make menuconfig"},
+            {"key":"fetch_source","label":"Fetch kernel source","description":"Download kernel source for compilation"}
+        ]},
+        {"category":"Maintenance","actions":[
+            {"key":"sync_recipes","label":"Sync recipes","description":"Update .LIST and recipes from community repo"},
+            {"key":"manage_sections","label":"Manage recipe sections","description":"Enable/disable recipe sources"},
+            {"key":"upgrade","label":"Upgrade recipes","description":"Backup and update from remote"},
+            {"key":"cache_clean","label":"Clean cache","description":"Remove obsolete cached packages"},
+            {"key":"recovery","label":"Recovery","description":"Check and repair source packages"}
+        ]}
+    ]'
 
-tui_menu() {
-    local title="${1}" msg="${2}"
-    shift 2
-    msg="${msg//$'\n'/\\n}"
-    local choices_json
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
-}
-
-tui_checklist() {
-    local title="${1}" msg="${2}"
-    shift 2
-    msg="${msg//$'\n'/\\n}"
-    local choices_json result
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    result=$(_forge_result '{"widget":"checklist","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}')
-    printf '%s\n' "${result}"
-}
-
-tui_msg() {
-    local title="${1}" msg="${2}"
-    msg="${msg//$'\n'/\\n}"
-    _forge '{"widget":"msg","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}' >/dev/null
-}
-
-tui_input() {
-    local title="${1}" msg="${2}" default="${3:-}"
-    msg="${msg//$'\n'/\\n}"
-    _forge_result '{"widget":"input","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","default":"'"${default//\"/\\\"}"'"}'
-}
-
-tui_yesno() {
-    local title="${1}" msg="${2}"
-    msg="${msg//$'\n'/\\n}"
     local result
-    result=$(_forge_result '{"widget":"yesno","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}')
-    [[ "$result" == "true" ]] && return 0 || return 1
-}
+    result=$(_forge_result '{"widget":"anvil","title":"anvil","actions":'"${actions_json}"'}')
 
-tui_manage_sections() {
-    load_sections
-    local chosen
-    chosen=$(tui_checklist "Recipe Sections" "Select which recipe sections to enable:" \
-        "OFFICIAL/Base (recommended)" \
-        "OFFICIAL/Other (extended, tested)" \
-        "COMMUNITY/Base (pending review)" \
-        "COMMUNITY/Other (experimental)") || return 0
-
-    ANVIL_SECTIONS="${chosen//$'\n'/ }"
-    [[ -z "${ANVIL_SECTIONS}" ]] && ANVIL_SECTIONS="${DEFAULT_SECTIONS}"
-    save_sections
-    tui_msg "Sections Updated" "Enabled sections: ${ANVIL_SECTIONS}"
+    echo "${result}"
 }
 
 tui_main() {
     while true; do
-        clear
         local action
-        action=$(tui_menu "anvil" "Select an action:" \
-            "List installed packages" \
-            "List available recipes" \
-            "Package info" \
-            "Rebuild a package" \
-            "Create new recipe" \
-            "Edit recipe" \
-            "Edit kernel config" \
-            "Menuconfig" \
-            "Fetch kernel source" \
-            "Fetch a recipe from repo" \
-            "Fetch all sources" \
-            "Manage recipe sections" \
-            "Lint recipe" \
-            "Checksum recipe" \
-            "Sync recipes" \
-            "Recovery – check & repair source packages" \
-            "Upgrade recipes" \
-            "Clean cache" \
-            "Quit") || break
+        action=$(tui_anvil_hub) || break
 
         case "$action" in
-            "List installed packages")
+            "list_installed")
                 local installed
                 installed=$(list_packages 2>/dev/null)
-                tui_msg "Installed Packages" "${installed:-No packages installed.}"
+                _forge '{"widget":"msg","title":"Installed Packages","message":"'"${installed:-No packages installed.}"'"}' >/dev/null
                 ;;
-            "List available recipes")
+            "list_recipes")
                 local recipes
                 recipes=$(list_recipes 2>/dev/null)
-                tui_msg "Available Recipes" "${recipes:-No recipes found.}"
+                _forge '{"widget":"msg","title":"Available Recipes","message":"'"${recipes:-No recipes found.}"'"}' >/dev/null
                 ;;
-            "Package info")
+            "package_info")
                 local pkg_list
                 pkg_list=$(list_packages 2>/dev/null | awk '{print $1}')
                 if [[ -z "$pkg_list" ]]; then
-                    tui_msg "No packages" "No source packages installed yet."
+                    _forge '{"widget":"msg","title":"No packages","message":"No source packages installed yet."}' >/dev/null
                     continue
                 fi
                 local pkg
-                pkg=$(tui_menu "Select Package" "" $pkg_list) || continue
+                pkg=$(_forge_result '{"widget":"menu","title":"Select Package","choices":'"$(printf '%s\n' $pkg_list | jq -R . | jq -s .)"'}') || continue
                 local info
                 info=$(info_package "$pkg")
-                tui_msg "Package Info: $pkg" "$info"
+                _forge '{"widget":"msg","title":"Package Info: '"${pkg}"'","message":"'"${info}"'"}' >/dev/null
                 ;;
-            "Rebuild a package")
+            "rebuild")
                 local avail
                 avail=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail" ]]; then
-                    tui_msg "No recipes" "No recipes found."
+                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
                     continue
                 fi
                 local to_rebuild
-                to_rebuild=$(tui_menu "Select package" "" $avail) || continue
+                to_rebuild=$(_forge_result '{"widget":"menu","title":"Select package","choices":'"$(printf '%s\n' $avail | jq -R . | jq -s .)"'}') || continue
                 rebuild_package "$to_rebuild"
-                tui_msg "Rebuild" "$to_rebuild rebuilt."
+                _forge '{"widget":"msg","title":"Rebuild","message":"'"${to_rebuild}"' rebuilt."}' >/dev/null
                 ;;
-            "Create new recipe")
+            "create_recipe")
                 local name
-                name=$(tui_input "New Recipe" "Package name:") || continue
+                name=$(_forge_result '{"widget":"input","title":"New Recipe","message":"Package name:"}') || continue
                 [[ -z "$name" ]] && continue
                 new_recipe "$name"
                 ;;
-            "Edit recipe")
+            "edit_recipe")
                 local avail2
                 avail2=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail2" ]]; then
-                    tui_msg "No recipes" "No recipes found."
+                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
                     continue
                 fi
                 local to_edit
-                to_edit=$(tui_menu "Select recipe" "" $avail2) || continue
+                to_edit=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' $avail2 | jq -R . | jq -s .)"'}') || continue
                 edit_recipe "$to_edit"
                 ;;
-            "Edit kernel config")
-                edit_config
-                tui_msg "Config" "Kernel config edited."
-                ;;
-            "Menuconfig")
-                launch_menuconfig
-                tui_msg "Menuconfig" "Kernel configuration complete."
-                ;;
-            "Fetch kernel source")
-                fetch_source linux
-                tui_msg "Source" "Kernel source ready in /usr/src/linux-custom"
-                ;;
-            "Fetch a recipe from repo")
+            "edit_config") edit_config ;;
+            "menuconfig") launch_menuconfig ;;
+            "fetch_source") fetch_source linux ;;
+            "fetch_recipe")
                 local remote_recipes
                 remote_recipes=$(list_available 2>/dev/null | awk '{print $1}')
                 if [[ -z "$remote_recipes" ]]; then
-                    tui_msg "No recipes" "No recipes available from the community repo."
+                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes available from the community repo."}' >/dev/null
                     continue
                 fi
                 local to_fetch
-                to_fetch=$(tui_menu "Select recipe" "" ${remote_recipes}) || continue
+                to_fetch=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' ${remote_recipes} | jq -R . | jq -s .)"'}') || continue
                 fetch_recipe "$to_fetch"
-                tui_msg "Fetch Recipe" "${to_fetch} downloaded."
+                _forge '{"widget":"msg","title":"Fetch Recipe","message":"'"${to_fetch}"' downloaded."}' >/dev/null
                 ;;
-            "Fetch all sources")
-                fetch_all_sources
-                tui_msg "Fetch All" "All recipe sources downloaded."
-                ;;
-            "Manage recipe sections")
-                tui_manage_sections
-                ;;
-            "Lint recipe")
+            "fetch_all") fetch_all_sources ;;
+            "manage_sections") tui_manage_sections ;;
+            "lint_recipe")
                 local avail3
                 avail3=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail3" ]]; then
-                    tui_msg "No recipes" "No recipes found."
+                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
                     continue
                 fi
                 local to_lint
-                to_lint=$(tui_menu "Select recipe" "" $avail3) || continue
+                to_lint=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' $avail3 | jq -R . | jq -s .)"'}') || continue
                 local lint_result
                 lint_result=$(lint_recipe "$to_lint" 2>&1)
-                tui_msg "Lint Result: $to_lint" "$lint_result"
+                _forge '{"widget":"msg","title":"Lint Result: '"${to_lint}"'","message":"'"${lint_result}"'"}' >/dev/null
                 ;;
-            "Checksum recipe")
+            "checksum_recipe")
                 local avail4
                 avail4=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail4" ]]; then
-                    tui_msg "No recipes" "No recipes found."
+                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
                     continue
                 fi
                 local to_checksum
-                to_checksum=$(tui_menu "Select recipe" "" $avail4) || continue
+                to_checksum=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' $avail4 | jq -R . | jq -s .)"'}') || continue
                 local checksum_result
                 checksum_result=$(checksum_recipe "$to_checksum" 2>&1)
-                tui_msg "Checksums: $to_checksum" "${checksum_result}"
+                _forge '{"widget":"msg","title":"Checksums: '"${to_checksum}"'","message":"'"${checksum_result}"'"}' >/dev/null
                 ;;
-            "Sync recipes")
-                sync_recipes
-                tui_msg "Sync" "Recipes synchronized."
-                ;;
-            "Recovery – check & repair source packages")
+            "sync_recipes") sync_recipes ;;
+            "upgrade") upgrade_anvil ;;
+            "cache_clean") cache_clean ;;
+            "recovery")
                 anvil_recovery_status
-                if tui_yesno "Repair source packages?" "Attempt to repair all source-built packages?"; then
+                if _forge_result '{"widget":"yesno","title":"Repair?","message":"Repair detected issues?"}' | grep -q 'true'; then
                     local repaired=()
                     while IFS='|' read -r pkgname _; do
                         [[ -n "${pkgname}" ]] || continue
                         anvil_recovery_repair "${pkgname}" && repaired+=("${pkgname}")
                     done < <(tail -n +2 "${POWERUSER_DIR}/db/local.db" 2>/dev/null)
                     if [[ ${#repaired[@]} -gt 0 ]]; then
-                        tui_msg "Recovery Complete" "Repaired: ${repaired[*]}"
+                        _forge '{"widget":"msg","title":"Recovery Complete","message":"Repaired: '"${repaired[*]}"'"}' >/dev/null
                     else
-                        tui_msg "Recovery" "No packages were repaired."
+                        _forge '{"widget":"msg","title":"Recovery","message":"No packages were repaired."}' >/dev/null
                     fi
                 fi
                 ;;
-            "Upgrade recipes")
-                upgrade_anvil
-                tui_msg "Upgrade" "Recipes upgraded. Old recipes backed up."
-                ;;
-            "Clean cache")
-                cache_clean
-                tui_msg "Cache" "Obsolete packages removed."
-                ;;
-            "Quit") break ;;
+            *) break ;;
         esac
     done
     clear

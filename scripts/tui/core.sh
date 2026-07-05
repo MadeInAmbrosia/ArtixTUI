@@ -261,3 +261,28 @@ tui_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}"
     _forge_result '{"widget":"hub","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"'}'
 }
+
+tui_recovery() {
+    local title="${1}" status_json="${2}" repairs_json="${3}"
+    _forge_result '{"widget":"recovery","title":"'"${title//\"/\\\"}"'","status":'"${status_json}"',"repairs":'"${repairs_json}"'}'
+}
+
+tui_iso() {
+    local title="${1}" categories_json="${2}"
+    _forge_result '{"widget":"iso","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}'
+}
+
+tui_migration_init() {
+    local title="${1}" current_init="${2}"
+    _forge_result '{"widget":"migration_init","title":"'"${title//\"/\\\"}"'","current_init":"'"${current_init}"'"}'
+}
+
+tui_migration_desktop() {
+    local title="${1}" current_de="${2}"
+    _forge_result '{"widget":"migration_desktop","title":"'"${title//\"/\\\"}"'","current_de":"'"${current_de}"'"}'
+}
+
+tui_poweruser() {
+    local title="${1}" categories_json="${2}"
+    _forge_result '{"widget":"poweruser","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}'
+}

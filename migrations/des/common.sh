@@ -625,24 +625,25 @@ You can:\n
 }
 
 tui_de_migration_menu() {
-    local current_de source_de target_de
+    local current_de
     current_de=$(detect_current_de)
     tui_msg_quick "Current Desktop" "Detected desktop environment: ${current_de}"
 
-    source_de=$(tui_menu "Source Desktop" "Select desktop to migrate FROM:" \
-        "kde" "sonicde" "xfce" "lxqt" "lxde" "hyprland" "sway" "niri" \
-        "i3wm" "dwm" "vxwm" "icewm" "mango" "none") || return 1
+    local result
+    result=$(tui_migration_desktop "Desktop Migration" "${current_de}") || return 1
 
-    target_de=$(tui_menu "Target Desktop" "Select desktop to migrate TO:" \
-        "kde" "sonicde" "xfce" "lxqt" "lxde" "hyprland" "sway" "niri" \
-        "i3wm" "dwm" "vxwm" "icewm" "mango" "none") || return 1
+    local source_de target_de dm x_stack audio network
+    source_de=$(echo "${result}" | jq -r '.source')
+    target_de=$(echo "${result}" | jq -r '.target')
+    dm=$(echo "${result}" | jq -r '.dm')
+    x_stack=$(echo "${result}" | jq -r '.x_stack')
+    audio=$(echo "${result}" | jq -r '.audio')
+    network=$(echo "${result}" | jq -r '.network')
 
-    [[ "$source_de" != "$target_de" ]] || die "Source and target are the same."
+    state_set DE_MIG_DM "${dm}"
+    state_set DE_MIG_X "${x_stack}"
+    state_set DE_MIG_AUDIO "${audio}"
+    state_set DE_MIG_NETWORK "${network}"
 
-    local script="${MIGRATIONS_DIR}/des/${source_de}-to-${target_de}.sh"
-    if [[ -f "$script" ]]; then
-        source "$script"
-    else
-        run_de_migration "$source_de" "$target_de"
-    fi
+    run_de_migration "${source_de}" "${target_de}"
 }

@@ -681,22 +681,12 @@ tui_init_migration_menu() {
     current_init=$(state_get INIT openrc)
     tui_msg_quick "Current Init" "Detected init system: ${current_init}"
 
-    local source_init target_init
-    source_init=$(tui_menu "Source Init" "Select current init system:" \
-        "openrc" "runit" "dinit" "s6" "systemd") || return 1
-    target_init=$(tui_menu "Target Init" "Select new init system:" \
-        "openrc" "runit" "dinit" "s6") || return 1
-    [[ "$source_init" != "$target_init" ]] || die "Source and target are the same."
+    local result
+    result=$(tui_migration_init "Init Migration" "${current_init}") || return 1
 
-    local script="${MIGRATIONS_DIR}/inits/${source_init}-to-${target_init}.sh"
-    if [[ -f "$script" ]]; then
-        source "$script"
-    else
-        log_info "No direct script for $source_init → $target_init – chaining through $HUB_INIT"
-        local step1="${MIGRATIONS_DIR}/inits/${source_init}-to-${HUB_INIT}.sh"
-        local step2="${MIGRATIONS_DIR}/inits/${HUB_INIT}-to-${target_init}.sh"
-        [[ -f "$step1" ]] && { log_info "Running: $source_init → $HUB_INIT"; source "$step1"; }
-        [[ -f "$step2" ]] && { log_info "Running: $HUB_INIT → $target_init"; source "$step2"; }
-    fi
-    log_info "Init migration complete. Please reboot."
+    local source_init target_init
+    source_init=$(echo "${result}" | jq -r '.source')
+    target_init=$(echo "${result}" | jq -r '.target')
+
+    run_init_migration "${source_init}" "${target_init}"
 }

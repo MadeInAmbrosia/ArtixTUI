@@ -244,21 +244,42 @@ run_migration() {
     esac
 }
 
-run_iso_build() {
-    if ! command -v buildiso &>/dev/null; then
-        log_info "Installing artools and iso-profiles..."
-        pacman -S --noconfirm artools iso-profiles || die "Failed to install artools"
-        modprobe loop
+start_iso_build() {
+    if [[ -d /run/artix/sfs/rootfs ]]; then
+        tui_msg_quick "Not Supported" "ISO building from a live environment is not supported."
+        return 0
     fi
+
+    if ! command -v buildiso &>/dev/null; then
+        if tui_yesno "Missing Tools" "artools is not installed. Install now?"; then
+            pacman -S --noconfirm artools iso-profiles || die "Failed to install artools"
+            modprobe loop
+        else
+            die "artools is required for ISO generation"
+        fi
+    fi
+
     source "${BASE_DIR}/iso/tui.sh"
-    local profile_name init kernel offline boot_mode
-    profile_name="$(state_get QUICK_PROFILE 'Desktop')"
-    init="$(state_get INIT 'openrc')"
-    kernel="$(state_get KERNEL_CHOICE 'linux')"
-    offline="$(state_get ALLOW_OFFLINE 'no')"
-    boot_mode="$(state_get ISO_BOOT_MODE 'live')"
-    source "${BASE_DIR}/iso/build.sh"
-    build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}"
+
+    # Run the hub
+    tui_iso_hub || return 1
+
+    # If offline mode with live desktop, run target config
+    if [[ "$(state_get ALLOW_OFFLINE no)" == "yes" && "$(state_get ISO_BOOT_MODE live)" == "live" ]]; then
+        tui_iso_target_config
+    fi
+
+    # Build
+    local profile_name init kernel offline boot_mode iso_output_dir
+    profile_name="$(state_get QUICK_PROFILE Custom)"
+    init="$(state_get INIT openrc)"
+    kernel="$(state_get KERNEL_CHOICE linux)"
+    offline="$(state_get ALLOW_OFFLINE no)"
+    boot_mode="$(state_get ISO_BOOT_MODE live)"
+    iso_output_dir="$(state_get ISO_OUTPUT_DIR "${HOME}/ArtixForge-ISO")"
+
+    source "${ISO_DIR}/build.sh"
+    build_artix_iso "${profile_name}" "${init}" "${kernel}" "${offline}" "${boot_mode}" "${iso_output_dir}"
 }
 
 _gui_launch() {
@@ -323,7 +344,7 @@ resume_install() {
     if [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
         log_info "Resuming ISO build..."
         state_load
-        run_iso_build
+        start_iso_build
         return 0
     fi
     [[ -f "${STATE_FILE}" ]] || die 'no saved installer state found'
@@ -360,81 +381,25 @@ Attempt recovery and continue installation?"; then
     log_info "Entering recovery mode..."
 
     while true; do
-        local recovery_choice
-        recovery_choice=$(tui_menu "Recovery Options" "What would you like to do?" \
-            "View system status" \
-            "Repair detected issues" \
-            "Fix everything (kernel, initramfs, GRUB, fstab)" \
-            "Repair filesystem corruption (safe or destructive)" \
-            "Edit config files" \
-            "Scan for rootkits" \
-            "Untrusted Recovery (rootkit hunt + malware scan)" \
-            "Full reinstall (run installer)" \
-            "Return to main menu" \
-            "Exit") || exit 1
-
-        case "${recovery_choice}" in
-            "View system status")
-                tui_msg "System Status" "$(recovery_get_status)"
-                ;;
-            "Repair detected issues")
-                repair_detected_issues
-                tui_msg "Repair Complete" "Detected issues have been repaired.\n\nRun 'View system status' to verify."
-                ;;
-            "Fix everything"*)
-                repair_system
-                tui_msg "Repair Complete" "Full system repair completed.\n\nRun 'View system status' to verify."
-                ;;
-            "Repair filesystem"*)
-                repair_filesystem
-                ;;
-            "Edit config files")
-                local edit_choice
-                edit_choice=$(tui_menu "Edit Config" "Select file:" \
-                    "fstab" "mkinitcpio.conf" "pacman.conf" \
-                    "GRUB config" "hostname" "locale.conf" \
-                    "vconsole.conf" "Back") || continue
-                case "${edit_choice}" in
-                    "fstab")           tui_edit "fstab" "/mnt/etc/fstab" ;;
-                    "mkinitcpio.conf") tui_edit "mkinitcpio.conf" "/mnt/etc/mkinitcpio.conf" ;;
-                    "pacman.conf")     tui_edit "pacman.conf" "/mnt/etc/pacman.conf" ;;
-                    "GRUB config")     tui_edit "GRUB config" "/mnt/etc/default/grub" ;;
-                    "hostname")        tui_edit "hostname" "/mnt/etc/hostname" ;;
-                    "locale.conf")     tui_edit "locale.conf" "/mnt/etc/locale.conf" ;;
-                    "vconsole.conf")   tui_edit "vconsole.conf" "/mnt/etc/vconsole.conf" ;;
-                *) continue ;;
-                esac
-                tui_msg "Config Edited" "${edit_choice} updated."
-                ;;
-            "Scan for rootkits")
-                detect_rootkits
-                tui_msg "Scan Complete" "Rootkit scan finished. Check /tmp/rkhunter.log"
-                ;;
-            "Untrusted Recovery"*)
-                untrusted_recovery
-                ;;
-            "Full reinstall"*)
-                if tui_yesno "Full Reinstall" "This will wipe recovery state and start a fresh installation. Continue?"; then
-                    rm -f /tmp/artix-installer/state.conf
-                    rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
-                    umount -R /mnt 2>/dev/null || true
-                    MODE='auto'
-                    start_auto_install
-                    return
-                fi
-                ;;
-            "Return to main menu")
-                clear
-                main_menu
-                return
-                ;;
-            "Exit")
-                clear
-                tui_msg_quick "Recovery" "Recovery mode exited. System remains at /mnt."
-                exit 0
-                ;;
-        esac
+        tui_recovery_hub || break
+        
+        if tui_yesno "Continue" "Recovery action completed. Continue with more repairs or proceed?"; then
+            continue
+        fi
+        break
     done
+
+    if tui_yesno "Full Reinstall" "Would you like to start a fresh installation instead?"; then
+        rm -f /tmp/artix-installer/state.conf
+        rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
+        umount -R /mnt 2>/dev/null || true
+        MODE='auto'
+        start_auto_install
+        return
+    fi
+
+    clear
+    tui_msg_quick "Recovery" "Recovery mode exited. System remains at /mnt."
 }
 
 start_system_migration() {
@@ -490,7 +455,7 @@ main() {
                 if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
                     run_migration
                 elif [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
-                    run_iso_build
+                    start_iso_build
                 else
                     resume_install
                 fi
@@ -525,7 +490,7 @@ main() {
                 state_set POWER_USER "yes"
                 run_install_pipeline
                 ;;
-            iso)   run_iso_build ;;
+            iso)   start_iso_build ;;
             migrate) run_migration ;;
             *)
                 log_error "Unknown mode: ${MODE}"
@@ -572,7 +537,7 @@ main() {
         recovery) start_recovery_install ;;
         power)    MODE='power' ; state_set POWER_USER "yes" ; start_auto_install ;;
         migrate)  start_system_migration ;;
-        iso)      run_iso_build ;;
+        iso)      start_iso_build ;;
         *)        printf '\e[1;31mNo mode selected. Exiting.\e[0m\n'; exit 1 ;;
     esac
 }
