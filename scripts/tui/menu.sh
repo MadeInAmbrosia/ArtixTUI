@@ -49,13 +49,12 @@ tui_afhub() {
   ]},
   {"id":"identity","label":"System Identity","summary_template":"host: {HOSTNAME}","items":[
     {"id":"HOSTNAME","label":"Hostname","value":"$(state_get HOSTNAME artix)","widget":"input"},
-    {"id":"TIMEZONE","label":"Timezone","value":"$(state_get TIMEZONE Europe/Belgrade)","widget":"input","placeholder":"e.g. Europe/London"},
-    {"id":"LOCALE","label":"Locale","value":"$(state_get LOCALE en_US.UTF-8)","widget":"input"},
-    {"id":"KEYMAP","label":"Keyboard layout","value":"$(state_get KEYMAP us)","widget":"input"}
+    {"id":"TIMEZONE","label":"Timezone","value":"$(state_get TIMEZONE Europe/Belgrade)","widget":"filter","placeholder":"Type to search timezones..."},
+    {"id":"LOCALE","label":"Locale","value":"$(state_get LOCALE en_US.UTF-8)","widget":"filter","placeholder":"Type to search locales..."},
+    {"id":"KEYMAP","label":"Keyboard layout","value":"$(state_get KEYMAP us)","widget":"filter","placeholder":"Type to search keymaps..."}
   ]},
   {"id":"theme","label":"Theme","summary_template":"{GUM_TITLE_COLOR} / {GUM_ACCENT_COLOR}","items":[
-    {"id":"GUM_TITLE_COLOR","label":"Title color","value":"$(state_get GUM_TITLE_COLOR 212)","widget":"menu","choices":["212","39","245","250","3"]},
-    {"id":"GUM_ACCENT_COLOR","label":"Accent color","value":"$(state_get GUM_ACCENT_COLOR 34)","widget":"menu","choices":["34","117","196","255","11"]}
+    {"id":"GUM_TITLE_COLOR","label":"Theme","value":"Forge (pink/blue)","widget":"menu","choices":["Forge (pink/blue)","Artix (blue)","Jet Black (grey)","Mono (white)","Retro (yellow)"]}
   ]}
 ]
 JSONEOF
