@@ -46,9 +46,12 @@ _finalize_write_report() {
         printf 'User Accounts:\n'
         local count="${USER_COUNT:-1}"
         for ((i=1; i<=count; i++)); do
-            local uname="${USER_${i}_NAME:-unnamed}"
-            local ushell="${USER_${i}_SHELL:-/bin/bash}"
-            local usudo="${USER_${i}_SUDO:-yes}"
+            local name_var="USER_${i}_NAME"
+            local shell_var="USER_${i}_SHELL"
+            local sudo_var="USER_${i}_SUDO"
+            local uname="${!name_var:-unnamed}"
+            local ushell="${!shell_var:-/bin/bash}"
+            local usudo="${!sudo_var:-yes}"
             printf '  %s (shell: %s, sudo: %s)\n' "${uname}" "${ushell}" "${usudo}"
         done
         printf '\n'
