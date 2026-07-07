@@ -1,5 +1,29 @@
 # Changelog
 
+## v9.2.9.0 (2026-07-07) — ArtixForge
+
+### Added
+- **GUI hub system** — two-pane `HubPage` widget with category list and inline-editable items replaces all sequential wizard pages; `UserManagerDialog` with add/edit/remove for user accounts; every mode (installation, power user, ISO builder, recovery, init migration, desktop migration, ATA migration) has its own hub with the same categories and state keys as the TUI (`forge_ui/artixgui/base.py`)
+- **Dynamic extras search in GUI** — extras package selection now uses a searchable dialog populated from `pacman -Sl world galaxy` output at runtime; replaces hardcoded category checkboxes (`forge_ui/artixgui/base.py`)
+- **Searchable timezone/locale/keymap in GUI** — identity fields use `Gtk.ComboBoxText` with system data from `/usr/share/zoneinfo`, `/etc/locale.gen`, and `localectl list-keymaps` for type-to-search filtering (`forge_ui/artixgui/base.py`)
+- **TKG kernel configuration page in GUI** — full TKG config subpage with scheduler, build type, compiler, optimization level, CPU target, LTO, preempt RT, tickless, timer frequency, governor, 8 toggleable patch sets, and CPU count (`forge_ui/artixgui/base.py`)
+- **Quick profiles in GUI** — 18 pre-configured profiles (KDE, XFCE, MangoWM, Hyprland, Sway, Niri, i3wm, dwm, LXQt, LXDE, Cinnamon, Budgie, Moksha, COSMIC, Server, Embedded, Volk's Personal, TestingQP) selectable from a dialog in the install hub (`forge_ui/artixgui/base.py`)
+- **Kernel hardware configuration page in GUI** — tabbed notebook with GPU/Network/Filesystems/Sound/USB/Security/Virtualization/Debug checklists plus preemption model, timer frequency, and CPU governor; sets `KERNEL_ADV_*` state keys (`forge_ui/artixgui/base.py`)
+- **Disk picker with size/model labels** — disk dropdown shows human-readable labels (device, size, model) parsed from `lsblk` output (`forge_ui/artixgui/base.py`)
+- **TKG compile confirmation dialog** — warns user about 20-30 minute compile time before proceeding with source build (`forge_ui/artixgui/base.py`)
+- **Welcome page hardware detection** — shows CPU, RAM, GPU, virtualization status, and disk list on welcome screen (`forge_ui/artixgui/base.py`)
+
+### Changed
+- **GUI wizard pages replaced by hubs** — `installation.py`, `poweruser.py`, `iso.py`, `recovery.py`, `migration.py` now push a single `HubPage` instead of building 10-15 individual `Adw.NavigationPage` wizard pages each; net reduction of 1877 lines across 8 files
+- **Progress page improvements** — pulsing progress bar during indeterminate stages, monospace log view (`forge_ui/backends/gui.py`)
+- **Summary text** — monospace formatting for aligned key-value display (`forge_ui/artixgui/base.py`)
+- **CSS styling** — selected category rows use accent background/foreground colors via `Gtk.CssProvider` (`forge_ui/artixgui/base.py`)
+- **Window default size** — increased to 800x560 for better hub layout (`forge_ui/artixgui/base.py`)
+
+### Fixed
+- **GUI state parity** — all `KERNEL_ADV_*`, `TKG_*`, and migration state keys now set correctly in `collect_state_common`; GUI produces identical `state.conf` to TUI for every mode
+- **Summary text not rendering** — `summary_text` buffer now populated on "View Summary" action before pushing summary page
+
 ## v9.2.8.0 (2026-07-07) — ArtixForge
 
 ### Added
