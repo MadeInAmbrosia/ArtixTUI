@@ -1,6 +1,30 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+_tkg_write_config() {
+    local cfg_path="${1}"
+    cat > "${cfg_path}" <<EOF
+_sched="$(state_get TKG_SCHEDULER eevdf)"
+_compiler="$(state_get TKG_COMPILER gcc)"
+_optlevel="$(state_get TKG_OPTLEVEL 1)"
+_processor_opt="$(state_get TKG_PROCESSOR_OPT native)"
+_lto_mode="$(state_get TKG_LTO_MODE no)"
+_preempt_rt="$(state_get TKG_PREEMPT_RT 0)"
+_tickless="$(state_get TKG_TICKLESS 2)"
+_timer_freq="$(state_get TKG_TIMER_FREQ 1000)"
+_cpu_gov="$(state_get TKG_CPU_GOV ondemand)"
+_glitched_base="$(state_get TKG_GLITCHED_BASE false)"
+_zenify="$(state_get TKG_ZENIFY false)"
+_clear_patches="$(state_get TKG_CLEAR_PATCHES false)"
+_openrgb="$(state_get TKG_OPENRGB false)"
+_acs_override="$(state_get TKG_ACS_OVERRIDE false)"
+_fsync="$(state_get TKG_FSYNC false)"
+_mglru="$(state_get TKG_MGLRU false)"
+_ntsync="$(state_get TKG_NTSYNC false)"
+_nr_cpus="$(state_get TKG_NR_CPUS $(nproc))"
+EOF
+}
+
 basestrap_build_tkg() {
     log_info "Building TKG kernel inside target chroot..."
 

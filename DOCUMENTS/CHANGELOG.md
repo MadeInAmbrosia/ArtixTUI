@@ -1,5 +1,37 @@
 # Changelog
 
+## v9.2.8.0 (2026-07-07) — ArtixForge
+
+### Added
+- **Native install hub** — dedicated `install_hub` widget replaces generic hub for installation flow; includes `_action` key in response for Quick Profile/View Summary/Proceed routing (`src/artixforge/install/hub.rs`, `scripts/tui/menu.sh`)
+- **Filter widgets in hub** — timezone, locale, and keymap use searchable `filter` widget with dynamic lists pulled from system (`/usr/share/zoneinfo`, `/etc/locale.gen`, keymaps); `dispatch_item_edit` supports `"filter"` type (`src/artixforge/install/hub.rs`, `src/widgets/filter.rs`)
+- **Theme as named presets** — theme picker uses human-readable names (Forge/Artix/Jet Black/Mono/Retro) with automatic color code mapping; both `GUM_TITLE_COLOR` and `GUM_ACCENT_COLOR` set atomically on selection (`src/artixforge/install/hub.rs`, `scripts/tui/menu.sh`)
+- **Dynamic extras via multiselect** — extras packages pulled from `pacman -Sl world galaxy` output at runtime via `choices_from` field; no more curated category lists (`src/artixforge/install/hub.rs`)
+- **TKG kernel configuration widget** — full TKG config submenu with scheduler, build type (binary/source), compiler, optimization level, CPU target, LTO, preempt RT, tickless mode, timer frequency, governor, patch toggles, and CPU count; writes `TKG_*` state keys consumed by `_tkg_write_config` (`src/artixforge/install/tkg.rs`, `scripts/install/basestraps/kernel_build.sh`)
+- **Poweruser kernel configuration widget** — categorized kernel config with Configuration Depth (localmodconfig/auto/manual/menuconfig), GPU/Network/Filesystems/Sound/USB/Security/Virtualization/Debug checklist categories, preemption model, timer frequency, and CPU governor; sets `KERNEL_ADV_*` state keys (`src/artixforge/poweruser/kernel.rs`)
+- **Kconfig editor** — native ratatui `.config` file editor with search, y/m/n toggle, string value editing, and save functionality; launched when `menuconfig` depth selected; writes sentinel file to skip ncurses `make menuconfig` in recipe (`src/artixforge/poweruser/kconfig.rs`, `poweruser/recipes/linux.sh`)
+- **Kernel ADV state keys** — `KERNEL_ADV_FS`, `KERNEL_ADV_GPU`, `KERNEL_ADV_NET`, `KERNEL_ADV_SOUND`, `KERNEL_ADV_USB`, `KERNEL_ADV_SECURITY`, `KERNEL_ADV_VIRT`, `KERNEL_ADV_DEBUG`, `KERNEL_PREEMPT`, `KERNEL_TIMER`, `KERNEL_GOVERNOR` added to state persistence and handoff (`scripts/state.sh`, `scripts/install/handoff.sh`)
+- **`_tkg_write_config` function** — generates TKG `customization.cfg` from `TKG_*` state keys before compilation (`scripts/install/basestraps/kernel_build.sh`)
+
+### Changed
+- **Daemon mode deferred** — daemon startup moved from `start_auto_install` to `tui_collect_install_config`, just before hub loop; `FORGE_TUI_DAEMON_AVAILABLE` flag introduced to decouple capability from activation; all pre-hub TUI calls use oneshot mode (`scripts/tui/core.sh`, `scripts/tui/menu.sh`, `install`)
+- **Category navigation wraps** — left/right/Tab in hub widgets now cycle through categories instead of stopping at edges (`src/widgets/hub.rs`, `src/artixforge/install/hub.rs`, `src/artixforge/poweruser/hub.rs`)
+- **Empty values display** — items with empty values show `(none)` or `not set` instead of blank text; disk picker shows `(none)` when unselected (`src/widgets/hub.rs`, `src/artixforge/install/hub.rs`)
+- **Footer text updated** — hub footer shows `h/l:categories` and correct navigation keys (`src/widgets/hub.rs`, `src/artixforge/install/hub.rs`)
+- **Empty key guard** — `state_set` in Bash and hub return maps filter out empty keys to prevent `export =` errors (`scripts/state.sh`, `src/artixforge/install/hub.rs`, `src/artixforge/poweruser/hub.rs`)
+- **Extras script simplified** — `extras.sh` stripped to a bare package installer; all curation moved to TUI multiselect (`scripts/post/extras.sh`)
+
+### Fixed
+- **Indirect user variable expansion** — `finalize.sh` now uses `${!name_var}` instead of nested `${USER_${i}_NAME}` to avoid bad substitution errors (`scripts/stages/finalize.sh`)
+- **Stale `/tmp/artix-run` files** — installer now removes old runtime directory before copying to prevent stale `menus/` directory from previous versions (`install`)
+- **Debug fd leak into chroot** — `BASH_XTRACEFD=19` unset before chroot calls to prevent `invalid value for trace file descriptor` errors in post-install hooks
+- **TKG patch failure handling** — individual patch failures logged instead of aborting build; failed patches skip with affected files restored from git (`scripts/install/basestraps/kernel_build.sh`)
+- **Em dash crash** — resolved by daemon mode preventing terminal exhaustion after 40+ oneshot widget calls
+
+### Removed
+- **Generic `tui_hub` call from install flow** — install hub now uses dedicated `tui_install_hub` widget; generic hub still available for gforge and fallback use
+- **Daemon auto-start in `_forge`** — daemon no longer auto-spawns on first TUI call; must be explicitly started by caller
+
 ## v9.2.7.1 (2026-07-02) — ArtixForge
 
 ### Changed

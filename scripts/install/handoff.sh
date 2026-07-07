@@ -136,6 +136,17 @@ TKG_FSYNC="$(state_get TKG_FSYNC)"
 TKG_MGLRU="$(state_get TKG_MGLRU)"
 TKG_NTSYNC="$(state_get TKG_NTSYNC)"
 TKG_NR_CPUS="$(state_get TKG_NR_CPUS)"
+KERNEL_ADV_FS="$(state_get KERNEL_ADV_FS)"
+KERNEL_ADV_GPU="$(state_get KERNEL_ADV_GPU)"
+KERNEL_ADV_NET="$(state_get KERNEL_ADV_NET)"
+KERNEL_ADV_SOUND="$(state_get KERNEL_ADV_SOUND)"
+KERNEL_ADV_USB="$(state_get KERNEL_ADV_USB)"
+KERNEL_ADV_SECURITY="$(state_get KERNEL_ADV_SECURITY)"
+KERNEL_ADV_VIRT="$(state_get KERNEL_ADV_VIRT)"
+KERNEL_ADV_DEBUG="$(state_get KERNEL_ADV_DEBUG)"
+KERNEL_PREEMPT="$(state_get KERNEL_PREEMPT)"
+KERNEL_TIMER="$(state_get KERNEL_TIMER)"
+KERNEL_GOVERNOR="$(state_get KERNEL_GOVERNOR)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
