@@ -7,19 +7,24 @@ Don’t worry if you don’t know what something means – that’s what this is
 
 ## 1. Installation Interface
 
-ArtixForge offers **two interfaces**:
+ArtixForge offers **two interfaces** that are fully feature‑identical:
 
 | Interface | When it appears | How to use |
 |-----------|----------------|------------|
 | **Terminal UI (TUI)** | Default in a TTY or when `DISPLAY` is not set | Keyboard only, works on any terminal |
 | **Graphical UI (GUI)** | When a desktop environment (KDE, XFCE, etc.) is detected | Mouse + keyboard, native GTK4 windows |
 
+Both interfaces use the same **hub layout**: a list of configuration categories on the left
+(Disk & Storage, Bootloader, Kernel, Desktop, etc.) and the settings for the selected category
+on the right. Action buttons at the bottom let you apply a quick profile, view a summary of your
+choices, or proceed with installation.
+
 If you boot an ArtixForge‑generated ISO with a desktop environment, you'll see a desktop icon.
 Double‑click it to launch the GUI installer. Alternatively, run `sudo ./install` in a terminal
 and answer "Yes" when asked if you want to use the GUI.
 
-Both interfaces collect the same configuration and run the same installation backend.
-Choose whichever feels comfortable.
+Both interfaces collect the same configuration, produce the same state file, and run the same
+installation backend. Choose whichever feels comfortable.
 
 ---
 
@@ -362,7 +367,9 @@ The migration will:
 
 After migration, reboot to start the new environment.
 
-**GUI Migration:** the current init system and desktop environment are auto-detected and displayed. Desktop migration includes sub-pages for display manager, display stack, audio stack, network stack, and extra package selection.
+**GUI Migration:** the current init system and desktop environment are auto‑detected and displayed
+when you open the migration hub. Desktop migration includes sub‑categories for display manager,
+display stack, audio stack, network stack, and extra package selection — all in the same hub layout.
 
 ### ATA (Arch to Artix) — Experimental
 
@@ -463,31 +470,45 @@ but the scans themselves may trigger anti-malware alerts on a running system.
 
 ## 22. GUI Installer Notes
 
-When you run the GUI installer (from a desktop environment), the configuration
-is collected through a single persistent window with multiple pages.
-At the end, a summary page shows your choices and any safety warnings.
+The GUI installer presents a **two‑pane hub**: categories on the left, editable settings on the
+right, and action buttons (Quick Profile, View Summary, Proceed) at the bottom. This is the same
+layout as the TUI — every option available in the terminal is also available in the GUI.
 
-After clicking **Install**, the GUI saves your configuration and starts the
-non‑interactive backend. A progress window will display live logs from the
-installation (partitioning, package downloads, kernel builds, etc.). A progress
-bar fills as each installation stage completes.
+Key features of the GUI:
 
-The GUI supports five colour themes (ArtixForge, Artix, Jet Black, Mono, Retro)
-with light/dark backgrounds. The theme is applied to the entire window including
-buttons, dropdowns, and tabs.
+- **Dynamic extras search** — the Extras category opens a searchable dialog populated from the
+  full `world` and `galaxy` package repositories. You can filter and select any available package.
+- **Searchable timezone, locale, and keyboard layout** — each field provides a dropdown with
+  type‑to‑search, populated from system data (`/usr/share/zoneinfo`, `/etc/locale.gen`, keymaps).
+- **TKG kernel configuration** — when `tkg` is selected as the kernel, a TKG Configuration page
+  becomes available with scheduler, build type, compiler, optimisation, patches, and CPU count.
+- **Quick profiles with confirmation** — selecting a profile shows a preview of all settings
+  before applying, so you can review what will change.
+- **Kernel hardware configuration** — a tabbed notebook with checklists for GPU, Network,
+  Filesystems, Sound, USB, Security, Virtualization, and Debugging, plus preemption model,
+  timer frequency, and CPU governor.
+- **User manager** — add, edit, and remove user accounts with username, password, shell,
+  group memberships, and sudo access, all through a dedicated dialog.
+- **Theme preview** — a coloured swatch updates live when you change the title and accent colours.
+- **Recovery with live status** — the recovery hub shows detected system state and offers a
+  refresh button to re‑scan the installation.
+- **Migration auto‑detection** — init and desktop migration hubs automatically detect the
+  current system and pre‑fill the source fields.
+- **ISO offline target config** — when building an offline ISO with a live desktop, a second
+  hub appears to configure the target system's packages.
+- **Conditional visibility** — settings like swap size and BTRFS layout only appear when their
+  parent option (swap enabled, btrfs filesystem) is active.
 
-Passwords are hashed before being saved to the configuration file.
+After clicking **Proceed** (or **Install** on the summary page), the GUI saves your configuration
+and starts the non‑interactive backend. A progress window displays live logs from the installation
+with a pulsing progress bar that fills as each stage completes.
 
-Power User mode includes recipe fetching from the community repository, package
-selection with tooltips showing source URLs, and conditional pages that appear
-only when relevant options are selected.
+Passwords are hashed before being saved to the configuration file. The GUI supports five colour
+themes (ArtixForge, Artix, Jet Black, Mono, Retro) with light/dark backgrounds, applied to the
+entire window including buttons, dropdowns, and tabs.
 
-You can cancel the installation from the progress window. If you do,
-the system will not be modified. You can run the installer again and
-choose **Resume** to continue from where it stopped.
-
-The GUI works exactly like the TUI – it only changes how you answer the
-questions. The actual installation process is identical.
+You can cancel the installation from the progress window. If you do, the system will not be
+modified. You can run the installer again and choose **Resume** to continue from where it stopped.
 
 ---
 

@@ -5,6 +5,9 @@ lesson-learned-in-blood across the ArtixForge codebase.  It exists so that futur
 maintainers (if someone somehow picks this up) and future me don't have to reverse-engineer the same
 decisions twice.
 
+Reboots: At least 500
+Hours wasted: YES
+
 ---
 
 ## Installer entry point (`install`)
@@ -68,6 +71,57 @@ variable to eliminate the risk entirely.
 Declining a quick profile left half‑set state variables (DISK, FS_TYPE, etc.)
 that would then mix with the subsequent manual selection.  The fix wipes all
 quick‑profile keys before falling through to manual config.
+
+### TUI rewrite (v9.2.7+)
+The entire Bash TUI system was replaced with a Rust binary (`forge-tui`) using
+ratatui + crossterm. The Bash side now builds JSON payloads and pipes them to
+`forge-tui` via Unix socket (daemon mode) or temp files (oneshot mode). Only
+`core.sh`, `menu.sh`, and `summary.sh` remain in `scripts/tui/` — all
+individual menu files under `scripts/tui/menus/` were deleted.
+
+### Daemon mode vs oneshot
+`forge-tui` can run in two modes. Oneshot mode spawns a new process for every
+widget call — simple but exhausts the terminal after ~40 calls due to repeated
+alternate screen enter/leave cycles. Daemon mode starts one persistent process
+with a Unix socket; Bash sends JSON requests over `nc -U`. The daemon is
+started just before the hub configuration loop in
+`tui_collect_install_config`, not globally. Before that point, all TUI calls
+(ASCII art welcome, main menu, disk picker) use oneshot mode. The daemon
+auto-start in `_forge` was removed because it triggered on the very first TUI
+call, way too early.
+
+### Hub widget
+The configuration interface is a two-pane hub: categories on the left
+(Disk & Storage, Bootloader, Kernel, Desktop, etc.), editable settings on the
+right. The Rust side handles all navigation, inline editing via dispatched
+sub-widgets, F-key actions, and state management internally. Bash builds
+categories as JSON with `state_get` values and passes them to `tui_install_hub`.
+When the user presses F-key actions, the hub returns the current values map
+back to Bash which writes them to `state.conf`.
+
+### `visible_if` in hub
+Items can specify `"visible_if":{"SWAP_ENABLED":"yes"}` in the JSON. The Rust
+hub filters items based on current state values. The GUI implements the same
+logic via `_visibility_rows` and `_on_state_changed` in `HubPage`.
+
+### Theme as named presets
+Theme colors are presented as human-readable names (Forge, Artix, Jet Black,
+Mono, Retro) rather than raw ANSI codes. When selected, both
+`GUM_TITLE_COLOR` and `GUM_ACCENT_COLOR` are set atomically to the correct
+numeric values. This applies to both TUI (Rust hub) and GUI.
+
+### `choices_from` for dynamic extras
+The extras multiselect is populated at runtime by shelling out to
+`pacman -Sl world galaxy`. No hardcoded package lists. The GUI does the
+same by calling `pacman -Sl` during startup and caching the result in
+`_package_index`.
+
+### Filter widgets for identity fields
+Timezone, locale, and keyboard layout use searchable filter widgets instead
+of plain text inputs. The TUI pulls lists from `/usr/share/zoneinfo`,
+`/etc/locale.gen`, and `localectl list-keymaps` via helper functions. The
+GUI does the same and presents them as `Gtk.ComboBoxText` with type-to-search.
+
 
 ---
 
@@ -179,6 +233,28 @@ filesystem driver is built‑in (`=y`, not a module), that a block device driver
 exists, and that the initramfs and bootloader entries reference the custom
 kernel.  Warnings are emitted but the install continues — the user can fix
 things in recovery.
+
+### TKG kernel configuration (`tkg.rs`)
+The TKG kernel has a dedicated configuration sub-widget covering scheduler
+(eevdf/bmq/bore/pds), build type (binary download vs source compile),
+compiler (gcc/clang), optimization level, CPU target, LTO mode, preempt RT
+level, tickless mode, timer frequency, CPU governor, and 8 toggleable patch
+sets (glitched base, zenify, clear patches, OpenRGB, ACS override, fsync,
+MGLRU, NTsync). All values are stored as `TKG_*` state keys and consumed by
+`_tkg_write_config` which generates `customization.cfg` before the TKG build.
+
+### Kernel hardware configuration (`kconfig.rs`)
+The poweruser kernel configuration includes a tabbed checklist for GPU
+drivers, network drivers, filesystems, sound, USB, security, virtualization,
+and debugging options, plus preemption model, timer frequency, and CPU
+governor. These set `KERNEL_ADV_*` state keys consumed by `kconfig.bash`
+which calls `scripts/config` to modify `.config`.
+
+### Kconfig editor
+When `menuconfig` depth is selected, a native ratatui `.config` editor opens
+with search, y/m/n toggle, and string value editing. On save, a sentinel file
+(`/tmp/artix-kconfig-edited`) is written so the recipe's `configure()` phase
+skips the ncurses `make menuconfig` and goes straight to `make olddefconfig`.
 
 ---
 
@@ -421,6 +497,92 @@ When operating on a mounted target system, recovery and migration code uses
 `pacman --root /mnt` to query and modify the target’s package database without
 entering a full chroot.  This is faster and avoids issues with `/dev`, `/proc`,
 or `/sys` not being mounted inside the chroot.
+
+---
+
+## GUI (`forge-gui/`)
+
+### Hub parity with TUI
+The GUI uses the same hub layout as the TUI: `HubPage` in `base.py` renders
+a two-pane widget with categories on the left and editable settings on the
+right. Every mode (installation, power user, ISO builder, recovery, init
+migration, desktop migration, ATA migration) has its own hub with identical
+categories and state keys. The GUI writes the same `state.conf` format and
+calls the same `install --non-interactive` pipeline.
+
+### Hub as wizard replacement
+All previous wizard pages (10-15 per mode) were replaced by a single
+`HubPage` per mode. The `_build_category_page` method dynamically generates
+GTK widgets from Python dicts matching the TUI's JSON category format. This
+reduced ~1800 lines of repetitive GTK boilerplate across 8 files.
+
+### `visible_if` in GUI hub
+The `HubPage` class tracks visibility conditions in `_visibility_rows` and
+`_visibility_conditions` dicts. When any widget changes state, `_on_state_changed`
+re-evaluates all conditions and shows/hides rows accordingly.
+
+### User manager dialog
+`UserManagerDialog` provides add/edit/remove for user accounts with
+username, password (hashed via `openssl passwd -6`), shell selection
+(bash/zsh/fish), group checkboxes (wheel/audio/video/storage/lp/network/
+optical/scanner/users), and sudo toggle. User data is stored as
+`USER_N_NAME`, `USER_N_PASS`, `USER_N_SHELL`, `USER_N_GROUPS`, `USER_N_SUDO`
+state keys with `USER_COUNT` tracking the total.
+
+### Quick profile confirmation
+Selecting a quick profile shows a preview dialog listing all settings that
+will be changed before applying. The user must confirm before any state is
+modified.
+
+### Recovery live status
+The recovery hub runs `recovery_get_status` from Bash via `subprocess` and
+displays the result. A refresh button re-runs detection and rebuilds the hub.
+
+### Migration auto-detection
+Init and desktop migration hubs call `_detect_current_system()` which
+shells out to the recovery detection scripts and populates `DETECTED_INIT`
+and `DETECTED_DE` state keys before displaying the hub.
+
+### ISO offline target config
+When building an offline ISO with live desktop mode, the GUI pushes a
+second hub for target system configuration (init, kernel, desktop) before
+proceeding to the build.
+
+### Theme preview
+A `Gtk.DrawingArea` renders two colored rectangles showing the current
+title and accent colors. It updates whenever the theme selection changes.
+
+### TKG compile confirmation
+If the user selects TKG kernel with source compilation, a warning dialog
+appears before installation begins, noting the 20-30 minute build time.
+
+### Progress page improvements
+The progress page uses a pulsing `Gtk.ProgressBar` during indeterminate
+stages and a monospace `Gtk.TextView` for log output. Stage detection
+markers advance the bar as installation progresses.
+
+---
+
+## TUI / GUI Co-Development Constraints
+
+### Synchronized releases
+The TUI (forge-tui Rust binary + Bash scripts) and GUI (forge-gui Python GTK4)
+must be version‑bumped together. A state key added to one must be added to the
+other in the same release. The `state.conf` format is the contract — if it
+changes, both sides break.
+
+### Feature parity
+Every configuration option available in the TUI hub must be available in the
+GUI hub and vice versa. They don't share code (Rust vs Python, ratatui vs GTK4)
+but they share the same category structure, widget types, state keys, and
+installation pipeline. The TUI is the reference implementation; the GUI
+follows.
+
+### forge-tui is the only TUI backend
+The old `gum`‑based TUI was fully removed. All TUI rendering goes
+through `forge-tui`. The Bash scripts in `scripts/tui/` (`core.sh`, `menu.sh`,
+`summary.sh`) are thin wrappers that build JSON and call the Rust binary.
+There is no fallback to `gum` anymore.
 
 ---
 
