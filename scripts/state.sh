@@ -115,6 +115,7 @@ state_get() {
 state_set() {
     ensure_state_dirs
     local key="${1}" value="${2}"
+    [[ -n "${key}" ]] || { log_error "state_set: empty key"; return 1; }
     export "${key}=${value}"
 
     if [[ -f "${STATE_FILE}" ]] && grep -q "^${key}=" "${STATE_FILE}" 2>/dev/null; then
