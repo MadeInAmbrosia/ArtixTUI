@@ -111,6 +111,14 @@ state_load() {
 state_get() {
     local key="${1}"
     local default="${2:-}"
+    if [[ -f "${STATE_FILE}" ]]; then
+        local value
+        value=$(grep "^${key}=" "${STATE_FILE}" 2>/dev/null | tail -1 | cut -d= -f2- | sed "s/^'//;s/'$//")
+        if [[ -n "${value}" ]]; then
+            printf '%s\n' "${value}"
+            return 0
+        fi
+    fi
     printf '%s\n' "${!key:-${default}}"
 }
 
