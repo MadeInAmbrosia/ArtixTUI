@@ -25,6 +25,15 @@ install_base_system() {
 
     detect_kernel_package "${kernel}"
 
+    case "${wm_de}" in
+        budgie|cinnamon|cosmic|hyprland|niri|mango|dwm|i3wm)
+            if [[ "$(state_get ENABLE_ARCH_REPOS no)" != "yes" ]]; then
+                log_info "${wm_de} requires Arch repositories — auto-enabling"
+                state_set ENABLE_ARCH_REPOS "yes"
+            fi
+            ;;
+    esac
+
     local ucode='amd-ucode'
     grep -q 'GenuineIntel' /proc/cpuinfo && ucode='intel-ucode'
 
