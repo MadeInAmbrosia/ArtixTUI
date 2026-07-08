@@ -49,6 +49,7 @@ Security concerns include, but are not limited to:
 - ATA systemd-boot → GRUB conversion — EFI boot entries modified; old entries removed via efibootmgr
 - **forge-tui JSON transport** — widget requests and responses written to `chmod 700` temp directories, cleaned after each call; plaintext passwords from `tui_password` and `tui_password_confirm` never touch disk
 - **forge-tui checklist output** — JSON array results parsed and sanitized before use; `tr -d '[]"'` and `jq` normalization applied at consumption points to prevent JSON artifact injection into system commands (`useradd -G`, `state_set`)
+- **forge-tui password handling:** user and root passwords are hashed with `openssl passwd -6` inside the Rust TUI widgets before being stored to `state.conf`. Plaintext passwords never touch the state file or disk. The `users.rs` widget hashes on save; `install/hub.rs` hashes root password on confirmation. LUKS passphrases are stored plaintext (required by `cryptsetup`) in the state file, which lives on tmpfs and is lost on reboot.
 
 ## Best Practices
 
