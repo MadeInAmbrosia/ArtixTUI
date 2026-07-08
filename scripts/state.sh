@@ -13,6 +13,12 @@ ensure_state_dirs() {
 state_save() {
     ensure_state_dirs
     local tmp_state="${STATE_FILE}.tmp"
+    local user_json user_count
+    user_json=$(state_get USER_COUNT '')
+    user_count=0
+    if [[ -n "${user_json}" && "${user_json}" != "0" && "${user_json}" != "[]" ]]; then
+        user_count=$(echo "${user_json}" | jq '. | length' 2>/dev/null || echo 0)
+    fi
     {
         printf "MODE='%s'\n"                  "$(state_get MODE auto)"
         printf "DISK='%s'\n"                  "$(state_get DISK '')"
@@ -40,8 +46,6 @@ state_save() {
         printf "KDE_PROFILE='%s'\n"           "$(state_get KDE_PROFILE desktop)"
         printf "ROOT_PASS='%s'\n"             "$(state_get ROOT_PASS '')"
         printf "USER_COUNT='%s'\n"            "$(state_get USER_COUNT 1)"
-        local user_count
-        user_count=$(state_get USER_COUNT 1)
         for ((i=1; i<=user_count; i++)); do
             printf "USER_%d_NAME='%s'\n"   "$i" "$(state_get "USER_${i}_NAME" "")"
             printf "USER_%d_PASS='%s'\n"   "$i" "$(state_get "USER_${i}_PASS" "")"
@@ -115,10 +119,12 @@ state_get() {
     local default="${2:-}"
     if [[ -f "${STATE_FILE}" ]]; then
         local value
-        value=$(grep "^${key}=" "${STATE_FILE}" 2>/dev/null || true | tail -1 | cut -d= -f2-)
+        value=$(grep "^${key}=" "${STATE_FILE}" 2>/dev/null || true | tail -1 | sed "s|^${key}=||")
         if [[ -n "${value}" ]]; then
-            value="${value#\'}"
-            value="${value%\'}"
+            while [[ "${value}" == \'*\' ]]; do
+                value="${value#\'}"
+                value="${value%\'}"
+            done
             printf '%s\n' "${value}"
             return 0
         fi
