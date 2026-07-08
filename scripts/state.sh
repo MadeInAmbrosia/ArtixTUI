@@ -12,6 +12,7 @@ ensure_state_dirs() {
 
 state_save() {
     ensure_state_dirs
+    local tmp_state="${STATE_FILE}.tmp"
     {
         printf 'MODE=%q\n'                  "$(state_get MODE auto)"
         printf 'DISK=%q\n'                  "$(state_get DISK '')"
@@ -99,7 +100,8 @@ state_save() {
         printf 'KERNEL_PREEMPT=%q\n'        "$(state_get KERNEL_PREEMPT voluntary)"
         printf 'KERNEL_TIMER=%q\n'          "$(state_get KERNEL_TIMER 250)"
         printf 'KERNEL_GOVERNOR=%q\n'       "$(state_get KERNEL_GOVERNOR schedutil)"
-    } > "${STATE_FILE}"
+    } > "${tmp_state}"
+    mv "${tmp_state}" "${STATE_FILE}"
     chmod 600 "${STATE_FILE}"
 }
 
