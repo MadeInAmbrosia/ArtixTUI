@@ -25,7 +25,7 @@ state_save() {
         printf 'AUDIO_STACK=%q\n'           "$(state_get AUDIO_STACK pipewire)"
         printf 'SWAP_ENABLED=%q\n'          "$(state_get SWAP_ENABLED no)"
         printf 'SWAP_SIZE=%q\n'             "$(state_get SWAP_SIZE 0)"
-        printf 'EXTRAS=%q\n'                "$(state_get EXTRAS '')"
+        printf "EXTRAS='%s'\n"              "$(state_get EXTRAS '')"
         printf 'KERNEL_CHOICE=%q\n'         "$(state_get KERNEL_CHOICE linux)"
         printf 'KERNEL_IMAGE=%q\n'          "$(state_get KERNEL_IMAGE '')"
         printf 'INITRAMFS_IMAGE=%q\n'       "$(state_get INITRAMFS_IMAGE '')"
