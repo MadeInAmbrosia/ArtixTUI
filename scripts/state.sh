@@ -119,9 +119,9 @@ state_set() {
     export "${key}=${value}"
 
     if [[ -f "${STATE_FILE}" ]] && grep -q "^${key}=" "${STATE_FILE}" 2>/dev/null; then
-        sed -i "s|^${key}=.*|${key}=${value}|" "${STATE_FILE}"
+        sed -i "s|^${key}=.*|${key}='${value}'|" "${STATE_FILE}"
     else
-        printf '%s=%s\n' "${key}" "${value}" >> "${STATE_FILE}"
+        printf "%s='%s'\n" "${key}" "${value}" >> "${STATE_FILE}"
     fi
 }
 
