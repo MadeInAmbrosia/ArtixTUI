@@ -11,6 +11,7 @@ This roadmap is updated regularly based on:
 
 ## v9.?
 - I have no idea.
+- Not gouging my own eyes out
 
 # The think-tank
 
