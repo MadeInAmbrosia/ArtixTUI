@@ -325,6 +325,7 @@ start_auto_install() {
         printf '{"widget":"quit"}\n' | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null
         rm -f "${FORGE_TUI_SOCKET}"
         unset FORGE_TUI_DAEMON
+        reset
     fi
     trap - EXIT
 
