@@ -104,7 +104,7 @@ tui_collect_install_config() {
     fi
 
     if [[ -n "${FORGE_TUI_DAEMON_AVAILABLE:-}" ]]; then
-        forge-tui --daemon --socket "${FORGE_TUI_SOCKET}" &
+        forge-tui --daemon --socket "${FORGE_TUI_SOCKET}" 2>/tmp/forge-tui-stderr.log &
         for _ in {1..50}; do
             [[ -S "${FORGE_TUI_SOCKET}" ]] && break
             sleep 0.05
