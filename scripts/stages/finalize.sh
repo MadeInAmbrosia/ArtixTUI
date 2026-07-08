@@ -73,9 +73,10 @@ _finalize_write_report() {
 }
 
 _finalize_success_dialog() {
-    gum style --border rounded --padding 1 --bold --foreground "${GUM_TITLE_COLOR}" "Artix installation completed successfully!"
-    gum style "You may now reboot."
-    gum confirm "Press Enter to finish" --affirmative="OK" --timeout=0 2>/dev/null || true
+    printf '\n\e[1;32mArtix installation completed successfully!\e[0m\n'
+    printf 'You may now reboot.\n'
+    printf '\nPress Enter to finish...'
+    read -r
 }
 
 stage_finalize() {
