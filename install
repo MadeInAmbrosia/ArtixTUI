@@ -422,13 +422,11 @@ main() {
         }
     fi
 
-    if ! command -v forge-tui &>/dev/null; then
-        if [[ -f "${BASE_DIR}/forge-tui/target/release/forge-tui" ]]; then
-            install -Dm755 "${BASE_DIR}/forge-tui/target/release/forge-tui" /usr/local/bin/forge-tui
-        else
-            printf '[!] forge-tui not found. The installer cannot run without it.\n' >&2
-            exit 1
-        fi
+    if [[ -f "${BASE_DIR}/forge-tui/target/release/forge-tui" ]]; then
+        install -Dm755 "${BASE_DIR}/forge-tui/target/release/forge-tui" /usr/local/bin/forge-tui
+    elif ! command -v forge-tui &>/dev/null; then
+        printf '[!] forge-tui not found. The installer cannot run without it.\n' >&2
+        exit 1
     fi
 
     if ! command -v nc &>/dev/null; then
