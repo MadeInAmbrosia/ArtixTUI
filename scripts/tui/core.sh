@@ -48,13 +48,13 @@ log_error() {
 _forge() {
     if [[ -n "$FORGE_TUI_DAEMON" ]]; then
         if [[ ! -S "$FORGE_TUI_SOCKET" ]]; then
-            "$FORGE_TUI" --daemon --socket "$FORGE_TUI_SOCKET" &
+            "$FORGE_TUI" --daemon --socket "$FORGE_TUI_SOCKET" 2>/tmp/forge-tui-stderr.log &
             for _ in {1..50}; do
                 [[ -S "$FORGE_TUI_SOCKET" ]] && break
                 sleep 0.05
             done
         fi
-        printf '%s\n' "$1" | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null
+        printf '%s\n' "$1" | jq -c . 2>/dev/null | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null
     else
         local _dir _tmp _out
         _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
