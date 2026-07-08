@@ -2,3 +2,12 @@ src/
 pkg/
 *.tar.gz*
 *.tar.zst*
+
+debug/
+target/*
+!target/release/
+target/release/*
+!target/release/forge-tui
+**/*.rs.bk
+*.pdb
+Cargo.lock
