@@ -54,13 +54,13 @@ tui_afhub() {
     {"id":"KEYMAP","label":"Keyboard layout","value":"$(state_get KEYMAP us)","widget":"filter","placeholder":"Type to search keymaps..."}
   ]},
   {"id":"theme","label":"Theme","summary_template":"{GUM_TITLE_COLOR} / {GUM_ACCENT_COLOR}","items":[
-    {"id":"GUM_TITLE_COLOR","label":"Theme","value":"Forge (pink/blue)","widget":"menu","choices":["Forge (pink/blue)","Artix (blue)","Jet Black (grey)","Mono (white)","Retro (yellow)"]}
+    {"id":"GUM_TITLE_COLOR","label":"Theme","value":"Forge (pink/green)","widget":"menu","choices":["Forge (pink/green)","Artix (blue)","Jet Black (grey)","Mono (white)","Retro (yellow)"]}
   ]}
 ]
 JSONEOF
 )
 
-    local actions_json='["Quick Profile","Proceed","View Summary"]'
+    local actions_json='["Quick Profile","Proceed"]'
     local result
     result=$(tui_install_hub "ArtixForge Configuration" "${cats_json}" "${actions_json}" "${ARTIX_BOOT_MODE:-uefi}")
 
@@ -84,6 +84,7 @@ JSONEOF
         val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]')
         state_set "${key}" "${val}"
     done <<< "$(echo "${result}" | jq -r 'keys[]')"
+
     return 0
 }
 
@@ -136,10 +137,6 @@ tui_collect_install_config() {
         fi
 
         case "${result}" in
-            "View Summary")
-                tui_show_summary
-                continue
-                ;;
             "Quick Profile")
                 continue
                 ;;
