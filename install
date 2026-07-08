@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
 set -Eeuo pipefail
-# temporary debug
-exec 2>/tmp/install-trace.log
-set -x
 
 SELF_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 BASE_DIR="${SELF_PATH%/*}"
