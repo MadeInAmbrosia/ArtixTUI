@@ -46,7 +46,7 @@ log_error() {
 }
 
 _forge() {
-    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
+    if [[ -n "${FORGE_TUI_DAEMON:-}" ]]; then
         if [[ ! -S "$FORGE_TUI_SOCKET" ]]; then
             "$FORGE_TUI" --daemon --socket "$FORGE_TUI_SOCKET" 2>/tmp/forge-tui-stderr.log &
             for _ in {1..50}; do
@@ -62,7 +62,7 @@ _forge() {
         _tmp="$_dir/input.json"
         _out="$_dir/output.json"
         printf '%s\n' "$1" > "$_tmp"
-        "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty 2>/dev/null
+        "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" 2>/dev/null
         cat "$_out" 2>/dev/null
         rm -rf "$_dir"
     fi
