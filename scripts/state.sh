@@ -121,9 +121,18 @@ state_get() {
         local value
         value=$(grep "^${key}=" "${STATE_FILE}" 2>/dev/null || true | tail -1 | sed "s|^${key}=||")
         if [[ -n "${value}" ]]; then
-            while [[ "${value}" == \'*\' ]]; do
-                value="${value#\'}"
-                value="${value%\'}"
+            while true; do
+                local changed=0
+                if [[ "${value}" == \'*\' ]]; then
+                    value="${value#\'}"
+                    value="${value%\'}"
+                    changed=1
+                fi
+                if [[ "${value}" == ${key}=* ]]; then
+                    value="${value#${key}=}"
+                    changed=1
+                fi
+                [[ $changed -eq 0 ]] && break
             done
             printf '%s\n' "${value}"
             return 0
