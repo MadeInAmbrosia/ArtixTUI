@@ -127,12 +127,8 @@ tui_collect_install_config() {
         result=$(tui_afhub) || { tui_msg_quick "Cancelled" "Installation cancelled."; exit 0; }
 
         if [[ -z "${result}" ]]; then
-            local user_json
-            user_json=$(state_get USER_COUNT '')
-            if [[ -z "${user_json}" || "${user_json}" == "0" || "${user_json}" == "[]" ]]; then
-                tui_msg "Users Required" "Please create at least one user account."
-                continue
-            fi
+            return 0
+        fi
 
             if [[ -n "${FORGE_TUI_DAEMON:-}" && -S "${FORGE_TUI_SOCKET}" ]]; then
                 printf '{"widget":"quit"}\n' | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null

@@ -10,9 +10,11 @@ configure_users() {
     if [[ ${USER_COUNT:-0} -eq 0 ]]; then
         state_set USER_COUNT 1
         state_set USER_1_NAME "artix"
+        state_set USER_1_PASS "artix"
         state_set USER_1_SHELL "/bin/bash"
         state_set USER_1_GROUPS "wheel,audio,video,storage"
         state_set USER_1_SUDO "yes"
+        tui_msg "Default User Created" "No users were configured.\n\nA default user 'artix' has been created.\nUsername: artix\nPassword: artix\n\nChange this password after first login."
         log_warn "No users configured — creating default user 'artix'"
     fi
 
