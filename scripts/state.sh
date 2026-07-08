@@ -115,7 +115,7 @@ state_get() {
     local default="${2:-}"
     if [[ -f "${STATE_FILE}" ]]; then
         local value
-        value=$(grep "^${key}=" "${STATE_FILE}" 2>/dev/null | tail -1 | cut -d= -f2-)
+        value=$(grep "^${key}=" "${STATE_FILE}" 2>/dev/null || true | tail -1 | cut -d= -f2-)
         if [[ -n "${value}" ]]; then
             value="${value#\'}"
             value="${value%\'}"
