@@ -155,7 +155,7 @@ install_desktop() {
             ;;
 
         moksha)
-            pkgs+=(moksha enlightenment terminology lightdm lightdm-gtk-greeter "lightdm-${init}")
+            pkgs+=(moksha terminology lightdm lightdm-gtk-greeter "lightdm-${init}")
             ;;
 
         cosmic)
@@ -166,7 +166,7 @@ install_desktop() {
 
     case "${display_manager}" in
         lightdm)
-            if [[ "${wm_de}" != "kde" ]]; then
+            if [[ "${wm_de}" != "kde" && "${wm_de}" != "cinnamon" && "${wm_de}" != "budgie" && "${wm_de}" != "moksha" && "${wm_de}" != "cosmic" ]]; then
                 pkgs+=(lightdm lightdm-gtk-greeter "lightdm-${init}")
             fi
             ;;
