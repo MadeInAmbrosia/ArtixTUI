@@ -1,5 +1,42 @@
 # Changelog
 
+## v9.3.0.0 (2026-07-08) — ArtixForge
+
+### Added
+- **Daemon IPC resilience and panic recovery** — `jq -c` compaction prevents JSON newline corruption over Unix socket; `catch_unwind` wrapper returns errors as JSON instead of crashing; panic hook writes to `/tmp/forge-tui-panic.log` and restores terminal; stderr captured to log file; binary auto-copied on every run to prevent stale builds (`scripts/tui/core.sh`, `scripts/tui/menu.sh`, `forge-tui/src/daemon.rs`, `install`)
+- **Hub overlay widgets** — `input`, `yesno`, `password` now render as centered overlays on hub background via `run_with_background` variants instead of taking full screen (`forge-tui/src/widgets/input.rs`, `forge-tui/src/widgets/yesno.rs`, `forge-tui/src/artixforge/install/hub.rs`)
+- **Password hashing at capture** — root and user passwords hashed with `openssl passwd -6` in Rust before storage; LUKS passphrase kept plaintext for `cryptsetup` compatibility; user manager rewritten with `Form` mode, password confirmation, edit preservation, and delete fix (`forge-tui/src/artixforge/install/hub.rs`, `forge-tui/src/artixforge/install/users.rs`)
+- **State file overhaul** — atomic write via temp file + `mv`; unified `KEY='value'` single-quote format across `state_save` and `state_set`; recursive quote and key-prefix stripping in `state_get`; `%q` escaping removed; ERR trap suppressed on missing keys; `USER_COUNT` JSON parsed with `jq` in `users.sh`; safety net creates default user when none configured (`scripts/state.sh`, `scripts/install/users.sh`)
+- **Disk path stripping** — hub strips `lsblk` display labels to bare `/dev/sda` before returning to Bash, fixing `invalid disk device` errors (`forge-tui/src/artixforge/install/hub.rs`)
+- **CachyOS CPU detection by flags** — `/proc/cpuinfo` AVX2/AVX512 replaces `ld-linux` parsing and model heuristics; Architecture header added to target `pacman.conf` alongside v3/v4 repos (`scripts/install/basestraps/packages.sh`, `scripts/install/basestraps/target_repos.sh`)
+- **Extras from direct pacman** — `get_extras_choices` calls `pacman -Sl world galaxy` without shell pipe, restoring 32 missing packages (`forge-tui/src/artixforge/install/hub.rs`)
+- **Multiselect navigation** — `j`/`k` only navigate when search empty; typing appends characters (`forge-tui/src/widgets/multiselect.rs`)
+- **Quick Profile and hub routing** — F1 dispatches `quick_profiles::run()` in Rust; `_action` key in hub responses routes F-key actions to Bash (`forge-tui/src/artixforge/install/hub.rs`, `scripts/tui/menu.sh`)
+
+### Changed
+- **Daemon lifecycle** — started just before hub loop, killed with `stty sane` terminal restore after hub returns; EXIT trap reset to prevent pipeline interference (`scripts/tui/menu.sh`, `install`)
+- **Summary removed** — hub displays all settings live; `summary.sh` and F3 action eliminated; F-keys reduced to Quick Profile and Proceed (`scripts/tui/menu.sh`)
+- **Finalize and preflight cleanup** — `gum` replaced with `printf`/`read`; mirror ranking and its `tui_yesno` prompt removed (`scripts/stages/finalize.sh`, `scripts/stages/preflight.sh`)
+- **Theme label** — corrected to `Forge (pink/green)` matching color scheme (`scripts/tui/menu.sh`, `forge-tui/src/artixforge/install/hub.rs`)
+- **User summary template** — sidebar shows `priv: {PRIV_ESCALATION}` instead of raw JSON; `render_summary` parses `USER_COUNT` for numeric display (`scripts/tui/menu.sh`, `forge-tui/src/artixforge/install/hub.rs`)
+
+### Fixed
+- **Daemon crash on hub launch** — `jq -c` compacts multi-line JSON for single-line socket delivery
+- **Stale binary** — installer copies `forge-tui` from build directory on every run
+- **State file not saving hub choices** — `state_get` reads from state file before env fallback, fixing subshell `export` loss from `result=$(tui_afhub)`
+- **State file corruption** — ERR trap no longer kills `state_save` mid-write; `%q` backslash escaping removed; temp file + `mv` prevents truncation
+- **`target not found: git\`** — backslash escaping in `EXTRAS` value fixed by unified single-quote format
+- **`package architecture is not valid` for linux-cachyos** — missing Architecture header added to target `pacman.conf`
+- **CachyOS v4 false positive on Coffee Lake** — flag-based detection replaces model number heuristics
+- **Desktop install failure** — duplicate `lightdm` packages deduplicated with exclusion list for cinnamon, budgie, moksha, cosmic
+- **Budgie not found** — Arch repos auto-enabled for budgie, cinnamon, cosmic, hyprland, niri, mango, dwm, i3wm in `install_base_system`
+- **LUKS passphrase hashed** — plaintext stored for `cryptsetup` instead of SHA-512 hash
+- **User manager broken** — `Form` mode preserves existing passwords, delete confirmation works, password confirmation added
+- **Swap size input full-screen** — overlay rendering via `run_with_background`
+- **Extras missing fastfetch** — direct pacman invocation resolves shell pipe package loss
+- **F2 Proceed broken** — `_action` extraction before key-value iteration in `tui_afhub`
+- **Daemon left running during pipeline** — explicit `quit` + `stty sane` cleanup; `reset` removed to prevent env wipe
+
 ## v9.2.9.0 (2026-07-07) — ArtixForge
 
 ### Added

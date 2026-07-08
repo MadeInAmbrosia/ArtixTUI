@@ -11,7 +11,7 @@ Do not open a public issue for security issues.
 
 | Version | Supported |
 |---------|-----------|
-| v9.2.9.0   | Latest Commits |
+| v9.3.0.0   | Latest Commits |
 | v9.1.1.4 | Latest Stable release |
 | < v9.1.1.4 | No |
 
