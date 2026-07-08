@@ -130,15 +130,6 @@ tui_collect_install_config() {
             return 0
         fi
 
-            if [[ -n "${FORGE_TUI_DAEMON:-}" && -S "${FORGE_TUI_SOCKET}" ]]; then
-                printf '{"widget":"quit"}\n' | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null
-                rm -f "${FORGE_TUI_SOCKET}"
-                unset FORGE_TUI_DAEMON
-            fi
-            trap - EXIT
-            return 0
-        fi
-
         case "${result}" in
             "Quick Profile")
                 continue
