@@ -34,7 +34,7 @@ tui_afhub() {
     {"id":"NETWORK_STACK","label":"Network stack","value":"$(state_get NETWORK_STACK networkmanager)","widget":"menu","choices":["networkmanager","dhcpcd+iwd","connman","none"]},
     {"id":"AUDIO_STACK","label":"Audio stack","value":"$(state_get AUDIO_STACK pipewire)","widget":"menu","choices":["pipewire","pulseaudio","none"]}
   ]},
-  {"id":"users","label":"Users & Privilege","summary_template":"{USER_COUNT} user(s), priv: {PRIV_ESCALATION}","items":[
+  {"id":"users","label":"Users & Privilege","summary_template":"priv: {PRIV_ESCALATION}","items":[
     {"id":"USER_COUNT","label":"User accounts","value":"$(state_get USER_COUNT 0)","widget":"user_manager"},
     {"id":"ROOT_PASS","label":"Root password","value":"$(state_get ROOT_PASS '')","widget":"password","display":"set/not set"},
     {"id":"PRIV_ESCALATION","label":"Privilege escalation","value":"$(state_get PRIV_ESCALATION sudo)","widget":"menu","choices":["sudo","doas"]},
@@ -68,6 +68,13 @@ JSONEOF
 
     if echo "${result}" | jq -e 'type == "string"' &>/dev/null; then
         echo "${result}"
+        return 0
+    fi
+
+    local action
+    action=$(echo "${result}" | jq -r '._action // empty' 2>/dev/null)
+    if [[ -n "${action}" ]]; then
+        echo "${action}"
         return 0
     fi
 

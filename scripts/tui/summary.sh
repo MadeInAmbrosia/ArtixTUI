@@ -50,7 +50,7 @@ tui_show_summary() {
     tui_msg "Installation Summary" "${summary}"
 
     if ! tui_yesno "Proceed?" "Proceed with installation?"; then
-        exit 0
+        return 1
     fi
 
     if [[ -n "${FORGE_TUI_DAEMON:-}" ]]; then
