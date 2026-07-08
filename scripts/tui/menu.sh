@@ -73,6 +73,7 @@ JSONEOF
 
     local key val
     while IFS= read -r key; do
+        [[ -z "${key}" ]] && continue
         val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]')
         state_set "${key}" "${val}"
     done <<< "$(echo "${result}" | jq -r 'keys[]')"
@@ -117,29 +118,26 @@ tui_collect_install_config() {
         local result
         result=$(tui_afhub) || { tui_msg_quick "Cancelled" "Installation cancelled."; exit 0; }
 
-        if echo "${result}" | jq -e 'type == "string"' &>/dev/null; then
-            local action
-            action=$(echo "${result}" | jq -r '.')
-            case "${action}" in
-                "View Summary")
-                    _af_show_summary
-                    continue
-                    ;;
-                *) continue ;;
-            esac
+        if [[ -z "${result}" ]]; then
+            local user_json
+            user_json=$(state_get USER_COUNT '')
+            if [[ -z "${user_json}" || "${user_json}" == "0" || "${user_json}" == "[]" ]]; then
+                tui_msg_quick "Users Required" "Please create at least one user account."
+                continue
+            fi
+            return 0
         fi
 
-        local key val
-        while IFS= read -r key; do
-            val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]')
-            state_set "${key}" "${val}"
-        done <<< "$(echo "${result}" | jq -r 'keys[]')"
-
-        if [[ "$(state_get USER_COUNT 0)" -eq 0 ]]; then
-            tui_msg_quick "Users Required" "Please create at least one user account."
-            continue
-        fi
-        return 0
+        case "${result}" in
+            "View Summary")
+                tui_show_summary
+                continue
+                ;;
+            "Quick Profile")
+                continue
+                ;;
+            *) continue ;;
+        esac
     done
 }
 
