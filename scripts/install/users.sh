@@ -7,6 +7,24 @@ configure_users() {
     wm_de="$(state_get WM_DE none)"
 
     # Safety net in-case the user bit the dust
+    local user_json user_count
+    user_json="$(state_get USER_COUNT '')"
+
+    if [[ -n "${user_json}" && "${user_json}" != "0" && "${user_json}" != "[]" ]]; then
+        user_count=$(echo "${user_json}" | jq '. | length')
+        for ((i=0; i<user_count; i++)); do
+            local idx=$((i+1))
+            state_set "USER_${idx}_NAME"  "$(echo "${user_json}" | jq -r ".[$i].name // empty")"
+            state_set "USER_${idx}_PASS"  "$(echo "${user_json}" | jq -r ".[$i].pass // empty")"
+            state_set "USER_${idx}_SHELL" "$(echo "${user_json}" | jq -r ".[$i].shell // \"/bin/bash\"")"
+            state_set "USER_${idx}_SUDO"  "$(echo "${user_json}" | jq -r ".[$i].sudo // true")"
+            local groups_json
+            groups_json=$(echo "${user_json}" | jq -r ".[$i].groups // [\"wheel\",\"audio\",\"video\",\"storage\"] | join(\",\")")
+            state_set "USER_${idx}_GROUPS" "${groups_json}"
+        done
+        state_set USER_COUNT "${user_count}"
+    fi
+
     if [[ ${USER_COUNT:-0} -eq 0 ]]; then
         state_set USER_COUNT 1
         state_set USER_1_NAME "artix"
@@ -14,7 +32,11 @@ configure_users() {
         state_set USER_1_SHELL "/bin/bash"
         state_set USER_1_GROUPS "wheel,audio,video,storage"
         state_set USER_1_SUDO "yes"
-        tui_msg "Default User Created" "No users were configured.\n\nA default user 'artix' has been created.\nUsername: artix\nPassword: artix\n\nChange this password after first login."
+        printf '\n[!] No users were configured.\n'
+        printf '[!] A default user "artix" has been created.\n'
+        printf '[!] Username: artix\n'
+        printf '[!] Password: artix\n'
+        printf '[!] Change this password after first login.\n\n'
         log_warn "No users configured — creating default user 'artix'"
     fi
 
