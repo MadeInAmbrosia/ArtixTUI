@@ -265,60 +265,54 @@ tui_hub() {
 
 tui_install_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}" boot_mode="${4:-uefi}"
-    _start_filly_daemon
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     else
-        _filly_daemon_send '{"widget":"install_hub","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"',"boot_mode":"'"${boot_mode}"'"}}'
+        filly_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     fi
 }
 
 tui_recovery() {
     local title="${1}" status_json="${2}" repairs_json="${3}"
-    _start_filly_daemon
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_recovery "${title}" "${status_json}" "${repairs_json}"
     else
-        _filly_daemon_send '{"widget":"recovery","params":{"title":"'"${title//\"/\\\"}"'","status":'"${status_json}"',"repairs":'"${repairs_json}"'}}'
+        filly_recovery "${title}" "${status_json}" "${repairs_json}"
     fi
 }
 
 tui_iso() {
     local title="${1}" categories_json="${2}"
-    _start_filly_daemon
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_iso "${title}" "${categories_json}"
     else
-        _filly_daemon_send '{"widget":"iso","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}}'
+        filly_iso "${title}" "${categories_json}"
     fi
 }
 
 tui_migration_init() {
     local title="${1}" current_init="${2}"
-    _start_filly_daemon
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_migration_init "${title}" "${current_init}"
     else
-        _filly_daemon_send '{"widget":"migration_init","params":{"title":"'"${title//\"/\\\"}"'","current_init":"'"${current_init}"'"}}'
+        filly_migration_init "${title}" "${current_init}"
     fi
 }
 
 tui_migration_desktop() {
     local title="${1}" current_de="${2}"
-    _start_filly_daemon
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_migration_desktop "${title}" "${current_de}"
     else
-        _filly_daemon_send '{"widget":"migration_desktop","params":{"title":"'"${title//\"/\\\"}"'","current_de":"'"${current_de}"'"}}'
+        filly_migration_desktop "${title}" "${current_de}"
     fi
 }
 
 tui_poweruser() {
     local title="${1}" categories_json="${2}"
-    _start_filly_daemon
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_poweruser "${title}" "${categories_json}"
     else
-        _filly_daemon_send '{"widget":"poweruser","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}}'
+        filly_poweruser "${title}" "${categories_json}"
     fi
 }
