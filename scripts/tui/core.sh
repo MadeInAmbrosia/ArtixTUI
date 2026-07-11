@@ -256,16 +256,11 @@ tui_multiselect() {
 
 tui_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}"
-    _start_filly_daemon
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
     else
-        _filly_daemon_send '{"widget":"hub","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"'}}'
+        filly_hub "${title}" "${categories_json}" "${actions_json}"
     fi
-}
-
-_filly_daemon_send() {
-    printf '%s\n' "$1" | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null | jq -r '.result // empty'
 }
 
 tui_install_hub() {
