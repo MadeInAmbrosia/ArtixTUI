@@ -56,12 +56,10 @@ _start_filly_daemon() {
     if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
         rm -f "${FILLY_DAEMON_SOCKET}"
     fi
-    mkdir -p /tmp/artix-installer/logs
-    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" </dev/tty 2>/tmp/artix-installer/logs/filly-daemon.log &
+    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" >/dev/null 2>&1 &
     FILLY_DAEMON_PID=$!
     for _ in {1..50}; do
         if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
-            export FILLY_DAEMON=1
             export FILLY_SOCKET="${FILLY_DAEMON_SOCKET}"
             return 0
         fi
@@ -80,7 +78,7 @@ _stop_filly_daemon() {
         wait "${FILLY_DAEMON_PID}" 2>/dev/null || true
     fi
     rm -f "${FILLY_DAEMON_SOCKET}"
-    unset FILLY_DAEMON FILLY_SOCKET FILLY_DAEMON_PID
+    unset FILLY_SOCKET FILLY_DAEMON_PID
     stty sane 2>/dev/null || true
 }
 
@@ -262,8 +260,12 @@ tui_hub() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
     else
-        filly_hub "${title}" "${categories_json}" "${actions_json}"
+        _filly_daemon_send '{"widget":"hub","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"'}}'
     fi
+}
+
+_filly_daemon_send() {
+    printf '%s\n' "$1" | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null | jq -r '.result // empty'
 }
 
 tui_install_hub() {
@@ -272,7 +274,7 @@ tui_install_hub() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     else
-        filly_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
+        _filly_daemon_send '{"widget":"install_hub","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"',"boot_mode":"'"${boot_mode}"'"}}'
     fi
 }
 
@@ -282,7 +284,7 @@ tui_recovery() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_recovery "${title}" "${status_json}" "${repairs_json}"
     else
-        filly_recovery "${title}" "${status_json}" "${repairs_json}"
+        _filly_daemon_send '{"widget":"recovery","params":{"title":"'"${title//\"/\\\"}"'","status":'"${status_json}"',"repairs":'"${repairs_json}"'}}'
     fi
 }
 
@@ -292,7 +294,7 @@ tui_iso() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_iso "${title}" "${categories_json}"
     else
-        filly_iso "${title}" "${categories_json}"
+        _filly_daemon_send '{"widget":"iso","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}}'
     fi
 }
 
@@ -302,7 +304,7 @@ tui_migration_init() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_migration_init "${title}" "${current_init}"
     else
-        filly_migration_init "${title}" "${current_init}"
+        _filly_daemon_send '{"widget":"migration_init","params":{"title":"'"${title//\"/\\\"}"'","current_init":"'"${current_init}"'"}}'
     fi
 }
 
@@ -312,7 +314,7 @@ tui_migration_desktop() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_migration_desktop "${title}" "${current_de}"
     else
-        filly_migration_desktop "${title}" "${current_de}"
+        _filly_daemon_send '{"widget":"migration_desktop","params":{"title":"'"${title//\"/\\\"}"'","current_de":"'"${current_de}"'"}}'
     fi
 }
 
@@ -322,6 +324,6 @@ tui_poweruser() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_poweruser "${title}" "${categories_json}"
     else
-        filly_poweruser "${title}" "${categories_json}"
+        _filly_daemon_send '{"widget":"poweruser","params":{"title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}}'
     fi
 }
