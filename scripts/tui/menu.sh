@@ -66,17 +66,13 @@ JSONEOF
 
     [[ -z "${result}" ]] && return 1
 
-    local data
-    data=$(echo "${result}" | jq -r '.result // empty')
-    [[ -z "${data}" ]] && return 1
-
-    if echo "${data}" | jq -e 'type == "string"' &>/dev/null; then
-        echo "${data}"
+    if echo "${result}" | jq -e 'type == "string"' &>/dev/null; then
+        echo "${result}"
         return 0
     fi
 
     local action
-    action=$(echo "${data}" | jq -r '._action // empty' 2>/dev/null)
+    action=$(echo "${result}" | jq -r '._action // empty' 2>/dev/null)
     if [[ -n "${action}" ]]; then
         echo "${action}"
         return 0
@@ -85,9 +81,9 @@ JSONEOF
     local key val
     while IFS= read -r key; do
         [[ -z "${key}" ]] && continue
-        val=$(echo "${data}" | jq -r --arg k "${key}" '.[$k]')
+        val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]')
         state_set "${key}" "${val}"
-    done <<< "$(echo "${data}" | jq -r 'keys[]')"
+    done <<< "$(echo "${result}" | jq -r 'keys[]')"
 
     return 0
 }
