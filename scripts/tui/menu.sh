@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 tui_afhub() {
     local cats_json
+    local extras_choices_json
+    extras_choices_json=$(pacman -Sl world galaxy 2>/dev/null | awk '{print $2}' | sort -u | jq -R . | jq -s .)
     cats_json=$(cat <<JSONEOF
 [
   {"id":"disk","label":"Disk & Storage","summary_template":"fs: {FS_TYPE}, swap: {SWAP_ENABLED}","items":[
@@ -41,7 +43,7 @@ tui_afhub() {
     {"id":"USER_SHELL","label":"User shell","value":"$(state_get USER_SHELL bash)","widget":"menu","choices":["bash","zsh","fish"]}
   ]},
   {"id":"extras","label":"Extras & Repos","summary_template":"arch: {ENABLE_ARCH_REPOS}, pw: {POWER_USER}","items":[
-    {"id":"EXTRAS","label":"Extra packages","value":"$(state_get EXTRAS '')","widget":"multiselect","choices":[],"choices_from":"pacman -Sl world galaxy | awk \"{print \$2}\" | sort -u"},
+    {"id":"EXTRAS","label":"Extra packages","value":"$(state_get EXTRAS '')","widget":"multiselect","choices":${extras_choices_json}},
     {"id":"ENABLE_ARCH_REPOS","label":"Arch repositories","value":"$(state_get ENABLE_ARCH_REPOS no)","widget":"yesno"},
     {"id":"ENABLE_AURIS","label":"AURIS","value":"$(state_get ENABLE_AURIS no)","widget":"yesno"},
     {"id":"ALLOW_OFFLINE","label":"Offline mode","value":"$(state_get ALLOW_OFFLINE no)","widget":"yesno"},
