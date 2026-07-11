@@ -72,31 +72,30 @@ Declining a quick profile left half‑set state variables (DISK, FS_TYPE, etc.)
 that would then mix with the subsequent manual selection.  The fix wipes all
 quick‑profile keys before falling through to manual config.
 
-### TUI rewrite (v9.2.7+)
-The entire Bash TUI system was replaced with a Rust binary (`forge-tui`) using
-ratatui + crossterm. The Bash side now builds JSON payloads and pipes them to
-`forge-tui` via Unix socket (daemon mode) or temp files (oneshot mode). Only
-`core.sh`, `menu.sh`, and `summary.sh` remain in `scripts/tui/` — all
-individual menu files under `scripts/tui/menus/` were deleted.
+### TUI rewrite (v9.2.7+ → v9.3.1.0)
+The entire Bash TUI system was replaced with a Rust binary (`forge-tui`, later
+merged into `FILLY`) using ratatui + crossterm. The Bash side builds JSON
+payloads and pipes them to `filly` via Unix socket (daemon mode) or temp files
+(oneshot mode). Only `core.sh`, `menu.sh`, and `summary.sh` remain in
+`scripts/tui/` — all individual menu files were deleted. v9.3.1.0 replaced
+`forge-tui` with `FILLY`, which also provides a Python GTK4 graphical backend.
 
 ### Daemon mode vs oneshot
-`forge-tui` can run in two modes. Oneshot mode spawns a new process for every
-widget call — simple but exhausts the terminal after ~40 calls due to repeated
-alternate screen enter/leave cycles. Daemon mode starts one persistent process
-with a Unix socket; Bash sends JSON requests over `nc -U`. The daemon is
-started just before the hub configuration loop in
-`tui_collect_install_config`, not globally. Before that point, all TUI calls
-(ASCII art welcome, main menu, disk picker) use oneshot mode. The daemon
-auto-start in `_forge` was removed because it triggered on the very first TUI
-call, way too early.
+`filly` can run in two modes. Oneshot mode spawns a new process for every
+widget call. Daemon mode starts one persistent process with a Unix socket;
+Bash sends JSON requests over `nc -U`. The daemon is started just before
+the hub configuration loop in `tui_collect_install_config`, not globally.
+Before that point, all TUI calls use oneshot mode. `fil.sh` auto-detects
+daemon availability via `FILLY_DAEMON` env var.
 
 ### Hub widget
 The configuration interface is a two-pane hub: categories on the left
 (Disk & Storage, Bootloader, Kernel, Desktop, etc.), editable settings on the
-right. The Rust side handles all navigation, inline editing via dispatched
-sub-widgets, F-key actions, and state management internally. Bash builds
-categories as JSON with `state_get` values and passes them to `tui_install_hub`.
-When the user presses F-key actions, the hub returns the current values map
+right. FILLY handles all navigation, inline editing via dispatched
+sub-widgets, F-key actions, and state management internally. Bash
+builds categories as JSON with `state_get` values and passes them to
+`tui_hub` (via `filly_hub` or `filly_graphical_hub`). When the user
+presses F-key actions, the hub returns the current values map
 back to Bash which writes them to `state.conf`.
 
 ### `visible_if` in hub
@@ -501,88 +500,76 @@ or `/sys` not being mounted inside the chroot.
 ---
 
 ## GUI (`forge-gui/`)
+## GUI (`filly-graphical/`)
 
 ### Hub parity with TUI
-The GUI uses the same hub layout as the TUI: `HubPage` in `base.py` renders
+The GUI uses the same hub layout as the TUI: FILLY's built-in `HubWindow` renders
 a two-pane widget with categories on the left and editable settings on the
 right. Every mode (installation, power user, ISO builder, recovery, init
-migration, desktop migration, ATA migration) has its own hub with identical
-categories and state keys. The GUI writes the same `state.conf` format and
+migration, desktop migration, ATA migration) maps to the same `HubWindow` via
+plugin widget aliases. The GUI writes the same `state.conf` format and
 calls the same `install --non-interactive` pipeline.
 
 ### Hub as wizard replacement
-All previous wizard pages (10-15 per mode) were replaced by a single
-`HubPage` per mode. The `_build_category_page` method dynamically generates
-GTK widgets from Python dicts matching the TUI's JSON category format. This
-reduced ~1800 lines of repetitive GTK boilerplate across 8 files.
+All previous wizard pages (10-15 per mode) were replaced by FILLY's built-in
+`HubWindow`, shared across all plugin widgets. The hub dynamically generates
+GTK widgets from the JSON category format sent by the Bash scripts. This
+reduced ~1800 lines of repetitive GTK boilerplate across 8 files to a single
+reusable widget.
+
+### Plugin GUI architecture
+Domain-specific GUI widgets live in `plugins/*/python/` as part of FILLY's
+plugin packs. Each plugin's `__init__.py` registers widget names with
+`GuiBackend.register_widget()`. ArtixForge maps 6 widget names (`install_hub`,
+`recovery`, `iso`, `migration_init`, `migration_desktop`, `poweruser`) to
+`HubWindow`. GForge maps its portage widgets to built-in FILLY GUI widgets
+(`ChecklistWindow`, `InputWindow`, `MenuWindow`, `MsgWindow`, `YesNoWindow`)
+plus 5 custom widgets (`Stage3PickerWindow`, `ProfilePickerWindow`,
+`KernelPickerWindow`, `UseFlagsWindow`, `CflagsWindow`). Plugin discovery
+scans `plugins/*/python/` and `~/.config/filly/gui-plugins/` at startup.
 
 ### `visible_if` in GUI hub
-The `HubPage` class tracks visibility conditions in `_visibility_rows` and
-`_visibility_conditions` dicts. When any widget changes state, `_on_state_changed`
-re-evaluates all conditions and shows/hides rows accordingly.
+The `HubWindow` class tracks visibility conditions when items include
+`"visible_if"` in their JSON. When any widget changes state, all conditions
+are re-evaluated and rows shown/hidden accordingly. This is handled by the
+hub widget itself — no mode-specific code needed.
 
-### User manager dialog
-`UserManagerDialog` provides add/edit/remove for user accounts with
-username, password (hashed via `openssl passwd -6`), shell selection
-(bash/zsh/fish), group checkboxes (wheel/audio/video/storage/lp/network/
-optical/scanner/users), and sudo toggle. User data is stored as
-`USER_N_NAME`, `USER_N_PASS`, `USER_N_SHELL`, `USER_N_GROUPS`, `USER_N_SUDO`
-state keys with `USER_COUNT` tracking the total.
+### User manager, quick profiles, recovery, migration, ISO, theme, TKG
+These features are implemented in the Bash scripts (`menu.sh`, `iso/tui.sh`,
+`migrations/`, `poweruser/`) which build the category JSON. The GUI hub
+renders whatever JSON it receives — all mode-specific logic lives in Bash,
+not in Python. The GUI is a pure rendering layer.
 
-### Quick profile confirmation
-Selecting a quick profile shows a preview dialog listing all settings that
-will be changed before applying. The user must confirm before any state is
-modified.
-
-### Recovery live status
-The recovery hub runs `recovery_get_status` from Bash via `subprocess` and
-displays the result. A refresh button re-runs detection and rebuilds the hub.
-
-### Migration auto-detection
-Init and desktop migration hubs call `_detect_current_system()` which
-shells out to the recovery detection scripts and populates `DETECTED_INIT`
-and `DETECTED_DE` state keys before displaying the hub.
-
-### ISO offline target config
-When building an offline ISO with live desktop mode, the GUI pushes a
-second hub for target system configuration (init, kernel, desktop) before
-proceeding to the build.
-
-### Theme preview
-A `Gtk.DrawingArea` renders two colored rectangles showing the current
-title and accent colors. It updates whenever the theme selection changes.
-
-### TKG compile confirmation
-If the user selects TKG kernel with source compilation, a warning dialog
-appears before installation begins, noting the 20-30 minute build time.
-
-### Progress page improvements
+### Progress page
 The progress page uses a pulsing `Gtk.ProgressBar` during indeterminate
 stages and a monospace `Gtk.TextView` for log output. Stage detection
-markers advance the bar as installation progresses.
+markers advance the bar as installation progresses. The progress widget
+is FILLY's built-in `ProgressWindow`, launched by `filly_graphical_progress`
+when the Bash pipeline reaches the install phase.
 
 ---
 
 ## TUI / GUI Co-Development Constraints
 
 ### Synchronized releases
-The TUI (forge-tui Rust binary + Bash scripts) and GUI (forge-gui Python GTK4)
+The TUI (`filly` Rust binary + Bash scripts) and GUI (`filly-graphical` Python GTK4)
 must be version‑bumped together. A state key added to one must be added to the
 other in the same release. The `state.conf` format is the contract — if it
 changes, both sides break.
 
 ### Feature parity
 Every configuration option available in the TUI hub must be available in the
-GUI hub and vice versa. They don't share code (Rust vs Python, ratatui vs GTK4)
-but they share the same category structure, widget types, state keys, and
-installation pipeline. The TUI is the reference implementation; the GUI
-follows.
+GUI hub and vice versa. They share the same JSON protocol and widget registry.
+The TUI and GUI backends are both part of FILLY; plugin `.so` files (Rust) and
+`python/` packages provide backend-specific implementations of the same widgets.
+The TUI is the reference implementation; the GUI follows.
 
-### forge-tui is the only TUI backend
-The old `gum`‑based TUI was fully removed. All TUI rendering goes
-through `forge-tui`. The Bash scripts in `scripts/tui/` (`core.sh`, `menu.sh`,
-`summary.sh`) are thin wrappers that build JSON and call the Rust binary.
-There is no fallback to `gum` anymore.
+### FILLY is the only UI backend
+The old `gum`‑based TUI and standalone `forge-tui`/`forge-gui` were fully removed.
+All TUI rendering goes through `filly`. All GUI rendering goes through
+`filly-graphical`. The Bash scripts in `scripts/tui/` (`core.sh`, `menu.sh`)
+are thin wrappers that build JSON and call `filly_*` or `filly_graphical_*`
+functions. There is no fallback to `gum` anymore.
 
 ---
 

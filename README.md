@@ -18,12 +18,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v9.3.0.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v9.3.1.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Stable-v9.1.1.4-3572a5?style=flat-square" alt="Stable Release">
   <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
-  <img src="https://img.shields.io/badge/TUI-forge--tui-FFB6C1?style=flat-square&logo=rust" alt="forge-tui">
-  <img src="https://img.shields.io/badge/GUI-GTK-61afef?style=flat-square&logo=gtk" alt="GTK">
+  <img src="https://img.shields.io/badge/UI-FILLY-FFB6C1?style=flat-square&logo=rust" alt="FILLY">
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
 </p>
 
@@ -129,7 +128,7 @@ ArtixForge is a **modular operating system deployment framework** for Artix Linu
 It walks you through partitioning, filesystem creation, base system installation, bootloader setup, desktop environment, drivers, and extra tools – all from a single interface.
 
 * **Two interfaces:** Terminal UI (keyboard‑only, works in any TTY) and Graphical UI (GTK, mouse‑friendly, launches automatically in desktop environments).
-* Built with `forge-tui` (Rust, ratatui + crossterm) for the TUI and `GTK4` + `libadwaita` + `Python` for the GUI.
+* Built with [FILLY](https://github.com/realvolk/FILLY) — unified Rust TUI + Python GTK4 widget library with single JSON protocol.
 * Custom colour themes (ArtixForge, Artix Blue, Jet Black, Mono, Retro) that persist to the installed system.
 * Resilience hardened: automatic pacman lock recovery, exponential backoff retries, mid‑build resume, disk space checks at every stage.
 * **Build custom live ISOs** from any Quick Profile or full configuration – includes offline package bundles.
@@ -160,7 +159,7 @@ A debug toggle is available for every mode from the same menu. If you encounter 
 
 ## Core Installer
 
-* **Two UIs:** Terminal (TUI) with `forge-tui` or Graphical (GUI) with GTK4 + libadwaita – same backend, different frontend.
+* **Two UIs:** Terminal (TUI) and Graphical (GTK4 + libadwaita) — same JSON protocol, same backend, different faces via FILLY.
 * Tabbed full-screen TUI – navigate steps with keyboard, jump between tabs, see completed steps with checkmarks
 * Persistent GUI configuration window with 5 colour themes, progress bar, and conditional page visibility
 * Modular architecture – separate scripts for storage, install, post, stages, recovery, and TUI sub-menus
@@ -228,8 +227,8 @@ Terminals, Shell & Prompt, Monitoring, and Media. Includes:
 
 # Dependencies
 
-* **TUI:** `forge-tui` (Rust binary, bundled with the installer; installed to `/usr/local/bin/forge-tui` if not found in PATH).
-* **GUI:** `gtk4`, `libadwaita`, `python-gobject`, `jsonschema` (installed automatically when GUI mode is selected).
+* **TUI:** `filly` (Rust binary, bundled as FILLY submodule; installed to `/usr/local/bin/filly`).
+* **GUI:** `gtk4`, `libadwaita`, `python-gobject`, `python-virtualenv` (installed automatically when GUI mode is selected).
 
 Everything else is handled by the installer.
 

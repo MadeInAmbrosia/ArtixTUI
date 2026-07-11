@@ -62,7 +62,7 @@ JSONEOF
 
     local actions_json='["Quick Profile","Proceed"]'
     local result
-    result=$(tui_install_hub "ArtixForge Configuration" "${cats_json}" "${actions_json}" "${ARTIX_BOOT_MODE:-uefi}")
+    result=$(tui_hub "ArtixForge Configuration" "${cats_json}" "${actions_json}")
 
     [[ -z "${result}" ]] && return 1
 
@@ -110,16 +110,6 @@ tui_collect_install_config() {
 
     if [[ -z "$(state_get DISK '')" ]]; then
         tui_select_disk
-    fi
-
-    if [[ -n "${FORGE_TUI_DAEMON_AVAILABLE:-}" ]]; then
-        forge-tui --daemon --socket "${FORGE_TUI_SOCKET}" 2>/tmp/forge-tui-stderr.log &
-        for _ in {1..50}; do
-            [[ -S "${FORGE_TUI_SOCKET}" ]] && break
-            sleep 0.05
-        done
-        export FORGE_TUI_DAEMON=1
-        trap 'if [[ -n "${FORGE_TUI_DAEMON:-}" && -S "${FORGE_TUI_SOCKET}" ]]; then printf "{\"widget\":\"quit\"}\n" | nc -U "${FORGE_TUI_SOCKET}" 2>/dev/null; rm -f "${FORGE_TUI_SOCKET}"; fi' EXIT
     fi
 
     while true; do

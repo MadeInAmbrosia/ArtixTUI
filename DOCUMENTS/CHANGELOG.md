@@ -1,5 +1,25 @@
 # Changelog
 
+## v9.3.1.0 (2026-07-11) — ArtixForge
+
+### Changed
+- **FILLY integration** — replaced forge-tui and forge-gui submodules with FILLY; all TUI/GUI functions now route through unified `fil.sh` / `filly_graphical.sh` backends via `core.sh`; daemon management handled by FILLY's built-in socket lifecycle
+- **GUI backend** — retired standalone forge-gui app; GUI now uses FILLY's per-widget `filly-graphical` with venv-isolated Python environment at `/tmp/filly-gui-venv`
+- **Hub widget** — `tui_afhub` delegates to FILLY's built-in hub via `tui_hub`; categories/actions JSON unchanged; `tui_install_hub` retained as compatibility wrapper
+
+### Added
+- FILLY submodule at `FILLY/`
+- `_setup_filly` and `_setup_filly_gui` bootstrap functions in `install`
+- Plugin `.so` deployment to `~/.config/filly/plugins/`
+- `FILLY_BACKEND` env var for TUI/GUI selection
+- `FILLY_ROOT` env var for GUI plugin discovery
+- `_start_filly_daemon` / `_stop_filly_daemon` for persistent hub sessions
+
+### Removed
+- `forge-tui` and `forge-gui` submodules
+- `noninteractive.sh` — no longer needed with unified backend
+- `_gui_launch` function — replaced by `_setup_filly_gui`
+
 ## v9.3.0.0 (2026-07-08) — ArtixForge
 
 ### Added

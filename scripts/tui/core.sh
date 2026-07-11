@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+    source "${BASE_DIR}/FILLY/filly_graphical.sh"
+else
+    source "${BASE_DIR}/FILLY/fil.sh"
+fi
+
 GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
 GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
 
 LOG_FILE="/tmp/artix-installer/install.log"
 CHROOT_LOG="/mnt/var/log/artix-installer.log"
 
-FORGE_TUI="${FORGE_TUI:-forge-tui}"
-FORGE_TUI_SOCKET="${FORGE_TUI_SOCKET:-/tmp/forge-tui.sock}"
-FORGE_TUI_DAEMON="${FORGE_TUI_DAEMON:-}"
-
-if command -v nc &>/dev/null; then
-    FORGE_TUI_DAEMON_AVAILABLE=1
-fi
+FILLY_DAEMON_SOCKET="/tmp/filly.sock"
+FILLY_DAEMON_PID=""
 
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
@@ -45,94 +46,50 @@ log_error() {
     printf '\e[1;31m[✗] %s\e[0m\n' "${msg}" | tee -a "${LOG_FILE}" >&2
 }
 
-_forge() {
-    if [[ -n "${FORGE_TUI_DAEMON:-}" ]]; then
-        if [[ ! -S "$FORGE_TUI_SOCKET" ]]; then
-            "$FORGE_TUI" --daemon --socket "$FORGE_TUI_SOCKET" 2>/tmp/forge-tui-stderr.log &
-            for _ in {1..50}; do
-                [[ -S "$FORGE_TUI_SOCKET" ]] && break
-                sleep 0.05
-            done
+_start_filly_daemon() {
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        return 0
+    fi
+    if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null; then
+        return 0
+    fi
+    if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
+        rm -f "${FILLY_DAEMON_SOCKET}"
+    fi
+    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" 2>/tmp/filly-daemon.log &
+    FILLY_DAEMON_PID=$!
+    for _ in {1..50}; do
+        [[ -S "${FILLY_DAEMON_SOCKET}" ]] && break
+        sleep 0.05
+    done
+    export FILLY_DAEMON=1
+    export FILLY_SOCKET="${FILLY_DAEMON_SOCKET}"
+}
+
+_stop_filly_daemon() {
+    if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null; then
+        if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
+            printf '{"widget":"quit"}\n' | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null || true
         fi
-        printf '%s\n' "$1" | jq -c . 2>/dev/null | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null
-    else
-        local _dir _tmp _out
-        _dir=$(mktemp -d --tmpdir forge-tui-XXXXXX)
-        chmod 700 "$_dir"
-        _tmp="$_dir/input.json"
-        _out="$_dir/output.json"
-        printf '%s\n' "$1" > "$_tmp"
-        "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty 2>/dev/null
-        cat "$_out" 2>/dev/null
-        rm -rf "$_dir"
+        kill "${FILLY_DAEMON_PID}" 2>/dev/null || true
+        wait "${FILLY_DAEMON_PID}" 2>/dev/null || true
     fi
+    rm -f "${FILLY_DAEMON_SOCKET}"
+    unset FILLY_DAEMON FILLY_SOCKET FILLY_DAEMON_PID
+    stty sane 2>/dev/null || true
 }
 
-_forge_result() {
-    local _json _result
-    _json=$(_forge "$1")
-    
-    if [[ -z "${_json}" ]]; then
-        log_warn "forge-tui returned empty response"
-        return 1
-    fi
-    
-    if [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]; then
-        return 1
-    fi
-    
-    _result=$(jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null)
-    printf '%s\n' "${_result}"
-    return 0
-}
-
-_forge_cancelled() {
-    local _json
-    _json=$(_forge "$1")
-    
-    if [[ -z "${_json}" ]]; then
-        log_warn "forge-tui returned empty response"
-        return 1
-    fi
-    
-    [[ "$(jq -r '.cancelled' <<< "$_json" 2>/dev/null)" == "true" ]]
-}
-
-if [[ -n "$FORGE_TUI_DAEMON" ]]; then
-    trap '[[ -S "$FORGE_TUI_SOCKET" ]] && printf '"'"'{"widget":"quit"}\n'"'"' | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null; rm -f "$FORGE_TUI_SOCKET"' EXIT
-fi
+trap '_stop_filly_daemon' EXIT
 
 tui_msg() {
     local title="${1}" msg="${2}"
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     printf '%s\n' "${msg}" >&2
-    _forge '{"widget":"msg","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}' >/dev/null
-}
-
-tui_yesno() {
-    local title="${1}" msg="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
-    local result
-    result=$(_forge_result '{"widget":"yesno","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}')
-    [[ "$result" == "true" ]] && return 0 || return 1
-}
-
-tui_input() {
-    local title="${1}" msg="${2}" default="${3:-}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
-    _forge_result '{"widget":"input","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","default":"'"${default//\"/\\\"}"'"}'
-}
-
-tui_password() {
-    local title="${1}" msg="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
-    _forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'"}'
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_msg "$@"
+    else
+        filly_msg "$@"
+    fi
 }
 
 tui_msg_quick() {
@@ -141,14 +98,55 @@ tui_msg_quick() {
     printf '%s\n' "${msg}" >&2
 }
 
+tui_yesno() {
+    local title="${1}" msg="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    printf '%s\n' "${msg}" >&2
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_yesno "$@"
+    else
+        filly_yesno "$@"
+    fi
+}
+
+tui_input() {
+    local title="${1}" msg="${2}" default="${3:-}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_input "$@"
+    else
+        filly_input "$@"
+    fi
+}
+
+tui_password() {
+    local title="${1}" msg="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_password "$@"
+    else
+        filly_password "$@"
+    fi
+}
+
 tui_password_confirm() {
     local title="${1:-Password}" prompt="${2:-Enter password:}" confirm_prompt="${3:-Confirm password:}"
     local pass confirm
     while true; do
         printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-        pass=$(_forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${prompt//\"/\\\"}"'"}')
+        if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+            pass=$(filly_graphical_password "${title}" "${prompt}")
+        else
+            pass=$(filly_password "${title}" "${prompt}")
+        fi
         [[ -n "${pass}" ]] || return 1
-        confirm=$(_forge_result '{"widget":"password","title":"'"${title//\"/\\\"}"'","message":"'"${confirm_prompt//\"/\\\"}"'"}')
+        if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+            confirm=$(filly_graphical_password "${title}" "${confirm_prompt}")
+        else
+            confirm=$(filly_password "${title}" "${confirm_prompt}")
+        fi
         [[ -n "${confirm}" ]] || return 1
         if [[ "${pass}" == "${confirm}" ]]; then
             printf '%s\n' "${pass}"
@@ -163,21 +161,17 @@ tui_menu() {
     shift 2
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
-    local choices_json
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_menu "${title}" "${msg}" "$@"
+    else
+        filly_menu "${title}" "${msg}" "$@"
+    fi
 }
 
 tui_menu_custom() {
     local title="${1}" msg="${2}" height="${3:-15}"
     shift 3
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
-    local choices_json
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    _forge_result '{"widget":"menu","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"',"height":'"${height}"'}'
+    tui_menu "${title}" "${msg}" "$@"
 }
 
 tui_checklist() {
@@ -185,11 +179,11 @@ tui_checklist() {
     shift 2
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
-    local choices_json result
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    result=$(_forge_result '{"widget":"checklist","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}')
-    printf '%s\n' "${result}"
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_checklist "${title}" "${msg}" "$@"
+    else
+        filly_checklist "${title}" "${msg}" "$@"
+    fi
 }
 
 tui_filter() {
@@ -197,28 +191,19 @@ tui_filter() {
     shift 2
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    msg="${msg//$'\n'/\\n}"
-    local choices_json
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    _forge_result '{"widget":"filter","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"'}'
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_filter "${title}" "${msg}" "" "$@"
+    else
+        filly_filter "${title}" "${msg}" "" "$@"
+    fi
 }
 
 tui_radiolist() { tui_menu "$@"; }
 
 tui_spin() {
     local title="${1}" cmd="${2}"
-    if [[ -n "$FORGE_TUI_DAEMON" ]]; then
-        local escaped_cmd
-        escaped_cmd=$(jq -n --arg c "$cmd" '$c')
-        printf '{"widget":"progress","title":"%s","command":["bash","-c",%s]}\n' \
-            "${title//\"/\\\"}" "${escaped_cmd}" \
-            | nc -U "$FORGE_TUI_SOCKET" 2>/dev/null \
-            | while IFS= read -r line; do
-                if [[ "$line" == '{"result":"done"}' ]] || [[ "$line" == '{"result":'* ]]; then
-                    break
-                fi
-                log_info "${line}"
-            done
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_progress "${title}" bash -c "${cmd}"
     else
         bash -c "${cmd}" 2>&1 | while IFS= read -r line; do log_info "${line}"; done
     fi
@@ -227,19 +212,31 @@ tui_spin() {
 tui_show_file() {
     local title="${1}" file="${2}"
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    _forge '{"widget":"summary","title":"'"${title//\"/\\\"}"'","file":"'"${file}"'"}' >/dev/null
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_summary "${title}" "${file}"
+    else
+        filly_summary "${title}" "${file}"
+    fi
 }
 
 tui_edit() {
     local title="${1}" file="${2}"
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    _forge '{"widget":"text","title":"'"${title//\"/\\\"}"'","file":"'"${file}"'"}' >/dev/null
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_text_editor "${title}" "${file}"
+    else
+        filly_text_editor "${title}" "${file}"
+    fi
 }
 
 tui_disk() {
-    local title="${1}" disk="${2}" partitions_json="${3:-}" free_space_json="${4:-}" readonly="${5:-false}"
+    local title="${1}" disk="${2}" partitions_json="${3:-[]}" free_space_json="${4:-[]}" readonly="${5:-false}"
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    _forge_result '{"widget":"disk","title":"'"${title//\"/\\\"}"'","disk":"'"${disk}"'","partitions":'"${partitions_json:-[]}"',"free_space":'"${free_space_json:-[]}"',"readonly":'"${readonly}"'}'
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
+    else
+        filly_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
+    fi
 }
 
 tui_multiselect() {
@@ -247,48 +244,79 @@ tui_multiselect() {
     shift 5 2>/dev/null || shift 3
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    local choices_json
-    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    local json
-    json='{"widget":"multiselect","title":"'"${title//\"/\\\"}"'","message":"'"${msg//\"/\\\"}"'","choices":'"${choices_json}"''
-    [[ -n "$placeholder" ]] && json+=',"placeholder":"'"${placeholder//\"/\\\"}"'"'
-    [[ "$min" != "0" ]] && json+=',"min":'"${min}"
-    [[ "$max" != "0" ]] && json+=',"max":'"${max}"
-    json+='}'
-    _forge_result "$json"
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_multiselect "${title}" "${msg}" "$@"
+    else
+        filly_multiselect "${title}" "${msg}" "$@"
+    fi
 }
 
 tui_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}"
-    _forge_result '{"widget":"hub","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"'}'
+    _start_filly_daemon
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
+    else
+        filly_hub "${title}" "${categories_json}" "${actions_json}"
+    fi
 }
 
 tui_install_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}" boot_mode="${4:-uefi}"
-    _forge_result '{"widget":"install_hub","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"',"actions":'"${actions_json}"',"boot_mode":"'"${boot_mode}"'"}'
+    _start_filly_daemon
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
+    else
+        filly_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
+    fi
 }
 
 tui_recovery() {
     local title="${1}" status_json="${2}" repairs_json="${3}"
-    _forge_result '{"widget":"recovery","title":"'"${title//\"/\\\"}"'","status":'"${status_json}"',"repairs":'"${repairs_json}"'}'
+    _start_filly_daemon
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_recovery "${title}" "${status_json}" "${repairs_json}"
+    else
+        filly_recovery "${title}" "${status_json}" "${repairs_json}"
+    fi
 }
 
 tui_iso() {
     local title="${1}" categories_json="${2}"
-    _forge_result '{"widget":"iso","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}'
+    _start_filly_daemon
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_iso "${title}" "${categories_json}"
+    else
+        filly_iso "${title}" "${categories_json}"
+    fi
 }
 
 tui_migration_init() {
     local title="${1}" current_init="${2}"
-    _forge_result '{"widget":"migration_init","title":"'"${title//\"/\\\"}"'","current_init":"'"${current_init}"'"}'
+    _start_filly_daemon
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_migration_init "${title}" "${current_init}"
+    else
+        filly_migration_init "${title}" "${current_init}"
+    fi
 }
 
 tui_migration_desktop() {
     local title="${1}" current_de="${2}"
-    _forge_result '{"widget":"migration_desktop","title":"'"${title//\"/\\\"}"'","current_de":"'"${current_de}"'"}'
+    _start_filly_daemon
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_migration_desktop "${title}" "${current_de}"
+    else
+        filly_migration_desktop "${title}" "${current_de}"
+    fi
 }
 
 tui_poweruser() {
     local title="${1}" categories_json="${2}"
-    _forge_result '{"widget":"poweruser","title":"'"${title//\"/\\\"}"'","categories":'"${categories_json}"'}'
+    _start_filly_daemon
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_poweruser "${title}" "${categories_json}"
+    else
+        filly_poweruser "${title}" "${categories_json}"
+    fi
 }
