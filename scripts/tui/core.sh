@@ -56,7 +56,7 @@ _start_filly_daemon() {
     if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
         rm -f "${FILLY_DAEMON_SOCKET}"
     fi
-    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" 2>/tmp/filly-daemon.log &
+    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" </dev/tty 2>/tmp/artix-installer/logs/filly-daemon.log &
     FILLY_DAEMON_PID=$!
     for _ in {1..50}; do
         [[ -S "${FILLY_DAEMON_SOCKET}" ]] && break
