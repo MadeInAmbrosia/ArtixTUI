@@ -206,6 +206,15 @@ _artix_welcome() {
 }
 
 main_menu() {
+
+    DEBUG='false'
+
+    if tui_yesno "Debug Mode" "Enable debug mode (verbose logging)?"; then
+        DEBUG='true'
+    else
+        DEBUG='false'
+    fi
+
     while true; do
         local -a menu_items=(
             "Installation – guided setup"
@@ -245,13 +254,6 @@ main_menu() {
         esac
     done
 
-    DEBUG='false'
-
-    if tui_yesno "Debug Mode" "Enable debug mode (verbose logging)?"; then
-        DEBUG='true'
-    else
-        DEBUG='false'
-    fi
     tui_msg_quick "Mode Selected" "Mode: ${MODE}   Debug: ${DEBUG}"
 }
 
