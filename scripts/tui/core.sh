@@ -50,16 +50,17 @@ _start_filly_daemon() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         return 0
     fi
-    if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null; then
+    if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null && [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
         return 0
     fi
     if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
         rm -f "${FILLY_DAEMON_SOCKET}"
     fi
-    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" >/dev/null 2>&1 &
+    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" </dev/tty >/dev/null 2>&1 &
     FILLY_DAEMON_PID=$!
-    for _ in {1..50}; do
+    for _ in {1..100}; do
         if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
+            sleep 0.1
             export FILLY_SOCKET="${FILLY_DAEMON_SOCKET}"
             return 0
         fi
