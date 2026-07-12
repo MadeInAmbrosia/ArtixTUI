@@ -102,7 +102,7 @@ JSONEOF
 
     local actions_json='["Quick Profile","Proceed"]'
     local result
-    result=$(tui_hub "ArtixForge Configuration" "${cats_json}" "${actions_json}")
+    result=$(tui_install_hub "ArtixForge Configuration" "${cats_json}" "${actions_json}")
 
     [[ -z "${result}" ]] && return 1
 
