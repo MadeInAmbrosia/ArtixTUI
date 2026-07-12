@@ -256,19 +256,27 @@ tui_multiselect() {
 
 tui_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}"
+    _start_filly_daemon || return 1
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
     else
-        filly_hub "${title}" "${categories_json}" "${actions_json}"
+        printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s}}\n' \
+            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" \
+            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | jq -r '.result // empty'
     fi
 }
 
 tui_install_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}" boot_mode="${4:-uefi}"
+    _start_filly_daemon || return 1
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     else
-        filly_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
+        printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"}}\n' \
+            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" \
+            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | jq -r '.result // empty'
     fi
 }
 
