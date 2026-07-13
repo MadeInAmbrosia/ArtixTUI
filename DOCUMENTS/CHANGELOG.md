@@ -1,5 +1,16 @@
 # Changelog
 
+## v9.3.1.1 (2026-07-13) — ArtixForge
+
+### Changed
+- **FILLY upgraded to v0.2.0** — complete C rewrite replaces Rust toolchain dependency; only `gcc` and `make` required to build
+- Binary path updated — `_setup_filly` now checks `FILLY/filly` (C build output) before falling back to `FILLY/target/release/filly` (legacy Rust build)
+- Plugin paths updated — `_setup_filly` copies `FILLY/libartixforge.so` and `FILLY/libgforge.so` (C build output) with fallback to legacy `libfilly_plugin_*` names
+
+### Fixed
+- Plugin loading compatibility with C build system — `.so` files now deploy from correct Makefile output paths
+- Binary detection order — C binary takes precedence over Rust binary when both exist
+
 ## v9.3.1.0 (2026-07-11) — ArtixForge
 
 ### Changed

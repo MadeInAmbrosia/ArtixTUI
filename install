@@ -141,14 +141,18 @@ detect_boot_mode() {
 }
 
 _setup_filly() {
-    if [[ -f "${BASE_DIR}/FILLY/target/release/filly" ]]; then
+    if [[ -f "${BASE_DIR}/FILLY/filly" ]]; then
+        install -Dm755 "${BASE_DIR}/FILLY/filly" /usr/local/bin/filly
+    elif [[ -f "${BASE_DIR}/FILLY/target/release/filly" ]]; then
         install -Dm755 "${BASE_DIR}/FILLY/target/release/filly" /usr/local/bin/filly
     elif ! command -v filly &>/dev/null; then
         die 'FILLY binary not found'
     fi
 
     mkdir -p ~/.config/filly/plugins
+    cp "${BASE_DIR}/FILLY/libartixforge.so" ~/.config/filly/plugins/ 2>/dev/null || \
     cp "${BASE_DIR}/FILLY/target/release/libfilly_plugin_artixforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
+    cp "${BASE_DIR}/FILLY/libgforge.so" ~/.config/filly/plugins/ 2>/dev/null || \
     cp "${BASE_DIR}/FILLY/target/release/libfilly_plugin_gforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
 
     export FILLY_ROOT="${BASE_DIR}/FILLY"
