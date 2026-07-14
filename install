@@ -443,16 +443,15 @@ main() {
     export FILLY_BACKEND="tui"
     source "${BASE_DIR}/FILLY/fil.sh"
 
-    if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-        if filly_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
-            if [[ -f "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh" ]]; then
-                export FILLY_BACKEND="gui"
-                source "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh"
-            fi
+    if [[ "$(filly_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?")" == "true" ]]; then
+        if [[ -f "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh" ]]; then
+            export FILLY_BACKEND="gui"
         fi
     fi
 
-    _setup_filly_gui
+    if [[ "${FILLY_BACKEND}" == "gui" ]]; then
+        _setup_filly_gui
+    fi
 
     if [[ "${1:-}" == "--non-interactive" ]]; then
         state_load
