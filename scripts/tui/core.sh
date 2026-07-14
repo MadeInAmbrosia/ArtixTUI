@@ -268,10 +268,12 @@ tui_install_hub() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     else
+        local tmp_json
+        tmp_json=$(mktemp)
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"}}\n' \
-            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" \
-            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
-            | jq -r '.result // empty'
+            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" > "${tmp_json}"
+        cat "${tmp_json}" | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null | jq -r '.result // empty'
+        rm -f "${tmp_json}"
     fi
 }
 
