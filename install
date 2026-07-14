@@ -192,6 +192,10 @@ _setup_filly_gui() {
     export DISPLAY="${DISPLAY:-:0}"
     export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
     command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
+
+    if [[ -f "${BASE_DIR}/FILLY/filly_graphical.sh" ]]; then
+        source "${BASE_DIR}/FILLY/filly_graphical.sh"
+    fi
 }
 
 _artix_welcome() {

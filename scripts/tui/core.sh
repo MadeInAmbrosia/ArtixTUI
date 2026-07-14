@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-    source "${BASE_DIR}/FILLY/filly_graphical.sh"
-else
-    source "${BASE_DIR}/FILLY/fil.sh"
-fi
-
 GUM_TITLE_COLOR="${GUM_TITLE_COLOR:-212}"
 GUM_ACCENT_COLOR="${GUM_ACCENT_COLOR:-34}"
 
@@ -15,6 +9,8 @@ CHROOT_LOG="/mnt/var/log/artix-installer.log"
 
 FILLY_DAEMON_SOCKET="/tmp/filly.sock"
 FILLY_DAEMON_PID=""
+
+source "${BASE_DIR}/FILLY/fil.sh"
 
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
