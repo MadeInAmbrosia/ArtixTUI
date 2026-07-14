@@ -10,8 +10,6 @@ CHROOT_LOG="/mnt/var/log/artix-installer.log"
 FILLY_DAEMON_SOCKET="/tmp/filly.sock"
 FILLY_DAEMON_PID=""
 
-source "${BASE_DIR}/FILLY/fil.sh"
-
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
     [[ -d /mnt ]] && mkdir -p "$(dirname "${CHROOT_LOG}")" 2>/dev/null || true

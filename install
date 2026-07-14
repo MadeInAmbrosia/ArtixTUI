@@ -439,11 +439,16 @@ main() {
 
     _artix_welcome
     sleep 1
-    unset FILLY_BACKEND
+
+    export FILLY_BACKEND="tui"
+    source "${BASE_DIR}/FILLY/fil.sh"
 
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-        if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
-            export FILLY_BACKEND=gui
+        if filly_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
+            if [[ -f "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh" ]]; then
+                export FILLY_BACKEND="gui"
+                source "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh"
+            fi
         fi
     fi
 
