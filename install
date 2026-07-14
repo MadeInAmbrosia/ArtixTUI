@@ -193,8 +193,8 @@ _setup_filly_gui() {
     export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
     command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
 
-    if [[ -f "${BASE_DIR}/FILLY/filly_graphical.sh" ]]; then
-        source "${BASE_DIR}/FILLY/filly_graphical.sh"
+    if [[ -f "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh" ]]; then
+        source "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh"
     fi
 }
 
@@ -439,6 +439,7 @@ main() {
 
     _artix_welcome
     sleep 1
+    unset FILLY_BACKEND
 
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
         if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
