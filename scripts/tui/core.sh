@@ -272,7 +272,7 @@ tui_install_hub() {
         tmp_json=$(mktemp)
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"tty":"%s"}\n' \
             "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" "$(tty)" > "${tmp_json}"
-        cat "${tmp_json}" | socat - UNIX-CONNECT:"${FILLY_DAEMON_SOCKET}" 2>/dev/null | jq -r '.result // empty'
+        (cat "${tmp_json}"; cat) | socat - UNIX-CONNECT:"${FILLY_DAEMON_SOCKET}" 2>/dev/null | jq -r '.result // empty'
         rm -f "${tmp_json}"
     fi
 }
