@@ -268,13 +268,18 @@ EOF
     artix-chroot /mnt hwclock --systohc
 
 
+    local init="$(state_get INIT openrc)"
+
     if [[ "$(state_get USE_LVM no)" == "yes" ]]; then
         log_info "Adding LVM hook to mkinitcpio..."
         if ! artix-chroot /mnt grep -q 'lvm2' /etc/mkinitcpio.conf; then
             artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 lvm2/' /etc/mkinitcpio.conf
         fi
         log_info "Enabling LVM boot service..."
-        enable_service_boot lvm
+        case "${init}" in
+            dinit) enable_service_boot lvm2 2>/dev/null || warn_collect "lvm2 service not found for dinit — LVM may need manual activation" ;;
+            *)     enable_service_boot lvm 2>/dev/null || warn_collect "lvm service not found for ${init}" ;;
+        esac
     fi
 
     if [[ "$(state_get USE_LUKS no)" == "yes" ]]; then
@@ -283,8 +288,15 @@ EOF
             artix-chroot /mnt sed -i '/^HOOKS=/s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
         fi
         log_info "Enabling LUKS boot services..."
-        enable_service_boot dmcrypt
-        enable_service_boot device-mapper
+        case "${init}" in
+            dinit)
+                warn_collect "dinit handles LUKS via kernel command line — ensure cryptdevice= is in kernel cmdline"
+                ;;
+            *)
+                enable_service_boot dmcrypt 2>/dev/null || warn_collect "dmcrypt service not found for ${init}"
+                enable_service_boot device-mapper 2>/dev/null || warn_collect "device-mapper service not found for ${init}"
+                ;;
+        esac
     fi
 
     if ! grep -q 'virtio_blk' /mnt/etc/mkinitcpio.conf 2>/dev/null; then
