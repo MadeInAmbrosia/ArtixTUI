@@ -57,6 +57,7 @@ KERNELS
     {"id":"SWAP_SIZE","label":"Swap size","value":"$(state_get SWAP_SIZE 0)","widget":"input","placeholder":"e.g. 4G or 4096","visible_if":{"SWAP_ENABLED":"partition,swapfile"},"message":"Enter swap partition or swapfile size"},
     {"id":"ZRAM_PERCENT","label":"ZRAM percent","value":"$(state_get ZRAM_PERCENT 50)","widget":"input","placeholder":"e.g. 50","visible_if":{"SWAP_ENABLED":"zram"},"message":"Percentage of RAM to use for zram"},
     {"id":"USE_LUKS","label":"LUKS encryption","value":"$(state_get USE_LUKS no)","widget":"yesno","message":"Encrypt the entire installation with LUKS?\\nYou will be prompted for a passphrase."},
+    {"id":"LUKS_PASS","label":"LUKS password","value":"$(state_get LUKS_PASS '')","widget":"password_confirm","visible_if":{"USE_LUKS":"yes"},"message":"Set the disk encryption passphrase (you will need this to unlock the system at boot)"},
     {"id":"USE_LVM","label":"LVM","value":"$(state_get USE_LVM no)","widget":"yesno","message":"Use Logical Volume Manager for flexible partitioning?"},
     {"id":"BTRFS_LAYOUT","label":"BTRFS layout","value":"$(state_get BTRFS_LAYOUT standard)","widget":"menu","choices":["standard","flat","snapshot"],"visible_if":{"FS_TYPE":"btrfs"},"message":"Select BTRFS subvolume layout"}
   ]},
