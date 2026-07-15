@@ -50,27 +50,6 @@ KERNELS
     local cats_json
     cats_json=$(cat <<JSONEOF
 [
-  {"id":"quick","label":"Quick Profiles","summary_template":"{QUICK_PROFILE}","items":[
-    {"id":"QUICK_PROFILE_KDE","label":"KDE Plasma","value":"","widget":"menu","choices":["Full","Desktop","Minimal"],"message":"KDE Plasma desktop environment"},
-    {"id":"QUICK_PROFILE_XFCE","label":"XFCE","value":"","widget":"menu","choices":["Full","Minimal"],"message":"XFCE desktop environment"},
-    {"id":"QUICK_PROFILE_MANGO","label":"MangoWM","value":"","widget":"menu","choices":["Install"],"message":"MangoWM Wayland compositor"},
-    {"id":"QUICK_PROFILE_HYPRLAND","label":"Hyprland","value":"","widget":"menu","choices":["Install"],"message":"Hyprland Wayland compositor"},
-    {"id":"QUICK_PROFILE_SWAY","label":"Sway","value":"","widget":"menu","choices":["Install"],"message":"Sway Wayland compositor"},
-    {"id":"QUICK_PROFILE_NIRI","label":"Niri","value":"","widget":"menu","choices":["Install"],"message":"Niri scrollable Wayland compositor"},
-    {"id":"QUICK_PROFILE_I3","label":"i3wm","value":"","widget":"menu","choices":["Install"],"message":"i3 window manager"},
-    {"id":"QUICK_PROFILE_DWM","label":"dwm","value":"","widget":"menu","choices":["Install"],"message":"dwm window manager"},
-    {"id":"QUICK_PROFILE_LXQT","label":"LXQt","value":"","widget":"menu","choices":["Install"],"message":"LXQt desktop environment"},
-    {"id":"QUICK_PROFILE_LXDE","label":"LXDE","value":"","widget":"menu","choices":["Install"],"message":"LXDE desktop environment"},
-    {"id":"QUICK_PROFILE_CINNAMON","label":"Cinnamon","value":"","widget":"menu","choices":["Install"],"message":"Cinnamon desktop environment"},
-    {"id":"QUICK_PROFILE_BUDGIE","label":"Budgie","value":"","widget":"menu","choices":["Install"],"message":"Budgie desktop environment"},
-    {"id":"QUICK_PROFILE_MOKSHA","label":"Moksha","value":"","widget":"menu","choices":["Install"],"message":"Moksha desktop environment"},
-    {"id":"QUICK_PROFILE_COSMIC","label":"COSMIC","value":"","widget":"menu","choices":["Install"],"message":"COSMIC desktop environment (alpha)"},
-    {"id":"QUICK_PROFILE_SERVER","label":"Server","value":"","widget":"menu","choices":["Full","Minimal"],"message":"Server without desktop environment"},
-    {"id":"QUICK_PROFILE_EMBEDDED","label":"Embedded","value":"","widget":"menu","choices":["Install"],"message":"BusyBox embedded system"},
-    {"id":"QUICK_PROFILE_VOLK","label":"Volk's Personal","value":"","widget":"menu","choices":["Install"],"message":"Source kernel, dinit, KDE minimal"},
-    {"id":"QUICK_PROFILE_TESTING","label":"TestingQP","value":"","widget":"menu","choices":["Install"],"message":"Every experimental combination enabled"},
-    {"id":"QUICK_PROFILE_LOAD","label":"Load custom...","value":"","widget":"input","placeholder":"Path to profile file","message":"Load a saved profile configuration"}
-  ]},
   {"id":"disk","label":"Disk & Storage","summary_template":"fs: {FS_TYPE}, swap: {SWAP_ENABLED}","items":[
     {"id":"DISK","label":"Target disk","value":"$(state_get DISK '')","widget":"menu","choices":${disk_choices_json},"message":"Select the target drive for installation"},
     {"id":"FS_TYPE","label":"Filesystem","value":"$(state_get FS_TYPE ext4)","widget":"menu","choices":["ext4","btrfs","xfs","f2fs"],"message":"Choose the root filesystem type"},
@@ -127,9 +106,9 @@ KERNELS
 JSONEOF
 )
 
-    local actions_json='["Proceed"]'
+    local actions_json='["Quick Profile","Proceed"]'
     local result
-    result=$(tui_install_hub "ArtixForge Configuration" "${cats_json}" "${actions_json}")
+    result=$(tui_install_hub "Artix Configuration" "${cats_json}" "${actions_json}")
 
     [[ -z "${result}" ]] && return 1
 
