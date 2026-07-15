@@ -1,5 +1,24 @@
 # Changelog
 
+## v9.3.1.2 (2026-07-15) — ArtixForge
+
+### Changed
+- **Swap configuration expanded** — `SWAP_ENABLED` changed from yes/no to a menu with options: `none`, `partition`, `swapfile`, `zram`, `zswap`; added `ZRAM_PERCENT` for zram configuration; swapfile creation handled in post-install stage
+- **Services soft-fail on missing init packages** — `enable_service` and `enable_service_boot` warn instead of error when a service package doesn't exist for the chosen init; missing services collected via `warn_collect` and displayed in final installation report
+- **FILLY integration** — `tui_install_hub` uses `filly oneshot` for interactive hub session; daemon remains for lightweight prompts; `filly relay` subcommand added for future daemon-based interactive widgets
+
+### Added
+- **Quick Profiles category in hub** — KDE Plasma (Full/Desktop/Minimal), XFCE, MangoWM, Hyprland, Sway, Niri, i3wm, dwm, LXQt, LXDE, Cinnamon, Budgie, Moksha, COSMIC, Server, Embedded, Volk's Personal, TestingQP
+- **Post-install chroot shell** — after post-install stage completes, option to drop into interactive chroot shell for manual configuration before finalizing
+- **Installation preset saving** — after successful installation, option to save configuration as reusable preset in `presets/` directory
+- **Warnings collector** — `warn_collect` function aggregates non-fatal warnings from all stages and displays them in final report
+- **Kernel installation fallback** — if selected kernel package fails to install, automatically falls back to `linux` with warning
+
+### Fixed
+- **User groups syntax** — group list cleaned of brackets, quotes, and spaces before passing to `useradd -G`, fixing "group not found" errors
+- **Legacy BIOS bootloader filtering** — bootloader choices restricted to `grub` and `limine` when `ARTIX_BOOT_MODE` is `bios`, hiding EFI-only options
+- **Pipewire/audio installation soft-fail** — audio package installation uses `retry_command` with warning instead of hard failure
+
 ## v9.3.1.1 (2026-07-13) — ArtixForge
 
 ### Changed

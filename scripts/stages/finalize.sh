@@ -61,7 +61,11 @@ _finalize_write_report() {
         printf '  Partition Table: %s\n' "$([[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]] && echo MBR || echo GPT)"
         printf '  LUKS: %s\n' "$(state_get USE_LUKS no)"
         printf '  LVM: %s\n' "$(state_get USE_LVM no)"
-        printf '  Swap: %s\n\n' "$(state_get SWAP_ENABLED no)"
+        printf '  Swap: %s\n\n' "$(state_get SWAP_ENABLED none)"
+
+        if [[ -n "${WARNING_LOG:-}" ]]; then
+            printf 'Installation Warnings:\n%s\n\n' "$(echo -e "${WARNING_LOG}")"
+        fi
 
         printf 'Post-Install:\n'
         printf '  Run sudo pacman -Syu to update.\n'
@@ -94,4 +98,14 @@ stage_finalize() {
 
     stage_mark_done finalize
     _finalize_success_dialog
+
+    if tui_yesno "Save Preset" "Installation complete. Save this configuration as a reusable preset?"; then
+        local preset_name
+        preset_name=$(tui_input "Preset Name" "Enter a name for this preset:" "my-artix") || true
+        if [[ -n "${preset_name}" ]]; then
+            mkdir -p "${BASE_DIR}/presets"
+            cp "${STATE_FILE}" "${BASE_DIR}/presets/${preset_name// /_}.conf"
+            tui_msg "Preset Saved" "Preset '${preset_name}' saved."
+        fi
+    fi
 }

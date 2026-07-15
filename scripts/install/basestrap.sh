@@ -243,6 +243,12 @@ EOF
     esac
     basestrap_target_repo_auris
 
+    if [[ -n "${KERNEL_PACKAGE:-}" ]] && ! pacman -Q "${KERNEL_PACKAGE}" &>/dev/null && [[ "${kernel}" != "tkg" && "${kernel}" != "linux-bazzite-bin" ]]; then
+        log_warn "Kernel ${KERNEL_PACKAGE} failed to install. Falling back to linux."
+        state_set KERNEL_CHOICE "linux"
+        retry_command "kernel fallback" basestrap /mnt linux linux-headers
+    fi
+
     log_info "Configuring locale..."
     artix-chroot /mnt /bin/bash -c "
         grep -q '^${locale} UTF-8' /etc/locale.gen || echo '${locale} UTF-8' >> /etc/locale.gen

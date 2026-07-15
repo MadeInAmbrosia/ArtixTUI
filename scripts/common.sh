@@ -3,6 +3,7 @@ set -Eeuo pipefail;
 
 LOG_FILE="/tmp/artix-installer/install.log"
 CHROOT_LOG="/mnt/var/log/artix-installer.log"
+WARNING_LOG=""
 
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
@@ -18,6 +19,12 @@ log_info() {
 log_warn() {
     _ensure_log_dirs
     printf '\e[1;33m[!] %s\e[0m\n' "$*" | tee -a "${LOG_FILE}" >&2
+}
+
+warn_collect() {
+    local msg="${1}"
+    WARNING_LOG="${WARNING_LOG}  - ${msg}\n"
+    log_warn "${msg}"
 }
 
 log_error() {

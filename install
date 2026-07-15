@@ -341,7 +341,7 @@ start_auto_install() {
     local var
     for var in DISK FS_TYPE BOOTLOADER KERNEL_CHOICE INIT WM_DE \
                NETWORK_STACK AUDIO_STACK PRIV_ESCALATION HOSTNAME \
-               TIMEZONE LOCALE KEYMAP SWAP_ENABLED SWAP_SIZE \
+               TIMEZONE LOCALE KEYMAP SWAP_ENABLED SWAP_SIZE ZRAM_PERCENT \
                USE_LUKS USE_LVM GENERATE_UKI ENABLE_ARCH_REPOS POWER_USER \
                EXTRAS DISPLAY_MANAGER X_STACK MICROCODE_OVERRIDE USER_SHELL \
                USER_COUNT ROOT_PASS LUKS_PASS; do
@@ -443,9 +443,9 @@ main() {
     export FILLY_BACKEND="tui"
     source "${BASE_DIR}/FILLY/fil.sh"
 
-    if [[ "$(filly_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?")" == "true" ]]; then
-        if [[ -f "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh" ]]; then
-            export FILLY_BACKEND="gui"
+    if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]] && [[ "$(tty)" != /dev/tty* ]]; then
+        if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
+            export FILLY_BACKEND=gui
         fi
     fi
 

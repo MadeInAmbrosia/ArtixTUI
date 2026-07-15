@@ -6,7 +6,6 @@ configure_users() {
     priv_esc="$(state_get PRIV_ESCALATION sudo)"
     wm_de="$(state_get WM_DE none)"
 
-    # Safety net in-case the user bit the dust
     local user_json user_count
     user_json="$(state_get USER_COUNT '')"
 
@@ -74,10 +73,9 @@ configure_users() {
         fi
 
         local clean_groups
-        clean_groups=$(printf '%s' "${ugroups}" | tr -d '[]"' | tr ',' ' ')
-        clean_groups="${clean_groups## }"
-        clean_groups="${clean_groups%% }"
-        clean_groups=$(printf '%s' "${clean_groups}" | tr -s ' ')
+        clean_groups=$(printf '%s' "${ugroups}" | tr -d '[]" ')
+        clean_groups="${clean_groups##,}"
+        clean_groups="${clean_groups%%,}"
 
         log_info "Creating user ${username}..."
 

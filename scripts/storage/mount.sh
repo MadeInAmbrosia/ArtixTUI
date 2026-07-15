@@ -2,16 +2,20 @@
 set -Eeuo pipefail
 
 mount_filesystems() {
-    local disk fs_type swap_enabled bootloader btrfs_layout
+    local disk fs_type swap_type bootloader btrfs_layout
     disk="$(state_get DISK)"
     fs_type="$(state_get FS_TYPE)"
-    swap_enabled="$(state_get SWAP_ENABLED no)"
+    swap_type="$(state_get SWAP_ENABLED none)"
     bootloader="$(state_get BOOTLOADER grub)"
     btrfs_layout="$(state_get BTRFS_LAYOUT standard)"
+    local use_swap_partition="no"
+    if [[ "${swap_type}" == "partition" ]]; then
+        use_swap_partition="yes"
+    fi
 
     if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
         local root_part
-        if [[ "${swap_enabled}" == 'yes' ]]; then
+        if [[ "${use_swap_partition}" == "yes" ]]; then
             root_part=$(get_partition_name "${disk}" 3)
         else
             root_part=$(get_partition_name "${disk}" 2)
@@ -38,7 +42,7 @@ mount_filesystems() {
         root_part="$(state_get ROOT_PART)"
     else
         efi_part=$(get_partition_name "${disk}" 1)
-        if [[ "${swap_enabled}" == 'yes' ]]; then
+        if [[ "${use_swap_partition}" == "yes" ]]; then
             root_part=$(get_partition_name "${disk}" 3)
         else
             root_part=$(get_partition_name "${disk}" 2)

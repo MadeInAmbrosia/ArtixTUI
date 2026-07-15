@@ -42,20 +42,47 @@ KERNELS
         | awk '{printf "%s - %s %s\n", $1, $2, $3}' \
         | jq -R . | jq -s -c .)
 
+    local bootloader_choices='["grub","refind","efistub","limine"]'
+    if [[ "${ARTIX_BOOT_MODE:-uefi}" == "bios" ]]; then
+        bootloader_choices='["grub","limine"]'
+    fi
+
     local cats_json
     cats_json=$(cat <<JSONEOF
 [
+  {"id":"quick","label":"Quick Profiles","summary_template":"{QUICK_PROFILE}","items":[
+    {"id":"QUICK_PROFILE_KDE","label":"KDE Plasma","value":"","widget":"menu","choices":["Full","Desktop","Minimal"],"message":"KDE Plasma desktop environment"},
+    {"id":"QUICK_PROFILE_XFCE","label":"XFCE","value":"","widget":"menu","choices":["Full","Minimal"],"message":"XFCE desktop environment"},
+    {"id":"QUICK_PROFILE_MANGO","label":"MangoWM","value":"","widget":"menu","choices":["Install"],"message":"MangoWM Wayland compositor"},
+    {"id":"QUICK_PROFILE_HYPRLAND","label":"Hyprland","value":"","widget":"menu","choices":["Install"],"message":"Hyprland Wayland compositor"},
+    {"id":"QUICK_PROFILE_SWAY","label":"Sway","value":"","widget":"menu","choices":["Install"],"message":"Sway Wayland compositor"},
+    {"id":"QUICK_PROFILE_NIRI","label":"Niri","value":"","widget":"menu","choices":["Install"],"message":"Niri scrollable Wayland compositor"},
+    {"id":"QUICK_PROFILE_I3","label":"i3wm","value":"","widget":"menu","choices":["Install"],"message":"i3 window manager"},
+    {"id":"QUICK_PROFILE_DWM","label":"dwm","value":"","widget":"menu","choices":["Install"],"message":"dwm window manager"},
+    {"id":"QUICK_PROFILE_LXQT","label":"LXQt","value":"","widget":"menu","choices":["Install"],"message":"LXQt desktop environment"},
+    {"id":"QUICK_PROFILE_LXDE","label":"LXDE","value":"","widget":"menu","choices":["Install"],"message":"LXDE desktop environment"},
+    {"id":"QUICK_PROFILE_CINNAMON","label":"Cinnamon","value":"","widget":"menu","choices":["Install"],"message":"Cinnamon desktop environment"},
+    {"id":"QUICK_PROFILE_BUDGIE","label":"Budgie","value":"","widget":"menu","choices":["Install"],"message":"Budgie desktop environment"},
+    {"id":"QUICK_PROFILE_MOKSHA","label":"Moksha","value":"","widget":"menu","choices":["Install"],"message":"Moksha desktop environment"},
+    {"id":"QUICK_PROFILE_COSMIC","label":"COSMIC","value":"","widget":"menu","choices":["Install"],"message":"COSMIC desktop environment (alpha)"},
+    {"id":"QUICK_PROFILE_SERVER","label":"Server","value":"","widget":"menu","choices":["Full","Minimal"],"message":"Server without desktop environment"},
+    {"id":"QUICK_PROFILE_EMBEDDED","label":"Embedded","value":"","widget":"menu","choices":["Install"],"message":"BusyBox embedded system"},
+    {"id":"QUICK_PROFILE_VOLK","label":"Volk's Personal","value":"","widget":"menu","choices":["Install"],"message":"Source kernel, dinit, KDE minimal"},
+    {"id":"QUICK_PROFILE_TESTING","label":"TestingQP","value":"","widget":"menu","choices":["Install"],"message":"Every experimental combination enabled"},
+    {"id":"QUICK_PROFILE_LOAD","label":"Load custom...","value":"","widget":"input","placeholder":"Path to profile file","message":"Load a saved profile configuration"}
+  ]},
   {"id":"disk","label":"Disk & Storage","summary_template":"fs: {FS_TYPE}, swap: {SWAP_ENABLED}","items":[
     {"id":"DISK","label":"Target disk","value":"$(state_get DISK '')","widget":"menu","choices":${disk_choices_json},"message":"Select the target drive for installation"},
     {"id":"FS_TYPE","label":"Filesystem","value":"$(state_get FS_TYPE ext4)","widget":"menu","choices":["ext4","btrfs","xfs","f2fs"],"message":"Choose the root filesystem type"},
-    {"id":"SWAP_ENABLED","label":"Swap","value":"$(state_get SWAP_ENABLED no)","widget":"yesno","message":"Enable swap space?"},
-    {"id":"SWAP_SIZE","label":"Swap size","value":"$(state_get SWAP_SIZE 0)","widget":"input","placeholder":"e.g. 4G","visible_if":{"SWAP_ENABLED":"yes"},"message":"Enter swap partition size"},
+    {"id":"SWAP_ENABLED","label":"Swap type","value":"$(state_get SWAP_ENABLED none)","widget":"menu","choices":["none","partition","swapfile","zram","zswap"],"message":"Select swap configuration"},
+    {"id":"SWAP_SIZE","label":"Swap size","value":"$(state_get SWAP_SIZE 0)","widget":"input","placeholder":"e.g. 4G or 4096","visible_if":{"SWAP_ENABLED":"partition,swapfile"},"message":"Enter swap partition or swapfile size"},
+    {"id":"ZRAM_PERCENT","label":"ZRAM percent","value":"$(state_get ZRAM_PERCENT 50)","widget":"input","placeholder":"e.g. 50","visible_if":{"SWAP_ENABLED":"zram"},"message":"Percentage of RAM to use for zram"},
     {"id":"USE_LUKS","label":"LUKS encryption","value":"$(state_get USE_LUKS no)","widget":"yesno","message":"Encrypt the entire installation with LUKS?\\nYou will be prompted for a passphrase."},
     {"id":"USE_LVM","label":"LVM","value":"$(state_get USE_LVM no)","widget":"yesno","message":"Use Logical Volume Manager for flexible partitioning?"},
     {"id":"BTRFS_LAYOUT","label":"BTRFS layout","value":"$(state_get BTRFS_LAYOUT standard)","widget":"menu","choices":["standard","flat","snapshot"],"visible_if":{"FS_TYPE":"btrfs"},"message":"Select BTRFS subvolume layout"}
   ]},
   {"id":"bootloader","label":"Bootloader","summary_template":"{BOOTLOADER}, UKI: {GENERATE_UKI}","items":[
-    {"id":"BOOTLOADER","label":"Bootloader","value":"$(state_get BOOTLOADER grub)","widget":"menu","choices":["grub","refind","efistub","limine"],"message":"Select the bootloader for starting the system"},
+    {"id":"BOOTLOADER","label":"Bootloader","value":"$(state_get BOOTLOADER grub)","widget":"menu","choices":${bootloader_choices},"message":"Select the bootloader for starting the system"},
     {"id":"GENERATE_UKI","label":"Unified Kernel Image","value":"$(state_get GENERATE_UKI no)","widget":"yesno","message":"Generate a UKI (single .efi file) for Secure Boot compatibility?"}
   ]},
   {"id":"kernel","label":"Kernel & Microcode","summary_template":"{KERNEL_CHOICE}","items":[
@@ -100,23 +127,11 @@ KERNELS
 JSONEOF
 )
 
-    local actions_json='["Quick Profile","Proceed"]'
+    local actions_json='["Proceed"]'
     local result
     result=$(tui_install_hub "ArtixForge Configuration" "${cats_json}" "${actions_json}")
 
     [[ -z "${result}" ]] && return 1
-
-    if echo "${result}" | jq -e 'type == "string"' &>/dev/null; then
-        echo "${result}"
-        return 0
-    fi
-
-    local action
-    action=$(echo "${result}" | jq -r '._action // empty' 2>/dev/null)
-    if [[ -n "${action}" ]]; then
-        echo "${action}"
-        return 0
-    fi
 
     local key val
     while IFS= read -r key; do
