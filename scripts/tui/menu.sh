@@ -2,14 +2,10 @@
 set -Eeuo pipefail
 
 tui_afhub() {
-    local disk_choices_json kernel_choices_json extras_choices_json
-    local tz_choices_json locale_choices_json keymap_choices_json
+    local data_dir="/tmp/artix-installer/filly-data"
+    mkdir -p "${data_dir}"
 
-    disk_choices_json=$(lsblk -dpno NAME,SIZE,MODEL -e 7 2>/dev/null \
-        | awk '{printf "%s - %s %s\n", $1, $2, $3}' \
-        | jq -R . | jq -s .)
-
-    kernel_choices_json=$(cat <<'KERNELS' | jq -R . | jq -s .
+    cat <<'KERNELS' > "${data_dir}/kernels.txt"
 linux
 linux-zen
 linux-lts
@@ -28,19 +24,23 @@ linux-bazzite-bin
 xanmod
 tkg
 KERNELS
-)
 
-    extras_choices_json=$(pacman -Sl world galaxy 2>/dev/null | awk '{print $2}' | sort -u | jq -R . | jq -s .)
+    pacman -Sl world galaxy 2>/dev/null | awk '{print $2}' | sort -u > "${data_dir}/extras.txt"
 
-    tz_choices_json=$(find /usr/share/zoneinfo -type f 2>/dev/null \
+    find /usr/share/zoneinfo -type f 2>/dev/null \
         | sed 's|/usr/share/zoneinfo/||' | grep -v 'posix\|right\|Etc' | sort \
-        | jq -R . | jq -s .)
+        > "${data_dir}/timezones.txt"
 
-    locale_choices_json=$(grep -v '^#' /etc/locale.gen 2>/dev/null | awk '{print $1}' | sort | jq -R . | jq -s .)
-    [[ -z "$locale_choices_json" || "$locale_choices_json" == "[]" ]] && locale_choices_json='["en_US.UTF-8","en_GB.UTF-8"]'
+    grep -v '^#' /etc/locale.gen 2>/dev/null | awk '{print $1}' | sort > "${data_dir}/locales.txt"
+    [[ -s "${data_dir}/locales.txt" ]] || printf 'en_US.UTF-8\nen_GB.UTF-8\n' > "${data_dir}/locales.txt"
 
-    keymap_choices_json=$(localectl list-keymaps 2>/dev/null | sort | jq -R . | jq -s .)
-    [[ -z "$keymap_choices_json" || "$keymap_choices_json" == "[]" ]] && keymap_choices_json='["us","uk","de","fr"]'
+    localectl list-keymaps 2>/dev/null | sort > "${data_dir}/keymaps.txt"
+    [[ -s "${data_dir}/keymaps.txt" ]] || printf 'us\nuk\nde\nfr\n' > "${data_dir}/keymaps.txt"
+
+    local disk_choices_json
+    disk_choices_json=$(lsblk -dpno NAME,SIZE,MODEL -e 7 2>/dev/null \
+        | awk '{printf "%s - %s %s\n", $1, $2, $3}' \
+        | jq -R . | jq -s -c .)
 
     local cats_json
     cats_json=$(cat <<JSONEOF
@@ -50,7 +50,7 @@ KERNELS
     {"id":"FS_TYPE","label":"Filesystem","value":"$(state_get FS_TYPE ext4)","widget":"menu","choices":["ext4","btrfs","xfs","f2fs"],"message":"Choose the root filesystem type"},
     {"id":"SWAP_ENABLED","label":"Swap","value":"$(state_get SWAP_ENABLED no)","widget":"yesno","message":"Enable swap space?"},
     {"id":"SWAP_SIZE","label":"Swap size","value":"$(state_get SWAP_SIZE 0)","widget":"input","placeholder":"e.g. 4G","visible_if":{"SWAP_ENABLED":"yes"},"message":"Enter swap partition size"},
-    {"id":"USE_LUKS","label":"LUKS encryption","value":"$(state_get USE_LUKS no)","widget":"yesno","message":"Encrypt the entire installation with LUKS?\nYou will be prompted for a passphrase."},
+    {"id":"USE_LUKS","label":"LUKS encryption","value":"$(state_get USE_LUKS no)","widget":"yesno","message":"Encrypt the entire installation with LUKS?\\nYou will be prompted for a passphrase."},
     {"id":"USE_LVM","label":"LVM","value":"$(state_get USE_LVM no)","widget":"yesno","message":"Use Logical Volume Manager for flexible partitioning?"},
     {"id":"BTRFS_LAYOUT","label":"BTRFS layout","value":"$(state_get BTRFS_LAYOUT standard)","widget":"menu","choices":["standard","flat","snapshot"],"visible_if":{"FS_TYPE":"btrfs"},"message":"Select BTRFS subvolume layout"}
   ]},
@@ -59,7 +59,7 @@ KERNELS
     {"id":"GENERATE_UKI","label":"Unified Kernel Image","value":"$(state_get GENERATE_UKI no)","widget":"yesno","message":"Generate a UKI (single .efi file) for Secure Boot compatibility?"}
   ]},
   {"id":"kernel","label":"Kernel & Microcode","summary_template":"{KERNEL_CHOICE}","items":[
-    {"id":"KERNEL_CHOICE","label":"Kernel","value":"$(state_get KERNEL_CHOICE linux)","widget":"filter","placeholder":"Type to search kernels...","choices":${kernel_choices_json},"message":"Select the Linux kernel to install"},
+    {"id":"KERNEL_CHOICE","label":"Kernel","value":"$(state_get KERNEL_CHOICE linux)","widget":"filter","choices_file":"kernels.txt","message":"Select the Linux kernel to install"},
     {"id":"MICROCODE_OVERRIDE","label":"Microcode","value":"$(state_get MICROCODE_OVERRIDE auto)","widget":"menu","choices":["auto","intel-ucode","amd-ucode","none"],"message":"CPU microcode updates for security and stability"}
   ]},
   {"id":"init","label":"Init System","summary_template":"{INIT}","items":[
@@ -81,7 +81,7 @@ KERNELS
     {"id":"USER_SHELL","label":"Default shell","value":"$(state_get USER_SHELL bash)","widget":"menu","choices":["bash","zsh","fish"],"message":"Default command shell for new users"}
   ]},
   {"id":"extras","label":"Extras & Repos","summary_template":"arch: {ENABLE_ARCH_REPOS}, pw: {POWER_USER}","items":[
-    {"id":"EXTRAS","label":"Extra packages","value":"$(state_get EXTRAS '')","widget":"multiselect","choices":${extras_choices_json},"message":"Select additional packages to install"},
+    {"id":"EXTRAS","label":"Extra packages","value":"$(state_get EXTRAS '')","widget":"multiselect","choices_file":"extras.txt","message":"Select additional packages to install"},
     {"id":"ENABLE_ARCH_REPOS","label":"Arch repositories","value":"$(state_get ENABLE_ARCH_REPOS no)","widget":"yesno","message":"Enable Arch Linux repositories for AUR and additional packages?"},
     {"id":"ENABLE_AURIS","label":"AURIS","value":"$(state_get ENABLE_AURIS no)","widget":"yesno","message":"Enable AURIS for AUR package management?"},
     {"id":"ALLOW_OFFLINE","label":"Offline mode","value":"$(state_get ALLOW_OFFLINE no)","widget":"yesno","message":"Allow installation without internet connection?"},
@@ -89,9 +89,9 @@ KERNELS
   ]},
   {"id":"identity","label":"System Identity","summary_template":"host: {HOSTNAME}","items":[
     {"id":"HOSTNAME","label":"Hostname","value":"$(state_get HOSTNAME artix)","widget":"input","placeholder":"Enter hostname","message":"The name of this computer on the network"},
-    {"id":"TIMEZONE","label":"Timezone","value":"$(state_get TIMEZONE Europe/Belgrade)","widget":"filter","placeholder":"Type to search timezones...","choices":${tz_choices_json},"message":"Your local timezone for correct clock display"},
-    {"id":"LOCALE","label":"Locale","value":"$(state_get LOCALE en_US.UTF-8)","widget":"filter","placeholder":"Type to search locales...","choices":${locale_choices_json},"message":"System language and character encoding"},
-    {"id":"KEYMAP","label":"Keyboard layout","value":"$(state_get KEYMAP us)","widget":"filter","placeholder":"Type to search keymaps...","choices":${keymap_choices_json},"message":"Keyboard layout for the console"}
+    {"id":"TIMEZONE","label":"Timezone","value":"$(state_get TIMEZONE Europe/Belgrade)","widget":"filter","choices_file":"timezones.txt","message":"Your local timezone for correct clock display"},
+    {"id":"LOCALE","label":"Locale","value":"$(state_get LOCALE en_US.UTF-8)","widget":"filter","choices_file":"locales.txt","message":"System language and character encoding"},
+    {"id":"KEYMAP","label":"Keyboard layout","value":"$(state_get KEYMAP us)","widget":"filter","choices_file":"keymaps.txt","message":"Keyboard layout for the console"}
   ]},
   {"id":"theme","label":"Theme","summary_template":"{GUM_TITLE_COLOR} / {GUM_ACCENT_COLOR}","items":[
     {"id":"GUM_TITLE_COLOR","label":"Theme","value":"Forge (pink/green)","widget":"menu","choices":["Forge (pink/green)","Artix (blue)","Jet Black (grey)","Mono (white)","Retro (yellow)"],"message":"Colour theme for the installer (also applied to installed system)"}
