@@ -264,16 +264,14 @@ tui_hub() {
 
 tui_install_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}" boot_mode="${4:-uefi}"
-    _start_filly_daemon || return 1
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     else
-        local tmp_json
-        tmp_json=$(mktemp)
-        printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"tty":"%s"}\n' \
-            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" "$(tty)" > "${tmp_json}"
-        (cat "${tmp_json}"; cat) | socat - UNIX-CONNECT:"${FILLY_DAEMON_SOCKET}" 2>/dev/null | jq -r '.result // empty'
-        rm -f "${tmp_json}"
+        _start_filly_daemon || return 1
+        printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s","relay":true}}\n' \
+            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" \
+            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | jq -r '.result // empty'
     fi
 }
 
