@@ -213,7 +213,7 @@ tui_install_hub() {
     else
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}\n' \
             "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" \
-            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>>"${FILLY_DAEMON_LOG}" \
             | jq -r '.result // empty'
     fi
 }
