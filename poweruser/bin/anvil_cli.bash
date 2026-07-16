@@ -209,6 +209,29 @@ checksum_recipe() {
     done
 }
 
+_anvil_diff_recipe() {
+    local name="${1}" old_file="${2}" new_file="${3}"
+
+    if [[ ! -f "${old_file}" ]]; then
+        _filly_send '{"widget":"msg","params":{"title":"New Recipe: '"${name}"'","message":"This is a new recipe. No diff available."}}' >/dev/null
+        return 0
+    fi
+
+    local old_content new_content
+    old_content=$(cat "${old_file}" | sed 's/"/\\"/g' | tr '\n' ' ')
+    new_content=$(cat "${new_file}" | sed 's/"/\\"/g' | tr '\n' ' ')
+
+    local left_widget right_widget
+    left_widget=$(printf '{"widget":"msg","params":{"title":"Old: %s","message":"%s"}}' "${name}" "${old_content}")
+    right_widget=$(printf '{"widget":"msg","params":{"title":"New: %s","message":"%s"}}' "${name}" "${new_content}")
+
+    local diff_json
+    diff_json=$(printf '{"widget":"split_panes","params":{"orientation":"horizontal","first":%s,"second":%s}}' \
+        "${left_widget}" "${right_widget}")
+
+    "${FILLY_BIN}" oneshot --input <(printf '%s\n' "${diff_json}") 2>/dev/null >/dev/null
+}
+
 upgrade_anvil() {
     require_root
     local recipe_dir="${POWERUSER_DIR}/recipes"
@@ -284,6 +307,24 @@ upgrade_anvil() {
             echo "    - ${c}"
         done
         echo ""
+
+        if tui_yesno "Review Changes" "Review diffs for changed recipes?"; then
+            for c in "${changed[@]}"; do
+                local name="${c% (new)}"
+                local is_new=0
+                [[ "${c}" == *" (new)" ]] && is_new=1
+
+                local old_file="${backup_path}/${name}"
+                local new_file="${recipe_dir}/${name}"
+
+                if [[ ${is_new} -eq 1 ]]; then
+                    _filly_send '{"widget":"msg","params":{"title":"New Recipe: '"${name}"'","message":"This recipe was added in this update."}}' >/dev/null
+                elif [[ -f "${old_file}" && -f "${new_file}" ]]; then
+                    _anvil_diff_recipe "${name}" "${old_file}" "${new_file}"
+                fi
+            done
+        fi
+
         echo "[*] Old recipes saved to ${backup_path}"
         echo "[*] Run 'anvil rebuild <recipe>' for any changed packages."
     else

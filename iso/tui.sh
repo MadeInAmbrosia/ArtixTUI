@@ -30,6 +30,7 @@ tui_iso_hub() {
 JSONEOF
 )
 
+    local actions_json='["Load Preset","Save Preset","Build"]'
     local result
     result=$(tui_iso "ISO Builder" "${cats_json}")
 
@@ -37,16 +38,88 @@ JSONEOF
         return 1
     fi
 
-    local key val
-    while IFS= read -r key; do
-        val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]')
-        state_set "${key}" "${val}"
-    done <<< "$(echo "${result}" | jq -r 'keys[]')"
+    local parsed_type
+    parsed_type=$(echo "${result}" | jq -r 'type' 2>/dev/null || echo "string")
 
-    return 0
+    if [[ "${parsed_type}" == "object" ]]; then
+        local key val
+        while IFS= read -r key; do
+            val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]')
+            state_set "${key}" "${val}"
+        done <<< "$(echo "${result}" | jq -r 'keys[]')"
+        return 0
+    fi
+
+    case "${result}" in
+        "Save Preset")
+            tui_iso_save_preset
+            return 1
+            ;;
+        "Load Preset")
+            tui_iso_load_preset
+            return 1
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+tui_iso_save_preset() {
+    local preset_name
+    preset_name=$(tui_input "Preset Name" "Enter a name for this ISO preset:" "my-iso") || return 0
+    [[ -n "${preset_name}" ]] || return 0
+
+    local preset_dir="${BASE_DIR}/presets"
+    mkdir -p "${preset_dir}"
+    local preset_file="${preset_dir}/iso-${preset_name// /_}.conf"
+
+    {
+        printf "ISO_BOOT_MODE='%s'\n" "$(state_get ISO_BOOT_MODE live)"
+        printf "WM_DE='%s'\n" "$(state_get WM_DE none)"
+        printf "DISPLAY_MANAGER='%s'\n" "$(state_get DISPLAY_MANAGER none)"
+        printf "X_STACK='%s'\n" "$(state_get X_STACK xorg)"
+        printf "INIT='%s'\n" "$(state_get INIT openrc)"
+        printf "KERNEL_CHOICE='%s'\n" "$(state_get KERNEL_CHOICE linux)"
+        printf "NETWORK_STACK='%s'\n" "$(state_get NETWORK_STACK networkmanager)"
+        printf "AUDIO_STACK='%s'\n" "$(state_get AUDIO_STACK pipewire)"
+        printf "ISO_EXTRA_PACKAGES='%s'\n" "$(state_get ISO_EXTRA_PACKAGES '')"
+        printf "ISO_OUTPUT_DIR='%s'\n" "$(state_get ISO_OUTPUT_DIR '')"
+        printf "ALLOW_OFFLINE='%s'\n" "$(state_get ALLOW_OFFLINE no)"
+    } > "${preset_file}"
+
+    tui_msg_quick "Preset Saved" "ISO preset '${preset_name}' saved."
+}
+
+tui_iso_load_preset() {
+    local preset_dir="${BASE_DIR}/presets"
+    [[ -d "${preset_dir}" ]] || mkdir -p "${preset_dir}"
+
+    local -a preset_files=()
+    while IFS= read -r -d '' preset; do
+        local name
+        name=$(basename "${preset}" .conf)
+        [[ "${name}" == iso-* ]] && preset_files+=("${name#iso-}")
+    done < <(find "${preset_dir}" -maxdepth 1 -name 'iso-*.conf' -print0 | sort -z)
+
+    if [[ ${#preset_files[@]} -eq 0 ]]; then
+        tui_msg_quick "No Presets" "No saved ISO presets found."
+        return 0
+    fi
+
+    local chosen
+    chosen=$(tui_menu "Load ISO Preset" "Select a saved ISO configuration:" "${preset_files[@]}") || return 0
+
+    local preset_file="${preset_dir}/iso-${chosen}.conf"
+    [[ -f "${preset_file}" ]] || { tui_msg_quick "Error" "Preset file not found."; return 1; }
+
+    while IFS='=' read -r key value; do
+        [[ -z "${key}" || "${key}" == \#* ]] && continue
+        value="${value#\'}"; value="${value%\'}"
+        state_set "${key}" "${value}"
+    done < "${preset_file}"
+
+    tui_msg_quick "Preset Loaded" "ISO preset '${chosen}' loaded."
 }
 
 tui_iso_target_config() {
-    # Reuse the installer hub for target system config when offline mode is enabled
     tui_collect_install_config
 }

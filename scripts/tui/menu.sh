@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-tui_afhub() {
+_afhub_data_ready=""
+
+_afhub_prepare_data() {
+    [[ -n "${_afhub_data_ready}" ]] && return 0
+
     local data_dir="/tmp/artix-installer/filly-data"
     mkdir -p "${data_dir}"
 
-    cat <<'KERNELS' > "${data_dir}/kernels.txt"
+    if [[ ! -f "${data_dir}/kernels.txt" ]]; then
+        cat <<'KERNELS' > "${data_dir}/kernels.txt"
 linux
 linux-zen
 linux-lts
@@ -24,19 +29,262 @@ linux-bazzite-bin
 xanmod
 tkg
 KERNELS
+    fi
 
-    pacman -Sl world galaxy 2>/dev/null | awk '{print $2}' | sort -u > "${data_dir}/extras.txt"
+    if [[ ! -f "${data_dir}/extras.txt" ]]; then
+        pacman -Sl world galaxy 2>/dev/null | awk '{print $2}' | sort -u > "${data_dir}/extras.txt"
+    fi
 
-    find /usr/share/zoneinfo -type f 2>/dev/null \
-        | sed 's|/usr/share/zoneinfo/||' | grep -v 'posix\|right\|Etc' | sort \
-        > "${data_dir}/timezones.txt"
+    if [[ ! -f "${data_dir}/timezones.txt" ]]; then
+        find /usr/share/zoneinfo -type f 2>/dev/null \
+            | sed 's|/usr/share/zoneinfo/||' | grep -v 'posix\|right\|Etc' | sort \
+            > "${data_dir}/timezones.txt"
+    fi
 
-    grep -v '^#' /etc/locale.gen 2>/dev/null | awk '{print $1}' | sort > "${data_dir}/locales.txt"
-    [[ -s "${data_dir}/locales.txt" ]] || printf 'en_US.UTF-8\nen_GB.UTF-8\n' > "${data_dir}/locales.txt"
+    if [[ ! -f "${data_dir}/locales.txt" ]]; then
+        grep -v '^#' /etc/locale.gen 2>/dev/null | awk '{print $1}' | sort > "${data_dir}/locales.txt"
+        [[ -s "${data_dir}/locales.txt" ]] || printf 'en_US.UTF-8\nen_GB.UTF-8\n' > "${data_dir}/locales.txt"
+    fi
 
-    localectl list-keymaps 2>/dev/null | sort > "${data_dir}/keymaps.txt"
-    [[ -s "${data_dir}/keymaps.txt" ]] || printf 'us\nuk\nde\nfr\n' > "${data_dir}/keymaps.txt"
+    if [[ ! -f "${data_dir}/keymaps.txt" ]]; then
+        localectl list-keymaps 2>/dev/null | sort > "${data_dir}/keymaps.txt"
+        [[ -s "${data_dir}/keymaps.txt" ]] || printf 'us\nuk\nde\nfr\n' > "${data_dir}/keymaps.txt"
+    fi
 
+    _afhub_data_ready="1"
+}
+
+_sanity_warnings() {
+    local -a warnings=()
+
+    local wm_de x_stack dm
+    wm_de="$(state_get WM_DE none)"
+    x_stack="$(state_get X_STACK xorg)"
+    dm="$(state_get DISPLAY_MANAGER none)"
+
+    [[ "${dm}" == "none" && "${wm_de}" != "none" && "${wm_de}" != "hyprland" && "${wm_de}" != "sway" && "${wm_de}" != "niri" && "${wm_de}" != "mango" && "${wm_de}" != "cosmic" ]] && \
+        warnings+=("No display manager — you will start the desktop manually")
+
+    [[ "${dm}" == "sddm" && "${x_stack}" == "xlibre" ]] && \
+        warnings+=("SDDM may have issues with xlibre — LightDM is recommended for xlibre")
+
+    local wayland_desktops="hyprland sway niri mango cosmic"
+    [[ " ${wayland_desktops} " =~ " ${wm_de} " && "${dm}" == "sddm" ]] && \
+        warnings+=("SDDM runs under X11 — Wayland compositor will start a nested X server for the login screen")
+
+    local fs_type bootloader
+    fs_type="$(state_get FS_TYPE ext4)"
+    bootloader="$(state_get BOOTLOADER grub)"
+
+    [[ "${fs_type}" == "xfs" && "${bootloader}" == "grub" ]] && \
+        warnings+=("XFS + GRUB: if bigtime is enabled, GRUB may fail to read the filesystem")
+
+    [[ "${fs_type}" == "f2fs" && "${bootloader}" == "grub" ]] && \
+        warnings+=("F2FS + GRUB: GRUB may not support F2FS features — verify after install")
+
+    local use_luks use_lvm
+    use_luks="$(state_get USE_LUKS no)"
+    use_lvm="$(state_get USE_LVM no)"
+
+    [[ "${use_luks}" == "yes" && "${bootloader}" == "efistub" ]] && \
+        warnings+=("LUKS + EFIStub: you must include 'cryptdevice=' in kernel cmdline manually")
+
+    [[ "${use_luks}" == "yes" && "${use_lvm}" == "yes" && "${bootloader}" == "limine" ]] && \
+        warnings+=("LUKS-on-LVM + Limine: untested combination — verify boot after install")
+
+    [[ "$(state_get NETWORK_STACK)" == "none" && "$(state_get ALLOW_OFFLINE)" != "yes" ]] && \
+        warnings+=("No network stack and not offline — you will have no internet after boot")
+
+    local user_count root_pass
+    user_count="$(state_get USER_COUNT 0)"
+    root_pass="$(state_get ROOT_PASS '')"
+
+    [[ "${user_count}" -eq 0 && -z "${root_pass}" ]] && \
+        warnings+=("No users and no root password — system will have no way to log in")
+
+    [[ -z "${root_pass}" && "${user_count}" -gt 0 && "$(state_get PRIV_ESCALATION)" == "none" ]] && \
+        warnings+=("No root password and no privilege escalation — you cannot gain root after install")
+
+    [[ "$(state_get POWER_USER)" == "yes" && "$(state_get KEEP_BINARY_KERNEL)" == "no" ]] && \
+        warnings+=("No fallback kernel — system may be unbootable if custom kernel fails")
+
+    [[ "$(state_get POWER_USER)" == "yes" && " $(state_get POWERUSER_PACKAGES) " =~ " glibc " ]] && \
+        warnings+=("glibc from source is DANGEROUS — a miscompilation breaks everything")
+
+    [[ "$(state_get POWER_USER)" == "yes" && "$(state_get INIT)" == "busybox" ]] && \
+        warnings+=("BusyBox init from source — ensure the recipe compiled successfully")
+
+    [[ "$(state_get PRIV_ESCALATION)" == "doas" && "$(state_get POWER_USER)" == "yes" ]] && \
+        warnings+=("doas + Power User: anvil commands require root — use 'doas anvil ...'")
+
+    [[ "$(state_get ALLOW_OFFLINE)" == "yes" ]] && \
+        warnings+=("Offline mode — packages may be outdated or missing")
+
+    [[ "$(state_get ALLOW_OFFLINE)" == "yes" && "$(state_get POWER_USER)" == "yes" ]] && \
+        warnings+=("Offline + Power User: source downloads will fail without internet — fetch sources first")
+
+    [[ "$(state_get ENABLE_ARCH_REPOS)" == "yes" ]] && \
+        warnings+=("Arch repositories enabled — partial upgrades may cause breakage if Artix and Arch diverge")
+
+    [[ "${wm_de}" == "cosmic" ]] && \
+        warnings+=("COSMIC is alpha software — expect bugs, crashes, and missing features")
+
+    [[ "${wm_de}" == "mango" ]] && \
+        warnings+=("MangoWM requires Chaotic-AUR — this repository is not officially supported by Artix")
+
+    [[ -d /mnt/etc/runit && "$(state_get INIT)" != "runit" ]] && \
+        warnings+=("runit service directories found but init is $(state_get INIT) — leftover migration artifacts")
+
+    [[ -d /mnt/etc/dinit.d && "$(state_get INIT)" != "dinit" ]] && \
+        warnings+=("dinit service directories found but init is $(state_get INIT) — leftover migration artifacts")
+
+    [[ "$(state_get PRIV_ESCALATION)" == "none" ]] && \
+        warnings+=("No privilege escalation tool — you will need to configure su manually")
+
+    if [[ ${#warnings[@]} -gt 0 ]]; then
+        local msg
+        msg=$(printf ' - %s\n' "${warnings[@]}")
+        if ! tui_yesno "Sanity Warnings" "${msg}\n\nProceed anyway?"; then
+            return 1
+        fi
+    fi
+    return 0
+}
+
+_launch_disk_partitioner() {
+    local disk
+    disk="$(state_get DISK '')"
+    [[ -n "${disk}" && -b "${disk}" ]] || { tui_msg_quick "No Disk" "Select a target disk first."; return 1; }
+
+    local result
+    result=$(tui_disk "Partition ${disk}" "${disk}" "[]" "[]" "false")
+
+    [[ -z "${result}" ]] && return 1
+
+    local partitions_free
+    partitions_free=$(echo "${result}" | jq -c '{partitions: .partitions, free_space: .free_space}')
+
+    state_set EFI_PART ""
+    state_set ROOT_PART ""
+    state_set SWAP_PART ""
+
+    local part_count
+    part_count=$(echo "${partitions_free}" | jq '.partitions | length')
+    for ((i=0; i<part_count; i++)); do
+        local ptype pnum pstart
+        ptype=$(echo "${partitions_free}" | jq -r ".partitions[${i}].type")
+        pnum=$(echo "${partitions_free}" | jq -r ".partitions[${i}].number")
+        pstart=$(echo "${partitions_free}" | jq -r ".partitions[${i}].start")
+
+        case "${ptype}" in
+            "EFI System")
+                state_set EFI_PART "$(get_partition_name "${disk}" "${pnum}")"
+                ;;
+            "Linux swap")
+                state_set SWAP_PART "$(get_partition_name "${disk}" "${pnum}")"
+                state_set SWAP_ENABLED "partition"
+                ;;
+            "Linux filesystem"|"Linux /boot"|"Linux /home"|"Linux /var"|"Linux /tmp")
+                [[ -z "$(state_get ROOT_PART '')" ]] && state_set ROOT_PART "$(get_partition_name "${disk}" "${pnum}")"
+                ;;
+        esac
+    done
+
+    [[ -z "$(state_get ROOT_PART '')" && ${part_count} -gt 0 ]] && \
+        state_set ROOT_PART "$(get_partition_name "${disk}" 1)"
+
+    tui_msg_quick "Partitions Set" "Partition layout saved. EFI: $(state_get EFI_PART 'auto'), Root: $(state_get ROOT_PART 'auto')"
+}
+
+_validate_config_file() {
+    local file="${1}"
+    local errors=""
+
+    [[ -f "${file}" ]] || { echo "File not found: ${file}"; return 1; }
+    [[ -s "${file}" ]] || { echo "File is empty: ${file}"; return 1; }
+
+    local -a required_keys=(DISK FS_TYPE INIT BOOTLOADER KERNEL_CHOICE)
+    local -a found_keys=()
+
+    while IFS='=' read -r key value; do
+        [[ -z "${key}" || "${key}" == \#* ]] && continue
+        found_keys+=("${key}")
+    done < "${file}"
+
+    for key in "${required_keys[@]}"; do
+        local found=0
+        for fk in "${found_keys[@]}"; do
+            [[ "${fk}" == "${key}" ]] && found=1 && break
+        done
+        [[ ${found} -eq 0 ]] && errors+="Missing required key: ${key}"$'\n'
+    done
+
+    local disk_value
+    disk_value=$(grep "^DISK=" "${file}" | head -n1 | cut -d= -f2- | tr -d "'\"")
+    if [[ -n "${disk_value}" ]] && [[ ! -b "${disk_value}" ]]; then
+        errors+="DISK '${disk_value}' is not a valid block device"$'\n'
+    fi
+
+    local fs_value
+    fs_value=$(grep "^FS_TYPE=" "${file}" | head -n1 | cut -d= -f2- | tr -d "'\"")
+    if [[ -n "${fs_value}" ]]; then
+        case "${fs_value}" in
+            ext4|btrfs|xfs|f2fs) ;;
+            *) errors+="FS_TYPE '${fs_value}' is not supported (ext4, btrfs, xfs, f2fs)"$'\n' ;;
+        esac
+    fi
+
+    local init_value
+    init_value=$(grep "^INIT=" "${file}" | head -n1 | cut -d= -f2- | tr -d "'\"")
+    if [[ -n "${init_value}" ]]; then
+        case "${init_value}" in
+            openrc|runit|dinit|s6|busybox) ;;
+            *) errors+="INIT '${init_value}' is not a supported init system"$'\n' ;;
+        esac
+    fi
+
+    if [[ -n "${errors}" ]]; then
+        echo "${errors}"
+        return 1
+    fi
+
+    return 0
+}
+
+_load_config_preset() {
+    local preset_dir="${BASE_DIR}/presets"
+    [[ -d "${preset_dir}" ]] || mkdir -p "${preset_dir}"
+
+    local chosen_file
+    chosen_file=$(tui_file_picker "Select Config" "${preset_dir}" "conf") || return 0
+
+    if [[ -z "${chosen_file}" || ! -f "${chosen_file}" ]]; then
+        return 0
+    fi
+
+    local validation_errors
+    validation_errors=$(_validate_config_file "${chosen_file}")
+    if [[ $? -ne 0 ]]; then
+        tui_msg "Invalid Config" "The selected file has errors:\n\n${validation_errors}"
+        return 0
+    fi
+
+    while IFS='=' read -r key value; do
+        [[ -z "${key}" || "${key}" == \#* ]] && continue
+        value="${value#\'}"; value="${value%\'}"
+        value="${value#\"}"; value="${value%\"}"
+        state_set "${key}" "${value}"
+    done < "${chosen_file}"
+
+    local preset_name
+    preset_name=$(basename "${chosen_file}" .conf)
+    tui_msg_quick "Config Loaded" "Configuration '${preset_name}' loaded.\n\nReview and adjust in the hub, then press Proceed."
+}
+
+tui_afhub() {
+    _afhub_prepare_data
+
+    local data_dir="/tmp/artix-installer/filly-data"
     local disk_choices_json
     disk_choices_json=$(lsblk -dpno NAME,SIZE,MODEL -e 7 2>/dev/null \
         | awk '{printf "%s - %s %s\n", $1, $2, $3}' \
@@ -52,6 +300,7 @@ KERNELS
 [
   {"id":"disk","label":"Disk & Storage","summary_template":"fs: {FS_TYPE}, swap: {SWAP_ENABLED}","items":[
     {"id":"DISK","label":"Target disk","value":"$(state_get DISK '')","widget":"menu","choices":${disk_choices_json},"message":"Select the target drive for installation"},
+    {"id":"DISK_PARTITIONER","label":"Partition editor","value":"","widget":"menu","choices":["Use whole disk","Edit partitions manually"],"message":"Configure partitions on the selected disk before installing"},
     {"id":"FS_TYPE","label":"Filesystem","value":"$(state_get FS_TYPE ext4)","widget":"menu","choices":["ext4","btrfs","xfs","f2fs"],"message":"Choose the root filesystem type"},
     {"id":"SWAP_ENABLED","label":"Swap type","value":"$(state_get SWAP_ENABLED none)","widget":"menu","choices":["none","partition","swapfile","zram","zswap"],"message":"Select swap configuration"},
     {"id":"SWAP_SIZE","label":"Swap size","value":"$(state_get SWAP_SIZE 0)","widget":"input","placeholder":"e.g. 4G or 4096","visible_if":{"SWAP_ENABLED":"partition,swapfile"},"message":"Enter swap partition or swapfile size"},
@@ -107,19 +356,13 @@ KERNELS
 JSONEOF
 )
 
-    local actions_json='["Quick Profile","Proceed"]'
+    local actions_json='["Quick Profile","Load Config","Proceed"]'
     local result
     result=$(tui_install_hub "Artix Configuration" "${cats_json}" "${actions_json}")
 
     [[ -z "${result}" ]] && return 1
 
-    local key val
-    while IFS= read -r key; do
-        [[ -z "${key}" ]] && continue
-        val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]')
-        state_set "${key}" "${val}"
-    done <<< "$(echo "${result}" | jq -r 'keys[]')"
-
+    printf '%s\n' "${result}"
     return 0
 }
 
@@ -147,20 +390,60 @@ tui_collect_install_config() {
         tui_select_disk
     fi
 
-    while true; do
+    local have_config=""
+    while [[ -z "${have_config}" ]]; do
         local result
         result=$(tui_afhub) || { tui_msg_quick "Cancelled" "Installation cancelled."; exit 0; }
 
         if [[ -z "${result}" ]]; then
-            return 0
+            tui_msg_quick "Cancelled" "Installation cancelled."
+            exit 0
         fi
 
-        case "${result}" in
-            "Quick Profile")
+        local parsed_type
+        parsed_type=$(echo "${result}" | jq -r 'type' 2>/dev/null || echo "string")
+
+        if [[ "${parsed_type}" == "object" ]]; then
+            local key val
+            while IFS= read -r key; do
+                [[ -z "${key}" ]] && continue
+                val=$(echo "${result}" | jq -r --arg k "${key}" '.[$k]' 2>/dev/null || true)
+                [[ -n "${val}" ]] && state_set "${key}" "${val}"
+            done <<< "$(echo "${result}" | jq -r 'keys[]')"
+
+            if [[ "$(state_get DISK_PARTITIONER '')" == "Edit partitions manually" ]]; then
+                _launch_disk_partitioner
+                state_set DISK_PARTITIONER "Use whole disk"
                 continue
-                ;;
-            *) continue ;;
-        esac
+            fi
+
+            if [[ "$(state_get DISK '')" == "$(state_get PREV_DISK '')" ]]; then
+                log_warn "You must select a target disk before proceeding."
+                tui_msg_quick "Disk Required" "Please select a target disk in the 'Disk & Storage' category."
+                continue
+            fi
+            state_set PREV_DISK "$(state_get DISK '')"
+
+            if ! _sanity_warnings; then
+                continue
+            fi
+
+            have_config="1"
+        else
+            case "${result}" in
+                "Quick Profile")
+                    continue
+                    ;;
+                "Load Config")
+                    _load_config_preset
+                    continue
+                    ;;
+                *)
+                    log_warn "Unexpected hub result: ${result}"
+                    continue
+                    ;;
+            esac
+        fi
     done
 }
 

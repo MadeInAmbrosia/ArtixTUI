@@ -9,10 +9,12 @@ CHROOT_LOG="/mnt/var/log/artix-installer.log"
 
 FILLY_DAEMON_SOCKET="/tmp/filly.sock"
 FILLY_DAEMON_PID=""
+FILLY_DAEMON_LOG="/tmp/artix-installer/filly-daemon.log"
 
 _ensure_log_dirs() {
     mkdir -p "$(dirname "${LOG_FILE}")"
     [[ -d /mnt ]] && mkdir -p "$(dirname "${CHROOT_LOG}")" 2>/dev/null || true
+    mkdir -p "$(dirname "${FILLY_DAEMON_LOG}")"
 }
 
 theme_ansi_code() { printf '38;5;%s' "${1:-212}"; }
@@ -50,7 +52,9 @@ _start_filly_daemon() {
     if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
         rm -f "${FILLY_DAEMON_SOCKET}"
     fi
-    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" </dev/tty >/dev/null 2>&1 &
+    _ensure_log_dirs
+    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" \
+        </dev/tty >/dev/null 2>"${FILLY_DAEMON_LOG}" &
     FILLY_DAEMON_PID=$!
     for _ in {1..100}; do
         if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
@@ -60,7 +64,7 @@ _start_filly_daemon() {
         fi
         sleep 0.05
     done
-    log_error "FILLY daemon failed to start"
+    log_error "FILLY daemon failed to start. Check ${FILLY_DAEMON_LOG}"
     return 1
 }
 
@@ -79,14 +83,54 @@ _stop_filly_daemon() {
 
 trap '_stop_filly_daemon' EXIT
 
-tui_msg() {
-    local title="${1}" msg="${2}"
+_filly_dispatch() {
+    local widget="${1}" title="${2}" message="${3}"
+    shift 3
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    printf '%s\n' "${msg}" >&2
+    [[ -n "${message}" ]] && printf '%s\n' "${message}" >&2
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_msg "$@"
+        "filly_graphical_${widget}" "${title}" "${message}" "$@"
     else
-        filly_msg "$@"
+        "filly_${widget}" "${title}" "${message}" "$@"
+    fi
+}
+
+tui_msg()        { _filly_dispatch msg "$@"; }
+tui_yesno()      { _filly_dispatch yesno "$@"; }
+tui_input()      { _filly_dispatch input "$@"; }
+tui_password()   { _filly_dispatch password "$@"; }
+tui_menu()       { _filly_dispatch menu "$@"; }
+tui_checklist()  { _filly_dispatch checklist "$@"; }
+tui_filter()     { _filly_dispatch filter "$@"; }
+tui_multiselect(){ _filly_dispatch multiselect "$@"; }
+
+tui_summary() {
+    local title="${1}" file="${2:-}" message="${3:-}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_summary "${title}" "${file}" "${message}"
+    else
+        filly_summary "${title}" "${file}" "${message}"
+    fi
+}
+
+tui_edit() {
+    local title="${1}" file="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_text_editor "${title}" "${file}"
+    else
+        filly_text_editor "${title}" "${file}"
+    fi
+}
+
+tui_disk() {
+    local title="${1}" disk="${2}" partitions_json="${3:-[]}" free_space_json="${4:-[]}" readonly="${5:-false}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
+        filly_graphical_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
+    else
+        filly_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
     fi
 }
 
@@ -94,39 +138,6 @@ tui_msg_quick() {
     local title="${1}" msg="${2}"
     printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
     printf '%s\n' "${msg}" >&2
-}
-
-tui_yesno() {
-    local title="${1}" msg="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    printf '%s\n' "${msg}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_yesno "$@"
-    else
-        filly_yesno "$@"
-    fi
-}
-
-tui_input() {
-    local title="${1}" msg="${2}" default="${3:-}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_input "$@"
-    else
-        filly_input "$@"
-    fi
-}
-
-tui_password() {
-    local title="${1}" msg="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_password "$@"
-    else
-        filly_password "$@"
-    fi
 }
 
 tui_password_confirm() {
@@ -154,46 +165,10 @@ tui_password_confirm() {
     done
 }
 
-tui_menu() {
-    local title="${1}" msg="${2}"
-    shift 2
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_menu "${title}" "${msg}" "$@"
-    else
-        filly_menu "${title}" "${msg}" "$@"
-    fi
-}
-
 tui_menu_custom() {
     local title="${1}" msg="${2}" height="${3:-15}"
     shift 3
     tui_menu "${title}" "${msg}" "$@"
-}
-
-tui_checklist() {
-    local title="${1}" msg="${2}"
-    shift 2
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_checklist "${title}" "${msg}" "$@"
-    else
-        filly_checklist "${title}" "${msg}" "$@"
-    fi
-}
-
-tui_filter() {
-    local title="${1}" msg="${2}"
-    shift 2
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_filter "${title}" "${msg}" "" "$@"
-    else
-        filly_filter "${title}" "${msg}" "" "$@"
-    fi
 }
 
 tui_radiolist() { tui_menu "$@"; }
@@ -217,47 +192,15 @@ tui_show_file() {
     fi
 }
 
-tui_edit() {
-    local title="${1}" file="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_text_editor "${title}" "${file}"
-    else
-        filly_text_editor "${title}" "${file}"
-    fi
-}
-
-tui_disk() {
-    local title="${1}" disk="${2}" partitions_json="${3:-[]}" free_space_json="${4:-[]}" readonly="${5:-false}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
-    else
-        filly_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
-    fi
-}
-
-tui_multiselect() {
-    local title="${1}" msg="${2}" placeholder="${3:-}" min="${4:-0}" max="${5:-0}"
-    shift 5 2>/dev/null || shift 3
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${msg}" ]] && printf '%s\n' "${msg}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_multiselect "${title}" "${msg}" "$@"
-    else
-        filly_multiselect "${title}" "${msg}" "$@"
-    fi
-}
-
 tui_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}"
     _start_filly_daemon || return 1
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
     else
-        printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s}}\n' \
+        printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}\n' \
             "${title//\"/\\\"}" "${categories_json}" "${actions_json}" \
-            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
             | jq -r '.result // empty'
     fi
 }

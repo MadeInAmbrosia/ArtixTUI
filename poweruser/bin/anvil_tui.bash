@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-FORGE_TUI="${FORGE_TUI:-forge-tui}"
-
-_forge() {
+_filly_send() {
     local _dir _tmp _out
     _dir=$(mktemp -d --tmpdir anvil-tui-XXXXXX)
     chmod 700 "$_dir"
     _tmp="$_dir/input.json"
     _out="$_dir/output.json"
     printf '%s\n' "$1" > "$_tmp"
-    "$FORGE_TUI" --mode widget --input "$_tmp" --output "$_out" < /dev/tty > /dev/tty 2>/dev/null
+    "${FILLY_BIN}" oneshot --input "$_tmp" 2>/dev/null | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' > "$_out" || true
     cat "$_out" 2>/dev/null
+    rm -rf "$_dir"
 }
 
-_forge_result() {
+_filly_result() {
     local _json
-    _json=$(_forge "$1")
-    jq -r 'if .result | type == "array" then .result[] else .result // .selected // empty end' <<< "$_json" 2>/dev/null
+    _json=$(_filly_send "$1")
+    [[ -z "$_json" ]] && return 1
+    [[ "$(jq -r '.cancelled' <<< "$_json")" == "true" ]] && return 1
+    jq -r '.result // empty' <<< "$_json" 2>/dev/null
 }
 
 tui_anvil_hub() {
@@ -52,7 +53,7 @@ tui_anvil_hub() {
     ]'
 
     local result
-    result=$(_forge_result '{"widget":"anvil","title":"anvil","actions":'"${actions_json}"'}')
+    result=$(_filly_result '{"widget":"anvil","params":{"title":"anvil","actions":'"${actions_json}"'}}')
 
     echo "${result}"
 }
@@ -66,41 +67,41 @@ tui_main() {
             "list_installed")
                 local installed
                 installed=$(list_packages 2>/dev/null)
-                _forge '{"widget":"msg","title":"Installed Packages","message":"'"${installed:-No packages installed.}"'"}' >/dev/null
+                _filly_send '{"widget":"msg","params":{"title":"Installed Packages","message":"'"${installed:-No packages installed.}"'"}}' >/dev/null
                 ;;
             "list_recipes")
                 local recipes
                 recipes=$(list_recipes 2>/dev/null)
-                _forge '{"widget":"msg","title":"Available Recipes","message":"'"${recipes:-No recipes found.}"'"}' >/dev/null
+                _filly_send '{"widget":"msg","params":{"title":"Available Recipes","message":"'"${recipes:-No recipes found.}"'"}}' >/dev/null
                 ;;
             "package_info")
                 local pkg_list
                 pkg_list=$(list_packages 2>/dev/null | awk '{print $1}')
                 if [[ -z "$pkg_list" ]]; then
-                    _forge '{"widget":"msg","title":"No packages","message":"No source packages installed yet."}' >/dev/null
+                    _filly_send '{"widget":"msg","params":{"title":"No packages","message":"No source packages installed yet."}}' >/dev/null
                     continue
                 fi
                 local pkg
-                pkg=$(_forge_result '{"widget":"menu","title":"Select Package","choices":'"$(printf '%s\n' $pkg_list | jq -R . | jq -s .)"'}') || continue
+                pkg=$(_filly_result '{"widget":"menu","params":{"title":"Select Package","choices":'"$(printf '%s\n' $pkg_list | jq -R . | jq -s .)"'}}') || continue
                 local info
                 info=$(info_package "$pkg")
-                _forge '{"widget":"msg","title":"Package Info: '"${pkg}"'","message":"'"${info}"'"}' >/dev/null
+                _filly_send '{"widget":"msg","params":{"title":"Package Info: '"${pkg}"'","message":"'"${info}"'"}}' >/dev/null
                 ;;
             "rebuild")
                 local avail
                 avail=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail" ]]; then
-                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
+                    _filly_send '{"widget":"msg","params":{"title":"No recipes","message":"No recipes found."}}' >/dev/null
                     continue
                 fi
                 local to_rebuild
-                to_rebuild=$(_forge_result '{"widget":"menu","title":"Select package","choices":'"$(printf '%s\n' $avail | jq -R . | jq -s .)"'}') || continue
+                to_rebuild=$(_filly_result '{"widget":"menu","params":{"title":"Select package","choices":'"$(printf '%s\n' $avail | jq -R . | jq -s .)"'}}') || continue
                 rebuild_package "$to_rebuild"
-                _forge '{"widget":"msg","title":"Rebuild","message":"'"${to_rebuild}"' rebuilt."}' >/dev/null
+                _filly_send '{"widget":"msg","params":{"title":"Rebuild","message":"'"${to_rebuild}"' rebuilt."}}' >/dev/null
                 ;;
             "create_recipe")
                 local name
-                name=$(_forge_result '{"widget":"input","title":"New Recipe","message":"Package name:"}') || continue
+                name=$(_filly_result '{"widget":"input","params":{"title":"New Recipe","message":"Package name:"}}') || continue
                 [[ -z "$name" ]] && continue
                 new_recipe "$name"
                 ;;
@@ -108,11 +109,11 @@ tui_main() {
                 local avail2
                 avail2=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail2" ]]; then
-                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
+                    _filly_send '{"widget":"msg","params":{"title":"No recipes","message":"No recipes found."}}' >/dev/null
                     continue
                 fi
                 local to_edit
-                to_edit=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' $avail2 | jq -R . | jq -s .)"'}') || continue
+                to_edit=$(_filly_result '{"widget":"menu","params":{"title":"Select recipe","choices":'"$(printf '%s\n' $avail2 | jq -R . | jq -s .)"'}}') || continue
                 edit_recipe "$to_edit"
                 ;;
             "edit_config") edit_config ;;
@@ -122,13 +123,13 @@ tui_main() {
                 local remote_recipes
                 remote_recipes=$(list_available 2>/dev/null | awk '{print $1}')
                 if [[ -z "$remote_recipes" ]]; then
-                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes available from the community repo."}' >/dev/null
+                    _filly_send '{"widget":"msg","params":{"title":"No recipes","message":"No recipes available from the community repo."}}' >/dev/null
                     continue
                 fi
                 local to_fetch
-                to_fetch=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' ${remote_recipes} | jq -R . | jq -s .)"'}') || continue
+                to_fetch=$(_filly_result '{"widget":"menu","params":{"title":"Select recipe","choices":'"$(printf '%s\n' ${remote_recipes} | jq -R . | jq -s .)"'}}') || continue
                 fetch_recipe "$to_fetch"
-                _forge '{"widget":"msg","title":"Fetch Recipe","message":"'"${to_fetch}"' downloaded."}' >/dev/null
+                _filly_send '{"widget":"msg","params":{"title":"Fetch Recipe","message":"'"${to_fetch}"' downloaded."}}' >/dev/null
                 ;;
             "fetch_all") fetch_all_sources ;;
             "manage_sections") tui_manage_sections ;;
@@ -136,43 +137,43 @@ tui_main() {
                 local avail3
                 avail3=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail3" ]]; then
-                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
+                    _filly_send '{"widget":"msg","params":{"title":"No recipes","message":"No recipes found."}}' >/dev/null
                     continue
                 fi
                 local to_lint
-                to_lint=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' $avail3 | jq -R . | jq -s .)"'}') || continue
+                to_lint=$(_filly_result '{"widget":"menu","params":{"title":"Select recipe","choices":'"$(printf '%s\n' $avail3 | jq -R . | jq -s .)"'}}') || continue
                 local lint_result
                 lint_result=$(lint_recipe "$to_lint" 2>&1)
-                _forge '{"widget":"msg","title":"Lint Result: '"${to_lint}"'","message":"'"${lint_result}"'"}' >/dev/null
+                _filly_send '{"widget":"msg","params":{"title":"Lint Result: '"${to_lint}"'","message":"'"${lint_result}"'"}}' >/dev/null
                 ;;
             "checksum_recipe")
                 local avail4
                 avail4=$(list_recipes 2>/dev/null | awk '{print $1}')
                 if [[ -z "$avail4" ]]; then
-                    _forge '{"widget":"msg","title":"No recipes","message":"No recipes found."}' >/dev/null
+                    _filly_send '{"widget":"msg","params":{"title":"No recipes","message":"No recipes found."}}' >/dev/null
                     continue
                 fi
                 local to_checksum
-                to_checksum=$(_forge_result '{"widget":"menu","title":"Select recipe","choices":'"$(printf '%s\n' $avail4 | jq -R . | jq -s .)"'}') || continue
+                to_checksum=$(_filly_result '{"widget":"menu","params":{"title":"Select recipe","choices":'"$(printf '%s\n' $avail4 | jq -R . | jq -s .)"'}}') || continue
                 local checksum_result
                 checksum_result=$(checksum_recipe "$to_checksum" 2>&1)
-                _forge '{"widget":"msg","title":"Checksums: '"${to_checksum}"'","message":"'"${checksum_result}"'"}' >/dev/null
+                _filly_send '{"widget":"msg","params":{"title":"Checksums: '"${to_checksum}"'","message":"'"${checksum_result}"'"}}' >/dev/null
                 ;;
             "sync_recipes") sync_recipes ;;
             "upgrade") upgrade_anvil ;;
             "cache_clean") cache_clean ;;
             "recovery")
                 anvil_recovery_status
-                if _forge_result '{"widget":"yesno","title":"Repair?","message":"Repair detected issues?"}' | grep -q 'true'; then
+                if _filly_result '{"widget":"yesno","params":{"title":"Repair?","message":"Repair detected issues?"}}' | grep -q 'true'; then
                     local repaired=()
                     while IFS='|' read -r pkgname _; do
                         [[ -n "${pkgname}" ]] || continue
                         anvil_recovery_repair "${pkgname}" && repaired+=("${pkgname}")
                     done < <(tail -n +2 "${POWERUSER_DIR}/db/local.db" 2>/dev/null)
                     if [[ ${#repaired[@]} -gt 0 ]]; then
-                        _forge '{"widget":"msg","title":"Recovery Complete","message":"Repaired: '"${repaired[*]}"'"}' >/dev/null
+                        _filly_send '{"widget":"msg","params":{"title":"Recovery Complete","message":"Repaired: '"${repaired[*]}"'"}}' >/dev/null
                     else
-                        _forge '{"widget":"msg","title":"Recovery","message":"No packages were repaired."}' >/dev/null
+                        _filly_send '{"widget":"msg","params":{"title":"Recovery","message":"No packages were repaired."}}' >/dev/null
                     fi
                 fi
                 ;;

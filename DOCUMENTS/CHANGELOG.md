@@ -1,5 +1,27 @@
 # Changelog
 
+## v9.3.2.0 (2026-07-17) — ArtixForge
+
+### Changed
+- **Single TUI/GUI dispatcher** — `_filly_dispatch` replaces 25 duplicate branching functions in `core.sh`; all simple widgets (menu, yesno, input, password, msg, checklist, filter, multiselect) use the same dispatch path; daemon-dependent widgets (hub, install_hub) remain separate
+- **Sanity warnings expanded** — validation pass runs after hub Proceed, checking display stack conflicts, filesystem/bootloader compatibility, LUKS/bootloader combinations, user/root password requirements, Power User edge cases, offline mode risks, Arch repo warnings, desktop-specific caveats, and migration residue detection; user must confirm before proceeding
+- **Post-install validation** — `stage_finalize` now runs recovery health checks (boot health, pacman health, fstab health) against `/mnt` before unmounting; offers automatic repair if issues detected
+- **Config import** — "Load Config" action added to installer hub; loads saved presets from `presets/` directory, pre-filling all hub values for review before installation
+- **Hub data preparation cached** — kernel lists, extras, timezones, locales, and keymaps generated once and reused across hub invocations instead of regenerating every time
+
+### Added
+- **ATA dry-run mode** — `ata_dryrun` runs full system detection and package mapping without modifying anything; prints migration plan with package counts, version mismatches, and packages with no Artix equivalent; accessible from migration menu as "Arch Linux → Artix (Dry-Run – no changes)"
+- **ISO presets** — `tui_iso_save_preset` and `tui_iso_load_preset` save and restore ISO builder configurations to `presets/iso-*.conf`; "Load Preset" and "Save Preset" actions added to ISO hub
+- **Anvil split-panes diff** — `_anvil_diff_recipe` invokes FILLY's `split_panes` widget to display old and new recipe versions side-by-side during `anvil upgrade`; user prompted to review diffs when recipe changes are detected
+- **Disk partition editor entry in hub** — "Partition editor" item added to Disk & Storage category; options: "Use whole disk" or "Edit partitions manually"
+
+### Fixed
+- **Daemon stderr logging** — `_start_filly_daemon` now logs daemon errors to `/tmp/artix-installer/filly-daemon.log` instead of `/dev/null`
+- **Config collection loop** — `tui_collect_install_config` correctly parses hub Proceed result as JSON object, extracts keys with `state_set`, and breaks the loop; previously infinite-looped because the object fell through to `*) continue`
+- **`tui_hub` now uses relay mode** — previously used raw netcat to daemon socket bypassing terminal setup; now uses `filly relay` same as `tui_install_hub`
+- **`anvil` uses FILLY instead of `forge-tui`** — `_filly_send` and `_filly_result` replace `_forge` and `_forge_result`; all widget JSON updated to FILLY protocol (`params` wrapper); removed `forge-tui` download fallback from `anvil_common.bash`
+- **`filly_graphical.sh` sourced correctly** — `_setup_filly_gui` now sources from `FILLY/filly-graphical/filly_graphical.sh` when available
+
 ## v9.3.1.2 (2026-07-15) — ArtixForge
 
 ### Changed

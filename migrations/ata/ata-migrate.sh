@@ -94,33 +94,33 @@ ata_migrate_main() {
 "This will convert your Arch Linux system to Artix.
 
 WHAT CAN BE MIGRATED AUTOMATICALLY:
-  ✓ Packages (with version mismatch warnings)
-  ✓ Desktop environment and display manager
-  ✓ User files and home directories
-  ✓ System configs (/etc/fstab, /etc/hostname, locale)
-  ✓ Enabled system services → init equivalents
-  ✓ WiFi passwords and network configs
-  ✓ SSH keys and host configs
-  ✓ Firewall rules and cron jobs
-  ✓ Pacman hooks (systemd-dependent ones disabled)
-  ✓ PAM modules (pam_systemd → pam_elogind)
-  ✓ mkinitcpio hooks (systemd → udev/encrypt)
-  ✓ systemd timers → cron (OnCalendar + basic monotonic)
-  ✓ crypttab → kernel parameters
-  ✓ DNS resolver fix
-  ✓ systemd-boot → GRUB (auto-install)
-  ✓ Flatpaks (remotes + apps preserved)
-  ✓ DKMS modules (auto-rebuild)
-  ✓ systemd-homed users (with password unlock)
-  ✓ systemd --user services → autostart
-  ✓ AUR packages (attempt batch reinstall)
+  Packages (with version mismatch warnings)
+  Desktop environment and display manager
+  User files and home directories
+  System configs (/etc/fstab, /etc/hostname, locale)
+  Enabled system services → init equivalents
+  WiFi passwords and network configs
+  SSH keys and host configs
+  Firewall rules and cron jobs
+  Pacman hooks (systemd-dependent ones disabled)
+  PAM modules (pam_systemd → pam_elogind)
+  mkinitcpio hooks (systemd → udev/encrypt)
+  systemd timers → cron (OnCalendar + basic monotonic)
+  crypttab → kernel parameters
+  DNS resolver fix
+  systemd-boot → GRUB (auto-install)
+  Flatpaks (remotes + apps preserved)
+  DKMS modules (auto-rebuild)
+  systemd-homed users (with password unlock)
+  systemd --user services → autostart
+  AUR packages (attempt batch reinstall)
 
 WHAT WILL BE BACKED UP:
-  • All of /home
-  • /etc, /boot, /usr/local
-  • Pacman database
-  • System journal (text export)
-  • Everything to /arch-migration-backup-YYYYMMDD-HHMMSS"
+  All of /home
+  /etc, /boot, /usr/local
+  Pacman database
+  System journal (text export)
+  Everything to /arch-migration-backup-YYYYMMDD-HHMMSS"
 
         if ! tui_yesno "Begin Migration" "This is destructive. Proceed?"; then
             return 0
@@ -370,9 +370,9 @@ Backup: ${backup_dir}
 Journal: ${backup_dir}/journal-full.txt
 
 AFTER REBOOT:
-  • Check services with your init's service manager
-  • Verify DNS in /etc/resolv.conf
-  • AUR packages: check ${backup_dir}/lists/ata-aur.txt"
+  Check services with your init's service manager
+  Verify DNS in /etc/resolv.conf
+  AUR packages: check ${backup_dir}/lists/ata-aur.txt"
 
     if tui_yesno "Reboot" "Reboot now?"; then
         reboot

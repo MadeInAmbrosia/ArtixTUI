@@ -18,6 +18,44 @@ _finalize_unmount() {
     fi
 }
 
+_finalize_validate() {
+    local issues=0
+
+    source "${SCRIPT_DIR}/recovery/detect.sh" 2>/dev/null || true
+    source "${SCRIPT_DIR}/recovery/core.sh" 2>/dev/null || true
+
+    detect_boot_health 2>/dev/null || true
+    detect_pacman_health 2>/dev/null || true
+    detect_fstab_health 2>/dev/null || true
+
+    local boot_issues pacman_issues fstab_issues
+    boot_issues="$(state_get BOOT_ISSUES none)"
+    pacman_issues="$(state_get PACMAN_ISSUES none)"
+    fstab_issues="$(state_get FSTAB_ISSUES none)"
+
+    if [[ "${boot_issues}" != "none" ]]; then
+        log_warn "Boot issues: ${boot_issues}"
+        issues=1
+    fi
+    if [[ "${pacman_issues}" != "none" ]]; then
+        log_warn "Pacman issues: ${pacman_issues}"
+        issues=1
+    fi
+    if [[ "${fstab_issues}" != "none" ]]; then
+        log_warn "FSTAB issues: ${fstab_issues}"
+        issues=1
+    fi
+
+    if [[ ${issues} -eq 1 ]]; then
+        if tui_yesno "Post-Install Issues" "Some issues were detected with the installation.\n\nBoot: ${boot_issues}\nPacman: ${pacman_issues}\nFSTAB: ${fstab_issues}\n\nAttempt automatic repair?"; then
+            source "${SCRIPT_DIR}/recovery/repair.sh" 2>/dev/null || true
+            repair_detected_issues 2>/dev/null || log_warn "Automatic repair could not fix all issues"
+        fi
+    fi
+
+    return 0
+}
+
 _finalize_write_report() {
     local report="/mnt/root/artixforge-install-report.txt"
     mkdir -p /mnt/root
@@ -83,12 +121,28 @@ _finalize_success_dialog() {
     read -r
 }
 
+_save_preset() {
+    if tui_yesno "Save Preset" "Installation complete. Save this configuration as a reusable preset?"; then
+        local preset_name
+        preset_name=$(tui_input "Preset Name" "Enter a name for this preset:" "my-artix") || true
+        if [[ -n "${preset_name}" ]]; then
+            local preset_dir="${BASE_DIR}/presets"
+            mkdir -p "${preset_dir}"
+            cp "${STATE_FILE}" "${preset_dir}/${preset_name// /_}.conf"
+            tui_msg "Preset Saved" "Preset '${preset_name}' saved."
+        fi
+    fi
+}
+
 stage_finalize() {
     if stage_should_skip finalize; then return 0; fi
     if ! stage_is_done post; then
         log_error "Post-install stage did not complete. Refusing to finalize."
         return 1
     fi
+
+    log_info "Running post-install validation..."
+    _finalize_validate
 
     log_info "Applying final system configuration..."
     _finalize_write_report
@@ -98,14 +152,5 @@ stage_finalize() {
 
     stage_mark_done finalize
     _finalize_success_dialog
-
-    if tui_yesno "Save Preset" "Installation complete. Save this configuration as a reusable preset?"; then
-        local preset_name
-        preset_name=$(tui_input "Preset Name" "Enter a name for this preset:" "my-artix") || true
-        if [[ -n "${preset_name}" ]]; then
-            mkdir -p "${BASE_DIR}/presets"
-            cp "${STATE_FILE}" "${BASE_DIR}/presets/${preset_name// /_}.conf"
-            tui_msg "Preset Saved" "Preset '${preset_name}' saved."
-        fi
-    fi
+    _save_preset
 }
