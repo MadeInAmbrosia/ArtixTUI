@@ -53,7 +53,7 @@ _start_filly_daemon() {
         rm -f "${FILLY_DAEMON_SOCKET}"
     fi
     _ensure_log_dirs
-    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" \
+    HOME=/root "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" \
         </dev/tty >/dev/null 2>"${FILLY_DAEMON_LOG}" &
     FILLY_DAEMON_PID=$!
     for _ in {1..100}; do
