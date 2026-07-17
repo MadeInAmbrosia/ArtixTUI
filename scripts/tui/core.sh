@@ -198,9 +198,11 @@ tui_hub() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
     else
+        local cats_compact acts_compact
+        cats_compact=$(echo "${categories_json}" | jq -c .)
+        acts_compact=$(echo "${actions_json}" | jq -c .)
         printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}\n' \
-            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" \
-            | tr -d '\n' \
+            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" \
             | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>>"${FILLY_DAEMON_LOG}" \
             | jq -r '.result // empty'
     fi
@@ -212,9 +214,11 @@ tui_install_hub() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     else
+        local cats_compact acts_compact
+        cats_compact=$(echo "${categories_json}" | jq -c .)
+        acts_compact=$(echo "${actions_json}" | jq -c .)
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}\n' \
-            "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" \
-            | tr -d '\n' \
+            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" "${boot_mode}" \
             | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>>"${FILLY_DAEMON_LOG}" \
             | jq -r '.result // empty'
     fi
