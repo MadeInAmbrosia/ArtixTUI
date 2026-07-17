@@ -203,7 +203,7 @@ tui_hub() {
         acts_compact=$(echo "${actions_json}" | jq -c .)
         printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}\n' \
             "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" \
-            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>>"${FILLY_DAEMON_LOG}" \
+            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
             | jq -r '.result // empty'
     fi
 }
@@ -219,7 +219,7 @@ tui_install_hub() {
         acts_compact=$(echo "${actions_json}" | jq -c .)
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}\n' \
             "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" "${boot_mode}" \
-            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>>"${FILLY_DAEMON_LOG}" \
+            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
             | jq -r '.result // empty'
     fi
 }
