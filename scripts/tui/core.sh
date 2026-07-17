@@ -200,7 +200,8 @@ tui_hub() {
     else
         printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}\n' \
             "${title//\"/\\\"}" "${categories_json}" "${actions_json}" \
-            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | tr -d '\n' \
+            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>>"${FILLY_DAEMON_LOG}" \
             | jq -r '.result // empty'
     fi
 }
@@ -213,6 +214,7 @@ tui_install_hub() {
     else
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}\n' \
             "${title//\"/\\\"}" "${categories_json}" "${actions_json}" "${boot_mode}" \
+            | tr -d '\n' \
             | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>>"${FILLY_DAEMON_LOG}" \
             | jq -r '.result // empty'
     fi
