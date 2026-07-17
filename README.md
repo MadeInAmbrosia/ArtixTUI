@@ -6,6 +6,10 @@
 </p>
 
 <p align="center">
+  <strong>For your own sanity, don't use this testing branch.</strong><br> I speak from experience.
+</p>
+
+<p align="center">
   <a href="#quick-start">Quick Start</a>
   •
   <a href="#screenshots">Screenshots</a>
