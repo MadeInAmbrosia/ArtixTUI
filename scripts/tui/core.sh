@@ -103,6 +103,7 @@ tui_menu()       { _filly_dispatch menu "$@"; }
 tui_checklist()  { _filly_dispatch checklist "$@"; }
 tui_filter()     { _filly_dispatch filter "$@"; }
 tui_multiselect(){ _filly_dispatch multiselect "$@"; }
+tui_file_picker(){ _filly_dispatch file_picker "$@"; }
 
 tui_summary() {
     local title="${1}" file="${2:-}" message="${3:-}"
