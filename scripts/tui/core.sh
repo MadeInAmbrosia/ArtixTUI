@@ -205,7 +205,7 @@ tui_hub() {
         printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}\n' \
             "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" \
             | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
-            | jq -r 'select(.type == "response") | .result // empty'
+            | grep '^{\"type\":\"response\"' | jq -r '.result // empty'
     fi
 }
 
@@ -221,7 +221,7 @@ tui_install_hub() {
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}\n' \
             "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" "${boot_mode}" \
             | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
-            | jq -r 'select(.type == "response") | .result // empty'
+            | grep '^{\"type\":\"response\"' | jq -r '.result // empty'
     fi
 }
 
