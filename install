@@ -152,9 +152,7 @@ _setup_filly() {
     mkdir -p ~/.config/filly/plugins
     cp "${BASE_DIR}/FILLY/libartixforge.so" ~/.config/filly/plugins/ 2>/dev/null || \
     cp "${BASE_DIR}/FILLY/target/release/libfilly_plugin_artixforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
-    cp "${BASE_DIR}/FILLY/libgforge.so" ~/.config/filly/plugins/ 2>/dev/null || \
-    cp "${BASE_DIR}/FILLY/target/release/libfilly_plugin_gforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
-
+    cp "${BASE_DIR}/FILLY/libartixforge.so.sig" ~/.config/filly/plugins/ 2>/dev/null || true
     export FILLY_ROOT="${BASE_DIR}/FILLY"
 
     if ! command -v jq &>/dev/null; then
