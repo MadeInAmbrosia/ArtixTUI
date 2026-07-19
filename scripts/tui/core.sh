@@ -71,7 +71,7 @@ _start_filly_daemon() {
 _stop_filly_daemon() {
     if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null; then
         if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
-            printf '{"widget":"quit"}\n' | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null || true
+            printf '{"type":"quit"}\n' | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null || true
         fi
         kill "${FILLY_DAEMON_PID}" 2>/dev/null || true
         wait "${FILLY_DAEMON_PID}" 2>/dev/null || true
@@ -204,7 +204,7 @@ tui_hub() {
         acts_compact=$(echo "${actions_json}" | jq -c .)
         printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}\n' \
             "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" \
-            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
             | jq -r '.result // empty'
     fi
 }
@@ -220,7 +220,7 @@ tui_install_hub() {
         acts_compact=$(echo "${actions_json}" | jq -c .)
         printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}\n' \
             "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" "${boot_mode}" \
-            | "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
+            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
             | jq -r '.result // empty'
     fi
 }
