@@ -26,7 +26,7 @@
   <img src="https://img.shields.io/badge/Stable-v9.1.1.4-3572a5?style=flat-square" alt="Stable Release">
   <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
-  <img src="https://img.shields.io/badge/UI-FILLY-FFB6C1?style=flat-square&logo=rust" alt="FILLY">
+  <img src="https://img.shields.io/badge/UI-FILLY-FFB6C1?style=flat-square&logo=C" alt="FILLY">
   <img src="https://img.shields.io/badge/License-Forge Attribution License 1.0-yellow?style=flat-square" alt="License">
 </p>
 
