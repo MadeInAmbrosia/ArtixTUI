@@ -143,15 +143,12 @@ detect_boot_mode() {
 _setup_filly() {
     if [[ -f "${BASE_DIR}/FILLY/filly" ]]; then
         install -Dm755 "${BASE_DIR}/FILLY/filly" /usr/local/bin/filly
-    elif [[ -f "${BASE_DIR}/FILLY/target/release/filly" ]]; then
-        install -Dm755 "${BASE_DIR}/FILLY/target/release/filly" /usr/local/bin/filly
     elif ! command -v filly &>/dev/null; then
         die 'FILLY binary not found'
     fi
 
     mkdir -p ~/.config/filly/plugins
-    cp "${BASE_DIR}/FILLY/libartixforge.so" ~/.config/filly/plugins/ 2>/dev/null || \
-    cp "${BASE_DIR}/FILLY/target/release/libfilly_plugin_artixforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
+    cp "${BASE_DIR}/FILLY/libartixforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
     cp "${BASE_DIR}/FILLY/libartixforge.so.sig" ~/.config/filly/plugins/ 2>/dev/null || true
     export FILLY_ROOT="${BASE_DIR}/FILLY"
 
@@ -160,39 +157,6 @@ _setup_filly() {
             printf '[!] Failed to install jq. Install it manually and retry.\n' >&2
             exit 1
         }
-    fi
-
-    if ! command -v nc &>/dev/null; then
-        pacman -Sy --noconfirm --quiet openbsd-netcat 2>/dev/null || {
-            printf '[!] Failed to install netcat. Daemon mode will be unavailable.\n' >&2
-        }
-    fi
-}
-
-_setup_filly_gui() {
-    if [[ "${FILLY_BACKEND:-tui}" != "gui" ]]; then
-        return 0
-    fi
-
-    local venv_dir="/tmp/filly-gui-venv"
-
-    if [[ ! -d "${venv_dir}" ]]; then
-        log_info "Setting up Python virtual environment for GUI..."
-        pacman -S --noconfirm --needed python-virtualenv gtk4 libadwaita python-gobject python-jsonschema
-        python3 -m venv "${venv_dir}" --system-site-packages
-        "${venv_dir}/bin/pip" install -e "${BASE_DIR}/FILLY/filly-graphical" 2>/dev/null || true
-        "${venv_dir}/bin/pip" install jsonschema 2>/dev/null || true
-    fi
-
-    export FILLY_GRAPHICAL="${venv_dir}/bin/filly-graphical"
-
-    unset GTK_MODULES GTK_PATH GTK_THEME GTK_EXE_PREFIX GTK_DATA_PREFIX GTK_IM_MODULE GTK_IM_MODULE_FILE
-    export DISPLAY="${DISPLAY:-:0}"
-    export XAUTHORITY="${XAUTHORITY:-${HOME}/.Xauthority}"
-    command -v xhost &>/dev/null && xhost +SI:localuser:root 2>/dev/null || true
-
-    if [[ -f "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh" ]]; then
-        source "${BASE_DIR}/FILLY/filly-graphical/filly_graphical.sh"
     fi
 }
 
@@ -442,13 +406,9 @@ main() {
     source "${BASE_DIR}/FILLY/fil.sh"
 
     if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]] && [[ "$(tty)" != /dev/tty* ]]; then
-        if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer (GTK4) instead of TUI?"; then
+        if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer instead of TUI?"; then
             export FILLY_BACKEND=gui
         fi
-    fi
-
-    if [[ "${FILLY_BACKEND}" == "gui" ]]; then
-        _setup_filly_gui
     fi
 
     if [[ "${1:-}" == "--non-interactive" ]]; then
