@@ -12,7 +12,7 @@ ArtixForge offers **two interfaces** that are fully feature‑identical:
 | Interface | When it appears | How to use |
 |-----------|----------------|------------|
 | **Terminal UI (TUI)** | Default in a TTY or when `DISPLAY` is not set | Keyboard only, works on any terminal |
-| **Graphical UI (GUI)** | When a desktop environment (KDE, XFCE, etc.) is detected | Mouse + keyboard, native GTK4 windows |
+| **Graphical UI (GUI)** | When a desktop environment (KDE, XFCE, etc.) is detected | Mouse + keyboard, native FILLY windows |
 
 Both interfaces use the same **hub layout**: a list of configuration categories on the left
 (Disk & Storage, Bootloader, Kernel, Desktop, etc.) and the settings for the selected category
