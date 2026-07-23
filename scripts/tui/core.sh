@@ -43,18 +43,14 @@ log_error() {
 }
 
 _start_filly_daemon() {
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        return 0
-    fi
+    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then return 0; fi
     if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null && [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
         return 0
     fi
-    if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
-        rm -f "${FILLY_DAEMON_SOCKET}"
-    fi
+    if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then rm -f "${FILLY_DAEMON_SOCKET}"; fi
     _ensure_log_dirs
-    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" \
-        </dev/tty >/dev/null 2>"${FILLY_DAEMON_LOG}" &
+    "${FILLY_BIN:-filly}" daemon --insecure-plugins --socket "${FILLY_DAEMON_SOCKET}" \
+        </dev/null &>/dev/null &
     FILLY_DAEMON_PID=$!
     for _ in {1..100}; do
         if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
@@ -64,15 +60,13 @@ _start_filly_daemon() {
         fi
         sleep 0.05
     done
-    log_error "FILLY daemon failed to start. Check ${FILLY_DAEMON_LOG}"
+    log_error "FILLY daemon failed to start"
     return 1
 }
 
 _stop_filly_daemon() {
     if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null; then
-        if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
-            printf '{"type":"quit"}\n' | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null || true
-        fi
+        printf '{"type":"quit"}\n' | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null || true
         kill "${FILLY_DAEMON_PID}" 2>/dev/null || true
         wait "${FILLY_DAEMON_PID}" 2>/dev/null || true
     fi
@@ -166,46 +160,18 @@ tui_password_confirm() {
     done
 }
 
-tui_menu_custom() {
-    local title="${1}" msg="${2}" height="${3:-15}"
-    shift 3
-    tui_menu "${title}" "${msg}" "$@"
-}
-
-tui_radiolist() { tui_menu "$@"; }
-
-tui_spin() {
-    local title="${1}" cmd="${2}"
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_progress "${title}" bash -c "${cmd}"
-    else
-        bash -c "${cmd}" 2>&1 | while IFS= read -r line; do log_info "${line}"; done
-    fi
-}
-
-tui_show_file() {
-    local title="${1}" file="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_summary "${title}" "${file}"
-    else
-        filly_summary "${title}" "${file}"
-    fi
-}
-
 tui_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}"
     _start_filly_daemon || return 1
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
     else
-        local cats_compact acts_compact
+        local cats_compact acts_compact request
         cats_compact=$(echo "${categories_json}" | jq -c .)
         acts_compact=$(echo "${actions_json}" | jq -c .)
-        printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}\n' \
-            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" \
-            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
-            | grep '^{"type":"response"' | jq -r '.result // empty'
+        request=$(printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}' \
+            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}")
+        "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" "${request}"
     fi
 }
 
@@ -215,13 +181,12 @@ tui_install_hub() {
     if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
         filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
     else
-        local cats_compact acts_compact
+        local cats_compact acts_compact request
         cats_compact=$(echo "${categories_json}" | jq -c .)
         acts_compact=$(echo "${actions_json}" | jq -c .)
-        printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}\n' \
-            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" "${boot_mode}" \
-            | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null \
-            | grep '^{"type":"response"' | jq -r '.result // empty'
+        request=$(printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}' \
+            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" "${boot_mode}")
+        "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" "${request}"
     fi
 }
 
