@@ -1,5 +1,57 @@
 # Changelog
 
+## v9.3.2.1 (2026-07-25) — ArtixForge
+
+### Changed
+- **Power User Mode v2.0.0.0** — complete overhaul of the source-based package subsystem; feature flag dependency system with conditional graph resolution, per-package flag persistence, global defaults, conflict detection, and flag metadata; new `anvil` commands for world lifecycle, staged builds, atomic activation, and cross-compilation
+- **Feature flag system** — recipes can declare `feature_depends_<flag>` and `feature_conflicts_<flag>` arrays; enabled flags inject conditional dependencies into the build graph; conflicts are detected and reported before compilation; `GLOBAL_FEATURES` in profiles apply system-wide defaults with per-package overrides via `/etc/anvil/package.use/<pkgname>`; `anvil flag` CLI for managing flags
+- **World file lifecycle** — `anvil world` command replaces ad-hoc package management; `status`, `add`, `remove`, `build` subcommands operate on `/usr/share/artix-poweruser/world`; `anvil world build --jobs N` for parallel package compilation; `anvil world build --stage /nextroot` builds entire system into a staging directory; `anvil world activate` performs atomic cutover via BTRFS snapshot or kexec
+- **Build infrastructure upgrades** — `ccache` integration via `use_ccache=true` in recipes; recipe snippet inheritance via `inherit base-binary` sourcing from `snippets/`; interactive `./configure` feature discovery with `anvil build --interactive`; `ANVIL_SAFETY_MODE=strict` rejects binaries missing PIE, RELRO, or stack protector; `anvil shell <pkg>` drops to interactive shell between configure and build phases; `anvil rebuild --isolated` builds in a clean basestrap rootfs
+- **Package lifecycle management** — `local.db` now tracks file inventory per package; `anvil files <pkg>` lists owned files; `anvil verify <pkg>` checks installed files exist; `anvil remove <pkg>` uninstalls source-built packages and cleans empty directories; `anvil fetch-world` recursively resolves and downloads sources for the full dependency tree; recipe directory initialized as local git repository with automatic commits on edit, fetch, sync, and upgrade; `anvil log`, `anvil diff`, `anvil rollback-recipe` for recipe history
+- **Kernel configuration fragments** — monolithic `kconfig.bash` replaced with fragment system; user fragments in `/etc/anvil/kernel.d/` and recipe fragments in `kconfig.fragment` files; `apply_kconfig_fragments` processes `CONFIG_*=y/m/n/value` lines in sorted order; `ensure_boot_essentials` retained for critical drivers
+- **Dynamic package splitting** — recipes can declare `sub_packages` array with per-sub-package `package_<name>()` functions; builder creates separate artifacts, installs to target, and tracks file inventory for each sub-package
+- **User patch stacks** — `/etc/anvil/patches/<pkgname>/` directories applied after prepare phase; patch hashes included in `flags_hash` for cache consistency
+- **Build resource profiling** — `/usr/bin/time -v` captures wall time, CPU time, and peak memory per build; stats stored in `build/logs/stats/<pkgname>.stats`; `anvil estimate` sums historical averages for world build time prediction
+- **Recipe skeleton generation** — `anvil trial <url>` downloads source tarball, attempts `./configure && make`, parses compiler errors for missing headers, queries `pacman -F` for owning packages, generates draft recipe with detected dependencies
+- **Garbage collection** — `anvil gc` walks dependency graph from world file, marks reachable artifacts, removes unreachable cached packages, database entries, and source directories
+- **Cross-compilation support** — `anvil rebuild --target aarch64 <pkg>` sources profile `cross-aarch64.sh`, sets `CROSS_COMPILE` and `ARCH`, tags artifact cache with target architecture
+- **Security auditing** — `anvil audit [pkg]` runs `readelf` checks on all ELF binaries for PIE, RELRO, and stack protector status; reports per-binary security feature matrix
+- **Declarative full-system bootstrap** — `anvil bootstrap [dir]` builds entire world file into a target directory; creates bootable rootfs with all source-built packages; intended for LFS-style system construction
+
+### Added
+- `poweruser/lib/kconfig_fragments.bash` — kernel config fragment processor replacing monolithic `kconfig.bash`
+- `/etc/anvil/package.use/` — per-package feature flag override files
+- `/etc/anvil/kernel.d/` — user kernel configuration fragments
+- `/etc/anvil/patches/<pkgname>/` — per-package user patch stacks
+- `poweruser/snippets/` — shared recipe snippet directory for inheritance
+- `poweruser/build/logs/stats/` — per-package build resource statistics
+- Recipe variables: `feature_depends_<flag>`, `feature_conflicts_<flag>`, `flag_desc_<flag>`, `inherit`, `use_ccache`, `sub_packages`
+- Profile variables: `GLOBAL_FEATURES`, `ANVIL_SAFETY_MODE`
+- `local.db` field: comma-separated file inventory (field 6)
+- `flags_hash` parameters: dependency string and patch string for cache precision
+- `anvil` subcommands: `world`, `files`, `verify`, `remove`, `log`, `diff`, `rollback-recipe`, `flag`, `shell`, `trial`, `gc`, `bootstrap`, `audit`, `estimate`, `fetch-world`
+- `anvil rebuild` flags: `--target`, `--isolated`
+- `build_package_isolated` — clean chroot build function in `builder.bash`
+- `build_queue_parallel` — dependency-aware parallel build scheduler
+- `anvil_world_stage` — staged system image builder
+- `anvil_activate` — atomic cutover via BTRFS snapshot or kexec
+- `anvil_fetch_world` — recursive dependency resolution and source pre-fetch
+- `anvil_gc` — mark-and-sweep garbage collector for build artifacts
+- `anvil_bootstrap` — declarative full-system source bootstrap
+- `anvil_audit` — ELF security feature auditor
+- `anvil_estimate` — build time predictor from historical stats
+- `anvil_trial` — interactive recipe skeleton generator
+- `anvil_shell` — interactive build debugging shell
+- `anvil_build_interactive` — `./configure` feature discovery and flag writer
+- `_recipe_git_init` and `_recipe_git_commit` — local git history for recipes
+- `resolve_pkg_flags` — unified flag resolution merging global defaults with per-package overrides
+- `resolve_flag_conflicts` — flag conflict detection and reporting
+- `read_pkg_flags` — per-package flag file reader
+- `apply_kconfig_fragments` — kernel config fragment processor
+
+### Removed
+- `poweruser/lib/kconfig.bash` — replaced by `poweruser/lib/kconfig_fragments.bash`; `ensure_boot_essentials` moved to the new fragment processor; kernel recipes now call `apply_kconfig_fragments` instead of `apply_basic_config` or `apply_advanced_config`
+
 ## v9.3.2.0 (2026-07-17) — ArtixForge
 
 ### Changed

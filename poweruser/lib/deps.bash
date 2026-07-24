@@ -6,11 +6,11 @@ resolve_deps() {
     local -A in_degree=()
     local -A edges=()
     local -A providers=()
-    local pkg dep
+    local pkg dep flag
 
     # Build provider map from all recipes
     for pkg in "${pkgs[@]}"; do
-        load_recipe "${pkg}"
+        resolve_pkg_flags "${pkg}" || die "Failed to resolve flags for ${pkg}"
         for provided in "${provides[@]}"; do
             providers["${provided}"]="${pkg}"
         done
@@ -22,11 +22,19 @@ resolve_deps() {
     done
 
     for pkg in "${pkgs[@]}"; do
-        load_recipe "${pkg}"
-        for dep in "${depends[@]}" "${makedepends[@]}"; do
+        resolve_pkg_flags "${pkg}" || die "Failed to resolve flags for ${pkg}"
+
+        # Gather all dependencies: base + conditional from enabled flags
+        local -a all_deps=("${depends[@]}" "${makedepends[@]}")
+        for flag in "${selected_features[@]}"; do
+            local cond_deps="${feature_depends[${flag}]:-}"
+            [[ -n "${cond_deps}" ]] && all_deps+=(${cond_deps})
+        done
+
+        for dep in "${all_deps[@]}"; do
             local resolved="${dep}"
-            if [[ -n "${providers["${dep}"]:-}" ]]; then
-                resolved="${providers["${dep}"]}"
+            if [[ -n "${providers[${dep}]:-}" ]]; then
+                resolved="${providers[${dep}]}"
             fi
             if [[ " ${pkgs[*]} " =~ " ${resolved} " ]]; then
                 edges["${resolved}"]+="${pkg} "
@@ -37,7 +45,7 @@ resolve_deps() {
 
     local -a queue=() ordered=()
     for pkg in "${pkgs[@]}"; do
-        [[ "${in_degree["${pkg}"]}" -eq 0 ]] && queue+=("${pkg}")
+        [[ "${in_degree[${pkg}]}" -eq 0 ]] && queue+=("${pkg}")
     done
 
     while [[ ${#queue[@]} -gt 0 ]]; do
@@ -47,7 +55,7 @@ resolve_deps() {
 
         for next in ${edges["${current}"]}; do
             in_degree["${next}"]=$((in_degree["${next}"] - 1))
-            [[ "${in_degree["${next}"]}" -eq 0 ]] && queue+=("${next}")
+            [[ "${in_degree[${next}]}" -eq 0 ]] && queue+=("${next}")
         done
     done
 
