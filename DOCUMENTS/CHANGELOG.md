@@ -1,5 +1,23 @@
 # Changelog
 
+## v9.3.2.2 (2026-08-03) — ArtixForge
+
+### Added
+- **ARM aarch64 cross-compilation support** — poweruser mode can now target ARM64 devices via cross-compilation profiles; `cross-aarch64.sh` base profile and `cross-aarch64-rpi4.sh` board profile for Raspberry Pi 4; architecture selector in poweruser TUI hub with board selection for Raspberry Pi 4, Raspberry Pi 3B+, Odroid N2, Pinephone, Firefly RK3399, Orange Pi PC2, and QEMU VM
+- **ARM kernel configuration fragments** — `poweruser/kernel.d/aarch64/` directory with `10-arm64-essential.fragment` (base ARM64 config), `20-rpi4-drivers.fragment` (Raspberry Pi 4), `20-pinephone-drivers.fragment` (Pinephone), `20-odroid-n2-drivers.fragment` (Odroid N2); fragments applied via `apply_kconfig_fragments` during kernel build
+- **U-Boot bootloader support** — `scripts/install/bootloaders/uboot.sh` generates `boot.scr` via `mkimage`, copies kernel/initramfs/device tree to boot partition; `deploy_sd_card` function in `builder.bash` partitions SD card (FAT32 boot + ext4 root), writes rootfs, flashes U-Boot at correct offset
+- **ARM ISO builder integration** — `iso/tui.sh` gains architecture selector and board selector with dynamic kernel list; `iso/build.sh` accepts `target_arch` parameter, produces ARM ISO with appropriate messaging; `iso/profiles/arm-aarch64.conf` default ARM profile
+- **ARM kernel detection** — `kernels.sh` extended with `linux-aarch64`, `linux-aarch64-lts`, `linux-radxa` kernel package mappings from ARMtix repositories
+- **ARM repository configuration** — `basestrap.sh` adds ARMtix repository when `TARGET_ARCH=aarch64`; microcode package installation skipped on ARM; `uboot-tools` added to base package list
+- **ARM state persistence** — `state.sh` gains `TARGET_ARCH`, `BOARD_NAME`, `UBOOT_TARGET` keys; `handoff.sh` exports ARM configuration to installed system
+- **ARM cross-compilation environment** — `poweruser.sh` exports `CROSS_COMPILE`, `ARCH`, and `TARGET_ARCH` when cross-compiling; profile variables `BOARD_NAME`, `BOARD_KERNEL_DEFCONFIG`, `BOARD_DEVICE_TREE`, `BOOTLOADER`, `UBOOT_TARGET` set per board profile
+
+### Changed
+- **ISO builder kernel selection** — kernel choices in `tui.sh` now dynamic based on `TARGET_ARCH`; ARM shows `linux-aarch64` variants, x86_64 shows standard kernels
+- **ISO builder preset save/load** — `tui_iso_save_preset` and `tui_iso_load_preset` include `TARGET_ARCH` and `BOARD_NAME` fields
+- **Bootloader dispatch** — `bootloader.sh` sources `uboot.sh` and routes `uboot` bootloader type
+- **ISO builder output messaging** — ARM ISO builds display architecture-specific post-build instructions for SD card deployment
+
 ## v9.3.2.1 (2026-07-25) — ArtixForge
 
 ### Changed

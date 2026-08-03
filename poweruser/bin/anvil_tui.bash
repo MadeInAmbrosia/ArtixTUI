@@ -22,38 +22,38 @@ _filly_result() {
 }
 
 tui_anvil_hub() {
-    local actions_json
-    actions_json='[
+    local categories_json
+    categories_json='[
         {"category":"Packages","actions":[
-            {"key":"list_installed","label":"List installed packages","description":"Show source-built packages"},
-            {"key":"list_recipes","label":"List available recipes","description":"Browse all recipe files"},
-            {"key":"package_info","label":"Package info","description":"View build details for a package"},
-            {"key":"rebuild","label":"Rebuild a package","description":"Recompile a source package"},
-            {"key":"fetch_recipe","label":"Fetch recipe from repo","description":"Download a community recipe"},
-            {"key":"fetch_all","label":"Fetch all sources","description":"Download all recipe sources"}
+            {"key":"list_installed","description":"List installed packages"},
+            {"key":"list_recipes","description":"List available recipes"},
+            {"key":"package_info","description":"View build details for a package"},
+            {"key":"rebuild","description":"Rebuild a package"},
+            {"key":"fetch_recipe","description":"Download a community recipe"},
+            {"key":"fetch_all","description":"Download all recipe sources"}
         ]},
         {"category":"Recipes","actions":[
-            {"key":"create_recipe","label":"Create new recipe","description":"Start a new recipe from template"},
-            {"key":"edit_recipe","label":"Edit recipe","description":"Modify an existing recipe"},
-            {"key":"lint_recipe","label":"Lint recipe","description":"Validate recipe syntax"},
-            {"key":"checksum_recipe","label":"Checksum recipe","description":"Generate SHA256 hashes"}
+            {"key":"create_recipe","description":"Start a new recipe from template"},
+            {"key":"edit_recipe","description":"Modify an existing recipe"},
+            {"key":"lint_recipe","description":"Validate recipe syntax"},
+            {"key":"checksum_recipe","description":"Generate SHA256 hashes"}
         ]},
         {"category":"Kernel","actions":[
-            {"key":"edit_config","label":"Edit kernel config","description":"Modify the running kernel .config"},
-            {"key":"menuconfig","label":"Menuconfig","description":"Launch make menuconfig"},
-            {"key":"fetch_source","label":"Fetch kernel source","description":"Download kernel source for compilation"}
+            {"key":"edit_config","description":"Modify the running kernel .config"},
+            {"key":"menuconfig","description":"Launch make menuconfig"},
+            {"key":"fetch_source","description":"Download kernel source for compilation"}
         ]},
         {"category":"Maintenance","actions":[
-            {"key":"sync_recipes","label":"Sync recipes","description":"Update .LIST and recipes from community repo"},
-            {"key":"manage_sections","label":"Manage recipe sections","description":"Enable/disable recipe sources"},
-            {"key":"upgrade","label":"Upgrade recipes","description":"Backup and update from remote"},
-            {"key":"cache_clean","label":"Clean cache","description":"Remove obsolete cached packages"},
-            {"key":"recovery","label":"Recovery","description":"Check and repair source packages"}
+            {"key":"sync_recipes","description":"Update .LIST and recipes from community repo"},
+            {"key":"manage_sections","description":"Enable/disable recipe sources"},
+            {"key":"upgrade","description":"Backup and update from remote"},
+            {"key":"cache_clean","description":"Remove obsolete cached packages"},
+            {"key":"recovery","description":"Check and repair source packages"}
         ]}
     ]'
 
     local result
-    result=$(_filly_result '{"widget":"anvil","params":{"title":"anvil","actions":'"${actions_json}"'}}')
+    result=$(_filly_result '{"widget":"anvil","params":{"title":"anvil","categories":'"${categories_json}"'}}')
 
     echo "${result}"
 }

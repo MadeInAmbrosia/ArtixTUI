@@ -4,18 +4,29 @@ set -Eeuo pipefail
 ISO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 tui_iso_hub() {
+    local kernel_choices
+    if [[ "$(state_get TARGET_ARCH x86_64)" == "aarch64" ]]; then
+        kernel_choices='["linux-aarch64","linux-aarch64-lts","linux-radxa"]'
+    else
+        kernel_choices='["linux","linux-zen","linux-lts","linux-hardened"]'
+    fi
+
     local cats_json
     cats_json=$(cat <<JSONEOF
 [
   {"label":"ISO Type","items":[
     {"id":"ISO_BOOT_MODE","label":"Boot mode","value":"$(state_get ISO_BOOT_MODE live)","widget":"menu","choices":["live","installer"]}
   ]},
+  {"label":"Architecture","items":[
+    {"id":"TARGET_ARCH","label":"Target Architecture","value":"$(state_get TARGET_ARCH x86_64)","widget":"menu","choices":["x86_64","aarch64"]},
+    {"id":"BOARD_NAME","label":"Board","value":"$(state_get BOARD_NAME '')","widget":"menu","choices":["Raspberry Pi 4","Raspberry Pi 3B+","Odroid N2","Pinephone","Firefly RK3399","Orange Pi PC2","QEMU VM"],"visible_if":{"TARGET_ARCH":"aarch64"}}
+  ]},
   {"label":"Live Environment","items":[
     {"id":"WM_DE","label":"Desktop","value":"$(state_get WM_DE none)","widget":"menu","choices":["kde","sonicde","xfce4","lxqt","lxde","hyprland","sway","niri","i3wm","dwm","vxwm","icewm","mango","cinnamon","budgie","moksha","cosmic","none"]},
     {"id":"DISPLAY_MANAGER","label":"Display Manager","value":"$(state_get DISPLAY_MANAGER none)","widget":"menu","choices":["none","lightdm","sddm","soniclogin"]},
     {"id":"X_STACK","label":"Display Stack","value":"$(state_get X_STACK xorg)","widget":"menu","choices":["xlibre","xorg"]},
     {"id":"INIT","label":"Init","value":"$(state_get INIT openrc)","widget":"menu","choices":["openrc","runit","dinit","s6"]},
-    {"id":"KERNEL_CHOICE","label":"Kernel","value":"$(state_get KERNEL_CHOICE linux)","widget":"menu","choices":["linux","linux-zen","linux-lts","linux-hardened"]},
+    {"id":"KERNEL_CHOICE","label":"Kernel","value":"$(state_get KERNEL_CHOICE linux)","widget":"menu","choices":${kernel_choices}},
     {"id":"NETWORK_STACK","label":"Network","value":"$(state_get NETWORK_STACK networkmanager)","widget":"menu","choices":["networkmanager","dhcpcd+iwd","connman","none"]},
     {"id":"AUDIO_STACK","label":"Audio","value":"$(state_get AUDIO_STACK pipewire)","widget":"menu","choices":["pipewire","pulseaudio","none"]}
   ]},
@@ -74,6 +85,8 @@ tui_iso_save_preset() {
 
     {
         printf "ISO_BOOT_MODE='%s'\n" "$(state_get ISO_BOOT_MODE live)"
+        printf "TARGET_ARCH='%s'\n" "$(state_get TARGET_ARCH x86_64)"
+        printf "BOARD_NAME='%s'\n" "$(state_get BOARD_NAME '')"
         printf "WM_DE='%s'\n" "$(state_get WM_DE none)"
         printf "DISPLAY_MANAGER='%s'\n" "$(state_get DISPLAY_MANAGER none)"
         printf "X_STACK='%s'\n" "$(state_get X_STACK xorg)"

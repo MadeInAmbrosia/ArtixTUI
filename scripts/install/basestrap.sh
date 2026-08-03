@@ -34,14 +34,16 @@ install_base_system() {
             ;;
     esac
 
-    local ucode='amd-ucode'
-    grep -q 'GenuineIntel' /proc/cpuinfo && ucode='intel-ucode'
-
-    case "${microcode_override}" in
-        intel) ucode='intel-ucode' ;;
-        amd)   ucode='amd-ucode' ;;
-        none)  ucode='' ;;
-    esac
+    local ucode=''
+    if [[ "$(state_get TARGET_ARCH '')" != "aarch64" ]]; then
+        ucode='amd-ucode'
+        grep -q 'GenuineIntel' /proc/cpuinfo && ucode='intel-ucode'
+        case "${microcode_override}" in
+            intel) ucode='intel-ucode' ;;
+            amd)   ucode='amd-ucode' ;;
+            none)  ucode='' ;;
+        esac
+    fi
 
     local priv_esc
     priv_esc="$(state_get PRIV_ESCALATION sudo)"
@@ -65,10 +67,24 @@ install_base_system() {
         refind)  pkgs+=(refind) ;;
         efistub) ;;
         limine)  pkgs+=(limine) ;;
+        uboot)   pkgs+=(uboot-tools) ;;
     esac
 
     if [[ "${ARTIX_BOOT_MODE:-uefi}" == "uefi" ]]; then
         pkgs+=(efibootmgr dosfstools)
+    fi
+
+    if [[ "$(state_get TARGET_ARCH '')" == "aarch64" ]]; then
+        # ARMtix repository configuration for cross-compilation
+        if ! grep -q '^\[armtix\]' /etc/pacman.conf 2>/dev/null; then
+            cat <<'EOF' >> /etc/pacman.conf
+[armtix]
+SigLevel = Never
+Server = https://armtix.artixlinux.org/packages/$repo/os/$arch
+EOF
+        fi
+        pkgs=("${pkgs[@]/efibootmgr/}")
+        pkgs=("${pkgs[@]/dosfstools/}")
     fi
 
     [[ -n "${ucode}" ]] && pkgs+=("${ucode}")
@@ -91,6 +107,9 @@ install_base_system() {
     [[ "$(state_get POWER_USER no)" == "yes" && "$(state_get KEEP_BINARY_KERNEL yes)" == "no" ]] && skip_binary_kernel=1
 
     case "${kernel}" in
+        linux-aarch64|linux-aarch64-lts|linux-radxa)
+            basestrap_kernel_standard pkgs "${skip_binary_kernel}"
+            ;;
         linux|linux-zen|linux-lts|linux-hardened)
             basestrap_kernel_standard pkgs "${skip_binary_kernel}"
             ;;

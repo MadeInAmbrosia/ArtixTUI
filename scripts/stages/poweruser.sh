@@ -34,6 +34,13 @@ stage_poweruser() {
     profile_name="$(state_get POWERUSER_PROFILE default)"
     load_profile "${profile_name}"
 
+    if [[ -n "${TARGET_ARCH:-}" && "${TARGET_ARCH}" != "x86_64" ]]; then
+        log_info "Configuring cross-compilation for ${TARGET_ARCH}..."
+        export CROSS_COMPILE="${CROSS_COMPILE:-}"
+        export ARCH="${ARCH:-arm64}"
+        export TARGET_ARCH
+    fi
+
     if [[ ! -d /mnt/tmp ]]; then
         mkdir -p /mnt/tmp || die "/mnt/tmp does not exist and cannot be created"
     fi

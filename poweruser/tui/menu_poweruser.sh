@@ -12,6 +12,10 @@ tui_poweruser_config() {
     {"id":"ARTIX_LDFLAGS","label":"LDFLAGS","value":"$(state_get ARTIX_LDFLAGS '')","widget":"input"},
     {"id":"ARTIX_MAKEFLAGS","label":"MAKEFLAGS","value":"$(state_get ARTIX_MAKEFLAGS '-j$(nproc)')","widget":"input"}
   ]},
+  {"label":"Architecture","items":[
+    {"id":"TARGET_ARCH","label":"Target Architecture","value":"$(state_get TARGET_ARCH x86_64)","widget":"menu","choices":["x86_64","aarch64"]},
+    {"id":"BOARD_NAME","label":"Board","value":"$(state_get BOARD_NAME '')","widget":"menu","choices":["Raspberry Pi 4","Raspberry Pi 3B+","Odroid N2","Pinephone","Firefly RK3399","Orange Pi PC2","QEMU VM"],"visible_if":{"TARGET_ARCH":"aarch64"}}
+  ]},
   {"label":"Init","items":[
     {"id":"INIT","label":"Init system","value":"$(state_get INIT openrc)","widget":"menu","choices":["openrc","runit","dinit","s6","busybox"]}
   ]},

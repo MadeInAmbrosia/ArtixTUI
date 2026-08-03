@@ -85,6 +85,7 @@ build_artix_iso() {
     local offline="${4:-no}"
     local boot_mode="${5:-live}"
     local user_output_dir="${6:-${HOME}/ArtixForge-ISO}"
+    local target_arch="${7:-x86_64}"
 
     local workspace
     if [[ -d /run/artix/sfs/rootfs ]]; then
@@ -123,7 +124,7 @@ build_artix_iso() {
     fi
 
     if [[ "${iso_stage}" == "init" || "${iso_stage}" == "profile" ]]; then
-        log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode)..."
+        log_info "Generating artools profile for ${profile_name} (${init}, ${boot_mode} mode, ${target_arch})..."
         source "${ISO_DIR}/common.sh"
         generate_common_yaml "${workspace}"
         generate_artools_profile "${iso_profile_dir}" "${profile_name}" "${init}" "${kernel}" "${boot_mode}"
@@ -151,7 +152,7 @@ build_artix_iso() {
                 local target_kernel="${KERNEL_CHOICE:-linux}"
                 
                 case "${target_kernel}" in
-                    linux|linux-zen|linux-lts|linux-hardened|linux-libre)
+                    linux|linux-zen|linux-lts|linux-hardened|linux-libre|linux-aarch64|linux-aarch64-lts|linux-radxa)
                         generate_iso_package_list "${INIT:-openrc}" "${target_kernel}" > "${iso_profile_dir}/packages-target.x86_64"
                         offline_pkg_list="${iso_profile_dir}/packages-target.x86_64"
                         ;;
@@ -221,11 +222,13 @@ PACMAN
     kernel_choice="$(state_get KERNEL_CHOICE linux)"
 
     local needs_chroot_build=0
-    if [[ "${wm_de}" == "mango" || "${wm_de}" == "vxwm" ]]; then
-        needs_chroot_build=1
-    fi
-    if [[ "${kernel_choice}" == "linux-bazzite-bin" ]]; then
-        needs_chroot_build=1
+    if [[ "${target_arch}" == "x86_64" ]]; then
+        if [[ "${wm_de}" == "mango" || "${wm_de}" == "vxwm" ]]; then
+            needs_chroot_build=1
+        fi
+        if [[ "${kernel_choice}" == "linux-bazzite-bin" ]]; then
+            needs_chroot_build=1
+        fi
     fi
 
     local arch_repos
@@ -264,7 +267,6 @@ PACMAN
 
             if [[ -n "${chroot_dir}" && -d "${chroot_dir}" ]]; then
                 log_info "Entering chroot at ${chroot_dir} to build non-repo packages..."
-                # (MangoWM, vxwm, bazzite build blocks unchanged)
                 if [[ "${wm_de}" == "mango" ]]; then
                     log_info "Building MangoWM from AUR..."
                     artix-chroot "${chroot_dir}" bash -c "
@@ -327,7 +329,17 @@ PACMAN
                 log_info "ISO created: ${user_output_dir}/${iso_file##*/}"
                 log_info "Build log: ${iso_log}"
                 cp "${iso_log}" "${user_output_dir}/" 2>/dev/null || true
-                tui_msg_quick "ISO Ready" "ISO created at:\n${user_output_dir}/${iso_file##*/}\n\nBuild log:\n${user_output_dir}/iso-build-*.log"
+
+                # ARM: provide additional output information
+                if [[ "${target_arch}" == "aarch64" ]]; then
+                    local arm_dir="${user_output_dir}/arm"
+                    mkdir -p "${arm_dir}"
+                    log_info "ARM ISO created. Use this ISO to boot ARM UEFI systems."
+                    log_info "For SD card deployment, use the ARM rootfs or build via Advanced → ISO creation for ARM/aarch64."
+                    tui_msg_quick "ISO Ready" "ARM ISO created at:\n${user_output_dir}/${iso_file##*/}\n\nFor SD card deployment, use the poweruser ARM pipeline or extract the rootfs manually.\nBuild log:\n${user_output_dir}/iso-build-*.log"
+                else
+                    tui_msg_quick "ISO Ready" "ISO created at:\n${user_output_dir}/${iso_file##*/}\n\nBuild log:\n${user_output_dir}/iso-build-*.log"
+                fi
             else
                 log_error "ISO file not found in ${iso_output_dir}"
                 die "buildiso completed but no ISO was produced"
@@ -350,7 +362,6 @@ PACMAN
     fi
     rm -rf /usr/share/artools/iso-profiles/"${profile_name}" 2>/dev/null || true
 
-    # Cleanup stage file on success
     rm -f "${iso_stage_file}"
 
     log_info "Build complete. Locating ISO..."
@@ -361,7 +372,11 @@ PACMAN
         mkdir -p "${user_output_dir}"
         cp "${iso_file}" "${user_output_dir}/"
         log_info "ISO created: ${user_output_dir}/${iso_file##*/}"
-        tui_msg_quick "ISO Ready" "ISO created at:\n${user_output_dir}/${iso_file##*/}"
+        if [[ "${target_arch}" == "aarch64" ]]; then
+            tui_msg_quick "ISO Ready" "ARM ISO created at:\n${user_output_dir}/${iso_file##*/}\n\nFor SD card deployment, use the poweruser ARM pipeline or extract the rootfs manually."
+        else
+            tui_msg_quick "ISO Ready" "ISO created at:\n${user_output_dir}/${iso_file##*/}"
+        fi
     else
         log_warn "ISO file not found in ${iso_output_dir}"
         log_warn "Check ${workspace} for the output"

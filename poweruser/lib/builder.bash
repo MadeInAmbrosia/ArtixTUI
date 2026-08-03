@@ -602,3 +602,34 @@ anvil_activate() {
         kexec -e
     fi
 }
+
+deploy_sd_card() {
+    local target_device="${1}"
+    local board="${BOARD_NAME:-unknown}"
+    [[ -b "${target_device}" ]] || die "Invalid target device: ${target_device}"
+
+    log_info "Deploying to ${target_device} for ${board}..."
+
+    parted -s "${target_device}" mklabel msdos
+    parted -s "${target_device}" mkpart primary fat32 1MiB 101MiB
+    parted -s "${target_device}" mkpart primary ext4 101MiB 100%
+    mkfs.vfat -F32 "${target_device}1"
+    mkfs.ext4 -F "${target_device}2"
+
+    local tmp_boot="/tmp/arm-boot-$$"
+    local tmp_root="/tmp/arm-root-$$"
+    mkdir -p "${tmp_boot}" "${tmp_root}"
+    mount "${target_device}1" "${tmp_boot}"
+    mount "${target_device}2" "${tmp_root}"
+
+    rsync -a /mnt/ "${tmp_root}/" || die "Failed to copy rootfs"
+    cp /mnt/boot/* "${tmp_boot}/" 2>/dev/null || true
+
+    if [[ -f /mnt/usr/share/uboot/${board}/u-boot.bin ]]; then
+        dd if="/mnt/usr/share/uboot/${board}/u-boot.bin" of="${target_device}" seek=64 conv=fsync 2>/dev/null || log_warn "U-Boot write failed"
+    fi
+
+    umount "${tmp_boot}" "${tmp_root}"
+    rmdir "${tmp_boot}" "${tmp_root}"
+    log_info "Deployment complete. Insert SD card into ${board} and boot."
+}

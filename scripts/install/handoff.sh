@@ -147,6 +147,9 @@ KERNEL_ADV_DEBUG="$(state_get KERNEL_ADV_DEBUG)"
 KERNEL_PREEMPT="$(state_get KERNEL_PREEMPT)"
 KERNEL_TIMER="$(state_get KERNEL_TIMER)"
 KERNEL_GOVERNOR="$(state_get KERNEL_GOVERNOR)"
+TARGET_ARCH="$(state_get TARGET_ARCH)"
+BOARD_NAME="$(state_get BOARD_NAME)"
+UBOOT_TARGET="$(state_get UBOOT_TARGET)"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 
