@@ -76,20 +76,6 @@ packages-xorg:
   - xf86-video-qxl
   - xf86-video-vesa
   - xf86-video-voodoo
-packages-xlibre:
-  - xlibre-xserver
-  - xlibre-input-vmmouse
-  - xlibre-input-wacom
-  - xlibre-video-amdgpu
-  - xlibre-video-ati
-  - xlibre-video-dummy
-  - xlibre-video-fbdev
-  - xlibre-video-intel
-  - xlibre-video-nouveau
-  - xlibre-video-sisusb
-  - xlibre-video-qxl
-  - xlibre-video-vesa
-  - xlibre-video-voodoo
 packages-misc:
   - xorg-xhost
   - xorg-xinit
@@ -266,11 +252,10 @@ generate_iso_package_list() {
     esac
 
     local x_stack
-    x_stack="$(state_get X_STACK xlibre)"
-    case "${x_stack}" in
-        xlibre) pkg_list+=(xlibre-xserver xlibre-xserver-common xlibre-input-libinput xlibre-input-evdev) ;;
-        xorg)   pkg_list+=(xorg-server xorg-xinit xf86-input-libinput xf86-input-evdev) ;;
-    esac
+    x_stack="$(state_get X_STACK xorg)"
+    if [[ "${x_stack}" == "xorg" ]]; then
+        pkg_list+=(xorg-server xorg-xinit xf86-input-libinput xf86-input-evdev)
+    fi
 
     local extras
     extras="$(state_get EXTRAS "")"
@@ -348,17 +333,11 @@ EOF
         esac
     fi
 
-    local wm_de x_stack use_xlibre network_stack audio_stack
+    local wm_de x_stack network_stack audio_stack
     wm_de="$(state_get WM_DE none)"
-    x_stack="$(state_get X_STACK xlibre)"
+    x_stack="$(state_get X_STACK xorg)"
     network_stack="$(state_get NETWORK_STACK networkmanager)"
     audio_stack="$(state_get AUDIO_STACK pipewire)"
-    
-    if [[ "${x_stack}" == "xlibre" ]]; then
-        use_xlibre="true"
-    else
-        use_xlibre="false"
-    fi
 
     local -a live_packages=()
     while IFS= read -r pkg; do
@@ -371,7 +350,6 @@ live-session:
   user: artix
   password: artix
   autologin: true
-  use-xlibre: ${use_xlibre}
   services:
 YAML
 

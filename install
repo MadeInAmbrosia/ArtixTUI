@@ -25,6 +25,43 @@ installer_abort() {
     exit 130
 }
 
+_generate_bug_report() {
+    local report_dir="/tmp/artixforge-bugreport-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "${report_dir}"
+    
+    [[ -f /tmp/artix-installer/install.log ]] && cp /tmp/artix-installer/install.log "${report_dir}/"
+    [[ -f /tmp/artix-installer/state.conf ]] && cp /tmp/artix-installer/state.conf "${report_dir}/"
+    [[ -f /tmp/artix-migration-debug.log ]] && cp /tmp/artix-migration-debug.log "${report_dir}/"
+    [[ -f "${BASE_DIR}/artix-debug.log" ]] && cp "${BASE_DIR}/artix-debug.log" "${report_dir}/"
+    
+    if [[ -d /tmp/artix-installer/stages ]]; then
+        cp -r /tmp/artix-installer/stages "${report_dir}/"
+    fi
+
+    {
+        printf 'ArtixForge Bug Report\n'
+        printf '=====================\n'
+        printf 'Date: %s\n' "$(date)"
+        printf 'Version: %s\n' "$(cat "${BASE_DIR}/VERSION" 2>/dev/null || echo unknown)"
+        printf 'Kernel: %s\n' "$(uname -r)"
+        printf '\nSystem Info:\n'
+        uname -a
+        printf '\nCPU:\n'
+        lscpu 2>/dev/null | head -20 || true
+        printf '\nMemory:\n'
+        free -h 2>/dev/null || true
+        printf '\nDisk:\n'
+        lsblk -f 2>/dev/null || true
+        printf '\nMounts:\n'
+        mount 2>/dev/null | grep -E '/mnt|artix' || true
+    } > "${report_dir}/system-info.txt"
+
+    local tarball="${report_dir}.tar.gz"
+    tar czf "${tarball}" -C /tmp "$(basename "${report_dir}")" 2>/dev/null || true
+    rm -rf "${report_dir}"
+    echo "${tarball}"
+}
+
 installer_error() {
     local rc="${1:-1}" line="${2:-unknown}"
     clear
@@ -39,6 +76,14 @@ installer_error() {
         printf '[!] Last 20 lines:\n' >&2
         tail -20 /tmp/artix-migration-debug.log >&2
     fi
+    
+    local report
+    report=$(_generate_bug_report 2>/dev/null || true)
+    if [[ -n "${report}" ]]; then
+        printf '\n[!] Bug report generated: %s\n' "${report}" >&2
+        printf '[!] Include this file when reporting issues.\n' >&2
+    fi
+    
     printf '\n[!] The installation was NOT completed.\n' >&2
     exit "${rc}"
 }
@@ -148,8 +193,8 @@ _setup_filly() {
     fi
 
     mkdir -p ~/.config/filly/plugins
-    cp "${BASE_DIR}/FILLY/libartixforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
-    cp "${BASE_DIR}/FILLY/libartixforge.so.sig" ~/.config/filly/plugins/ 2>/dev/null || true
+    cp "${BASE_DIR}/FILLY/out/libartixforge.so" ~/.config/filly/plugins/ 2>/dev/null || true
+    cp "${BASE_DIR}/FILLY/out/libartixforge.so.sig" ~/.config/filly/plugins/ 2>/dev/null || true
     export FILLY_ROOT="${BASE_DIR}/FILLY"
 
     if ! command -v jq &>/dev/null; then
@@ -173,6 +218,52 @@ _artix_welcome() {
           /'\\_   _/\`\\
           \\___)=(___/
 "
+}
+
+_verify_root_password() {
+    local attempt
+    attempt=$(tui_password "Root Password Required" "Enter root password to unlock advanced features:") || return 1
+    if [[ -z "${attempt}" ]]; then
+        return 1
+    fi
+
+    if [[ -f /etc/shadow ]]; then
+        local root_hash
+        root_hash=$(grep '^root:' /etc/shadow | cut -d: -f2)
+        if [[ -n "${root_hash}" && "${root_hash}" != "!" && "${root_hash}" != "*" ]]; then
+            local check
+            check=$(openssl passwd -6 -- "${attempt}" 2>/dev/null || true)
+            if [[ "${check}" == "${root_hash}" ]]; then
+                return 0
+            fi
+            return 1
+        fi
+    fi
+
+    if [[ "${EUID}" -eq 0 ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+_validate_post_install_script() {
+    local script_path
+    script_path="$(state_get POST_INSTALL_SCRIPT '')"
+    [[ -n "${script_path}" ]] || return 0
+    
+    if [[ ! -f "${script_path}" ]]; then
+        log_error "POST_INSTALL_SCRIPT '${script_path}' does not exist"
+        return 1
+    fi
+    
+    if [[ ! -r "${script_path}" ]]; then
+        log_error "POST_INSTALL_SCRIPT '${script_path}' is not readable"
+        return 1
+    fi
+
+    log_info "Post-install script validated: ${script_path}"
+    return 0
 }
 
 main_menu() {
@@ -202,10 +293,14 @@ main_menu() {
         case "${mode}" in
             Installation*)  MODE='auto' ; break ;;
             Advanced*)
+                if ! _verify_root_password; then
+                    tui_msg_quick "Access Denied" "Incorrect root password."
+                    continue
+                fi
                 local advanced_choice
                 advanced_choice=$(tui_menu "Advanced" "Select advanced mode:" \
                     "Recovery – scan /mnt for existing system" \
-                    "Power User – source‑built packages" \
+                    "Power User – source-built packages" \
                     "System Migration – convert init or desktop" \
                     "Build ISO – create a custom live ISO" \
                     "Back") || continue
@@ -228,6 +323,17 @@ main_menu() {
 }
 
 run_install_pipeline() {
+    local lint_errors
+    lint_errors=$(lint_state 2>/dev/null || true)
+    if [[ -n "${lint_errors}" ]]; then
+        tui_msg "State Validation Failed" "The state file has errors:\n\n${lint_errors}\n\nCannot proceed."
+        return 1
+    fi
+    
+    if ! _validate_post_install_script; then
+        return 1
+    fi
+
     stage_preflight || die 'preflight stage failed'
     stage_storage   || die 'storage stage failed'
     stage_base      || die 'base stage failed'
@@ -306,7 +412,7 @@ start_auto_install() {
                TIMEZONE LOCALE KEYMAP SWAP_ENABLED SWAP_SIZE ZRAM_PERCENT \
                USE_LUKS USE_LVM GENERATE_UKI ENABLE_ARCH_REPOS POWER_USER \
                EXTRAS DISPLAY_MANAGER X_STACK MICROCODE_OVERRIDE USER_SHELL \
-               USER_COUNT ROOT_PASS LUKS_PASS; do
+               USER_COUNT ROOT_PASS LUKS_PASS POST_INSTALL_SCRIPT; do
         unset "${var}"
     done
     tui_collect_install_config
@@ -403,72 +509,6 @@ main() {
     sleep 1
 
     export FILLY_BACKEND="tui"
-    source "${BASE_DIR}/FILLY/fil.sh"
-
-    if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]] && [[ "$(tty)" != /dev/tty* ]]; then
-        if tui_yesno "GUI Installer" "Graphical environment detected.\n\nUse GUI installer instead of TUI?"; then
-            export FILLY_BACKEND=gui
-        fi
-    fi
-
-    if [[ "${1:-}" == "--non-interactive" ]]; then
-        state_load
-        MODE="$(state_get MODE auto)"
-        log_info "Non‑interactive mode: ${MODE}"
-
-        case "${MODE}" in
-            auto)
-                run_install_pipeline
-                ;;
-            resume)
-                if [[ -f /tmp/artix-installer/migration-stage.conf ]]; then
-                    run_migration
-                elif [[ -f /tmp/artix-installer/iso-build-stage.conf ]]; then
-                    start_iso_build
-                else
-                    resume_install
-                fi
-                ;;
-            recovery)
-                local action
-                action="$(state_get RECOVERY_ACTION 'View system status')"
-                log_info "Recovery action: ${action}"
-                if ! recovery_detect_install; then
-                    recovery_mount_all || die "Failed to mount target"
-                fi
-                recovery_import_state
-                case "${action}" in
-                    "Repair detected issues") repair_detected_issues ;;
-                    "Fix everything"*)       repair_system ;;
-                    "Repair filesystem"*)    repair_filesystem ;;
-                    "Scan for rootkits")     detect_rootkits ;;
-                    "Untrusted Recovery"*)   untrusted_recovery ;;
-                    "Full reinstall"*)
-                        rm -f /tmp/artix-installer/state.conf
-                        rm -f /tmp/artix-installer/stages/*.done 2>/dev/null || true
-                        umount -R /mnt 2>/dev/null || true
-                        MODE='auto'
-                        start_auto_install
-                        return
-                        ;;
-                    *) tui_msg "System Status" "$(recovery_get_status)" ;;
-                esac
-                log_info "Recovery action completed."
-                ;;
-            power)
-                state_set POWER_USER "yes"
-                run_install_pipeline
-                ;;
-            iso)   start_iso_build ;;
-            migrate) run_migration ;;
-            *)
-                log_error "Unknown mode: ${MODE}"
-                exit 1
-                ;;
-        esac
-        log_info "Installation complete. You may now reboot."
-        exit 0
-    fi
 
     clear
     main_menu

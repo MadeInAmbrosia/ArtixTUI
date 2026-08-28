@@ -1,6 +1,30 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+_backup_user() {
+    local src="$1" dest="$2"
+    mkdir -p "$dest"
+    rsync -a --safe-links \
+        --exclude='.cache' \
+        --exclude='.local/share/flatpak' \
+        --exclude='.local/share/docker' \
+        --exclude='.local/share/containers' \
+        --exclude='.local/share/Trash' \
+        --exclude='.local/share/baloo' \
+        --exclude='.local/share/akonadi' \
+        --exclude='.local/share/recently-used.xbel' \
+        --exclude='.thumbnails' \
+        --exclude='.gradle' \
+        --exclude='.npm' \
+        --exclude='.cargo' \
+        --exclude='.rustup' \
+        --exclude='node_modules' \
+        --exclude='target' \
+        --exclude='build' \
+        --exclude='dist' \
+        "$src/" "$dest/"
+}
+
 ata_backup_all() {
     local backup_dir="${1}"
     mkdir -p "${backup_dir}"
@@ -8,11 +32,11 @@ ata_backup_all() {
 
     log_info "Creating backup at ${backup_dir}..."
 
-    # /home
+    # /home (selective, no caches)
     mkdir -p "${backup_dir}/home"
     while IFS= read -r user; do
         if [[ -d "/home/${user}" ]]; then
-            cp -a "/home/${user}" "${backup_dir}/home/${user}"
+            _backup_user "/home/${user}" "${backup_dir}/home/${user}"
         elif [[ -f "/home/${user}.home" ]]; then
             log_info "  ${user} has a systemd-homed image — will be migrated later"
         else
@@ -20,8 +44,15 @@ ata_backup_all() {
         fi
     done < /tmp/ata-users.txt
 
-    # /etc
-    cp -a /etc "${backup_dir}/etc"
+    # /etc (rsync with safe links and excludes)
+    mkdir -p "${backup_dir}/etc"
+    rsync -a --safe-links \
+        --exclude='mtab' \
+        --exclude='resolv.conf' \
+        --exclude='pacman.d/' \
+        --exclude='crypttab' \
+        --exclude='crypttab.initramfs' \
+        /etc/ "${backup_dir}/etc/"
 
     # Pacman database
     cp -a /var/lib/pacman "${backup_dir}/var-lib-pacman"

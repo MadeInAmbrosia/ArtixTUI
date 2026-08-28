@@ -65,9 +65,6 @@ _sanity_warnings() {
     [[ "${dm}" == "none" && "${wm_de}" != "none" && "${wm_de}" != "hyprland" && "${wm_de}" != "sway" && "${wm_de}" != "niri" && "${wm_de}" != "mango" && "${wm_de}" != "cosmic" ]] && \
         warnings+=("No display manager — you will start the desktop manually")
 
-    [[ "${dm}" == "sddm" && "${x_stack}" == "xlibre" ]] && \
-        warnings+=("SDDM may have issues with xlibre — LightDM is recommended for xlibre")
-
     local wayland_desktops="hyprland sway niri mango cosmic"
     [[ " ${wayland_desktops} " =~ " ${wm_de} " && "${dm}" == "sddm" ]] && \
         warnings+=("SDDM runs under X11 — Wayland compositor will start a nested X server for the login screen")
@@ -262,22 +259,29 @@ _load_config_preset() {
         return 0
     fi
 
-    local validation_errors
-    validation_errors=$(_validate_config_file "${chosen_file}")
-    if [[ $? -ne 0 ]]; then
-        tui_msg "Invalid Config" "The selected file has errors:\n\n${validation_errors}"
-        return 0
+    if head -n1 "${chosen_file}" | grep -q 'ARTIXFORGE_ENCRYPTED=1'; then
+        local decrypted
+        decrypted=$(state_decrypt_preset "${chosen_file}") || return 0
+        if [[ -n "${decrypted}" ]]; then
+            local temp_preset
+            temp_preset=$(mktemp)
+            printf '%s\n' "${decrypted}" > "${temp_preset}"
+            state_load_preset "${temp_preset}"
+            rm -f "${temp_preset}"
+        fi
+    else
+        local validation_errors
+        validation_errors=$(_validate_config_file "${chosen_file}")
+        if [[ $? -ne 0 ]]; then
+            tui_msg "Invalid Config" "The selected file has errors:\n\n${validation_errors}"
+            return 0
+        fi
+        state_load_preset "${chosen_file}"
     fi
-
-    while IFS='=' read -r key value; do
-        [[ -z "${key}" || "${key}" == \#* ]] && continue
-        value="${value#\'}"; value="${value%\'}"
-        value="${value#\"}"; value="${value%\"}"
-        state_set "${key}" "${value}"
-    done < "${chosen_file}"
 
     local preset_name
     preset_name=$(basename "${chosen_file}" .conf)
+    [[ "${preset_name}" == *.enc ]] && preset_name="${preset_name%.enc}"
     tui_msg_quick "Config Loaded" "Configuration '${preset_name}' loaded.\n\nReview and adjust in the hub, then press Proceed."
 }
 
@@ -322,9 +326,9 @@ tui_afhub() {
     {"id":"INIT","label":"Init system","value":"$(state_get INIT openrc)","widget":"menu","choices":["openrc","runit","dinit","s6"],"message":"Select the init system (PID 1) for service management"}
   ]},
   {"id":"desktop","label":"Desktop","summary_template":"{WM_DE}, dm: {DISPLAY_MANAGER}","items":[
-    {"id":"WM_DE","label":"Desktop / WM","value":"$(state_get WM_DE none)","widget":"menu","choices":["kde","sonicde","xfce4","lxqt","lxde","hyprland","sway","niri","i3wm","dwm","vxwm","icewm","mango","cinnamon","budgie","moksha","cosmic","none"],"message":"Select your desktop environment or window manager"},
-    {"id":"DISPLAY_MANAGER","label":"Display Manager","value":"$(state_get DISPLAY_MANAGER none)","widget":"menu","choices":["none","lightdm","sddm","soniclogin"],"message":"Graphical login screen (select 'none' for startx)"},
-    {"id":"X_STACK","label":"Display Stack","value":"$(state_get X_STACK xorg)","widget":"menu","choices":["xlibre","xorg"],"message":"Display server stack (xlibre is Artix's recommended X11)"}
+    {"id":"WM_DE","label":"Desktop / WM","value":"$(state_get WM_DE none)","widget":"menu","choices":["kde","xfce4","lxqt","lxde","hyprland","sway","niri","i3wm","dwm","vxwm","icewm","mango","cinnamon","budgie","moksha","cosmic","none"],"message":"Select your desktop environment or window manager"},
+    {"id":"DISPLAY_MANAGER","label":"Display Manager","value":"$(state_get DISPLAY_MANAGER none)","widget":"menu","choices":["none","lightdm","sddm"],"message":"Graphical login screen (select 'none' for startx)"},
+    {"id":"X_STACK","label":"Display Stack","value":"$(state_get X_STACK xorg)","widget":"menu","choices":["xorg"],"message":"Display server stack (Xorg is the Artix default)"},
   ]},
   {"id":"network_audio","label":"Network & Audio","summary_template":"net: {NETWORK_STACK}, aud: {AUDIO_STACK}","items":[
     {"id":"NETWORK_STACK","label":"Network stack","value":"$(state_get NETWORK_STACK networkmanager)","widget":"menu","choices":["networkmanager","dhcpcd+iwd","connman","none"],"message":"How should the system connect to networks?"},

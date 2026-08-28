@@ -43,9 +43,28 @@ and re‑launches the installer.  `scripts/noninteractive.sh` replaces every
 `tui_*` function with a stub that either returns canned answers or pulls values
 from the state file, allowing the same pipeline to run headless.
 
+### GUI removal (v9.3.2.3)
+The GUI backend was removed from live code.  The `DISPLAY`/`WAYLAND_DISPLAY`
+detection block in `main()` was deleted, `FILLY_BACKEND=tui` is forced, and the
+`--non-interactive` flag was removed entirely.  The GUI code still exists in the
+FILLY submodule but is inert.  The state file remains the only interface.
+
+### Bug report generator
+`_generate_bug_report` collects install log, state file, migration debug log,
+stage markers, and system info (uname, lscpu, free, lsblk, mounts) into
+`/tmp/artixforge-bugreport-*.tar.gz` on failure.  Called from `installer_error`.
+The bug report saves users from digging through `/tmp/artix-installer/` manually.
+
+### Advanced features root password gate
+The Advanced menu (Recovery, Power User, Migration, ISO) now requires the root
+password via `_verify_root_password`.  Checks against `/etc/shadow` with
+`openssl passwd -6`.  If running as root with no root password set, access is
+open.  The point is to prevent a random person at the keyboard from launching
+recovery or migration on someone else's machine.
+
 ---
 
-## TUI (`scripts/tui/core.sh`, `menus.sh`)
+## TUI (`scripts/tui/core.sh`, `menu.sh`)
 
 ### Hardcoded `</dev/tty`
 All `gum` invocations redirect stdin from `/dev/tty` because `gum` needs a real
@@ -71,6 +90,15 @@ variable to eliminate the risk entirely.
 Declining a quick profile left half‑set state variables (DISK, FS_TYPE, etc.)
 that would then mix with the subsequent manual selection.  The fix wipes all
 quick‑profile keys before falling through to manual config.
+
+### FILLY 0.7.0 relay protocol (v9.3.2.3)
+The TUI backend was rewritten for FILLY 0.7.0.  `core.sh` no longer depends on
+`fil.sh` — all widget transport is `filly relay` with JSON over a Unix socket.
+`_filly_relay` sends the JSON and captures stdout.  `_start_filly_daemon` starts
+the daemon with `--socket /tmp/filly.sock`; `_stop_filly_daemon` kills it.  The
+old `nc -U` transport and `FILLY_DAEMON` env var are gone.  Results are bare
+values on stdout, not JSON objects.  The daemon holds the alternate screen,
+eliminating flicker.
 
 ### TUI rewrite (v9.2.7+ → v9.3.1.0)
 The entire Bash TUI system was replaced with a Rust binary (`forge-tui`, later
@@ -121,6 +149,68 @@ of plain text inputs. The TUI pulls lists from `/usr/share/zoneinfo`,
 `/etc/locale.gen`, and `localectl list-keymaps` via helper functions. The
 GUI does the same and presents them as `Gtk.ComboBoxText` with type-to-search.
 
+### `_load_config_preset` encrypted preset handling
+`_load_config_preset` in `menu.sh` checks the first line of the chosen file for
+the magic header `ARTIXFORGE_ENCRYPTED=1`.  If present, it decrypts via
+`state_decrypt_preset`, writes the decrypted content to a mktemp file, loads
+through `state_load_preset`, and shreds the temp.  Otherwise it validates and
+loads normally.  The file picker filter accepts `.enc` files.
+
+---
+
+## State Management (`scripts/state.sh`)
+
+### State file as the interface
+No command-line flags configure behavior.  Everything is declared in state.
+Preset inheritance via `BASE_STATE`, templating via `${KEY}` references, and
+encryption via GPG are all state file features.  The installer doesn't parse
+flags — it reads state.
+
+### `lint_state` before pipeline
+`lint_state` validates required keys, disk existence, and value constraints
+(filesystem, init, bootloader, privilege escalation, display stack).  Called
+from `run_install_pipeline` before any stage runs.  The goal: catch bad state
+before it bricks a system.
+
+### State inheritance — one level, no recursion
+A preset can declare `BASE_STATE='/path/to/base.conf'`.  `state_load_preset`
+loads the base first, then applies the preset's keys on top.  Relative paths
+resolve against the preset's directory.  Empty values in the override mean
+"use base".  Exactly one level — no recursive BASE_STATE.  If someone needs
+three layers they can flatten it.  Recursion adds cycle detection and infinite
+loop risk for marginal gain.
+
+### State templating without eval
+`state_resolve_templates` resolves `${KEY}` references against the loaded
+state.  Uses bash `${!ref}` indirect expansion with a strict regex for
+reference names.  No eval, no shell injection.  Maximum 10 iterations guards
+against cycles.  Unknown references left literal — replacing with empty
+silently corrupts the value.  Resolution happens only on preset load, not on
+every `state_get`.  The hub sets concrete values — typed `${HOSTNAME}` in the
+hub stays literal.
+
+### Encrypted presets with magic header
+Encrypted presets use `ARTIXFORGE_ENCRYPTED=1` as the first line, followed by
+base64-encoded GPG binary.  `state_encrypt_preset` uses GPG AES256 with
+passphrase via `--passphrase-fd 3` — never on the command line where `ps`
+could catch it.  Decryption writes to temp, sources, shreds.  Live state on
+tmpfs stays plaintext; encryption is for persistent presets only.  The
+decrypted temp file is the weak point but the risk window is tiny.
+
+### Migration keys in `state_save`
+`MIGRATION_TYPE`, `MIGRATION_SRC`, `MIGRATION_TGT`, `MIG_ROOT`, all `DE_MIG_*`
+keys, `ATA_AUR_HELPER`, `ATA_HAS_HOMED`, `POST_INSTALL_SCRIPT`, and
+`POST_INSTALL_ONESHOT` are now persisted through `state_save`.  Before this,
+a `state_save` call during migration would drop migration keys and a resume
+would lose the user's choices.
+
+### One-shot post-install services
+`POST_INSTALL_ONESHOT` state key runs a command on first boot then
+self-destructs.  `_finalize_write_oneshot_service` writes a per-init service
+file (OpenRC, runit, dinit, s6) and a shared script at
+`/usr/local/lib/artix-installer/oneshot.sh`.  The script removes its own
+service file and symlinks on success, keeps everything on failure so the
+service retries next boot.  The four init templates live in `finalize.sh`.
 
 ---
 
@@ -197,6 +287,11 @@ inside `enable_service` and `enable_service_boot`.
 When swapping init systems (e.g., OpenRC → dinit), a warm reboot is not enough
 — the new init must be PID 1 from the kernel’s handoff.  `cold_reboot` syncs,
 remounts read‑only, and triggers a hard reset via `echo b > /proc/sysrq-trigger`.
+
+### `cold_reboot` running-system fix (v9.3.2.3)
+`cold_reboot` used `mount "${MIG_ROOT}/" -o remount,ro` — when running from
+the installed system with `MIG_ROOT=""`, that became `mount / -o remount,ro`
+with a stray trailing slash.  Fixed with `${MIG_ROOT:-/}`.
 
 ---
 
@@ -307,6 +402,16 @@ Can install the missing package, enable the service, and on dinit handles the
 
 ## Migrations (`migrations/`)
 
+### Explicit target selection (`ensure_migration_root`)
+The old live ISO detection was a single check for `/run/artix/sfs/rootfs`
+that assumed `/mnt`.  It was fragile — no validation, no way to migrate a
+mounted system elsewhere, and no confirmation on a running system.  The new
+`ensure_migration_root` in both DE and init migrations prompts for auto-mount,
+already-mounted, or custom mount point on live ISO, and running system vs
+mounted install on an installed system.  Verifies the target has
+`/etc/os-release`, pacman binary, and pacman DB.  Persists `MIG_ROOT` via
+`state_set`.
+
 ### Init migration hub
 All init migrations chain through `openrc` as the central hub.  Direct
 translations exist for common pairs (OpenRC↔runit, OpenRC↔dinit, etc.), but
@@ -317,6 +422,70 @@ avoids an N×M explosion of migration scripts.
 Associative arrays map service names between init systems (e.g.,
 `OPENRC_TO_DINIT`).  The reverse tables (`DINIT_TO_OPENRC`) are generated
 automatically by iterating the forward tables, avoiding manual duplication.
+
+### `list_enabled_services` per-init quirks (v9.3.2.3)
+Dinit's `ls` output was piped through `sed 's/\.d$//'` which corrupted service
+names ending in `d` (e.g., `sshd` → `ssh`).  Replaced with `find -type l`
+on the boot.d directory.  Runit now filters symlinks only.  S6 was listing
+all services in the database, not enabled ones — now tries
+`s6-rc-db list bundle default` first.  Systemd now strips `.service` suffix
+from unit names so the `SYSTEMD_TO_OPENRC` table can use bare keys.
+
+### DE migration `remove_packages` switched to `-Rdd` (v9.3.2.3)
+`pacman -Rns` removed dependencies.  For desktop package removal that's wrong
+— you want to remove the DE, not cascade into shared libraries.  Switched to
+`pacman -Rdd`.  Orphan removal is now a separate user-visible checklist step,
+not automatic.
+
+### DE migration dynamic source discovery (`_installed_de_packages`)
+The hardcoded `DE_PACKAGES` table listed manual package names.  They rot as
+packages are renamed or split.  `_installed_de_packages` queries installed
+packages matching a DE pattern at migration time.  KDE removal actually
+removes KDE now.  The static table is fallback, not primary.
+
+### DE migration backup never copies `.cache` (v9.3.2.3)
+The old `backup_de_config` copied `~/.config`, `~/.local`, and `~/.cache`
+wholesale.  `.cache` on a KDE system can be 20-50GB.  The migration filled
+the SSD before any package work, then everything downstream failed because
+the disk was full.  Now only copies `.config` and `.local/share`.  Reports
+backup size after completion.
+
+### ATA backup selective (v9.3.2.3)
+Same `.cache` problem, worse — `/home` copy included flatpaks, Docker volumes,
+thumbnails, build caches.  `_backup_user` now uses `rsync --safe-links` with
+excludes for `.cache`, flatpak/docker/container storage, thumbnails, gradle,
+npm, cargo, rustup, node_modules, target, build, dist.  `/etc` backup uses
+rsync with excludes for mtab, resolv.conf, pacman.d, crypttab.
+
+### ATA desktop detection lookup table (v9.3.2.3)
+The `elif` chain in `ata_detect_all` was yanderedev-tier code.  Replaced with
+an associative array mapping Arch package names to DE names.  MATE is detected
+but mapped to `none` with a warning since it's not supported.
+
+### ATA user service detection per-user (v9.3.2.3)
+`systemctl --user list-unit-files` ran as root, listing root's user units.
+Now iterates over `/tmp/ata-users.txt` and queries each user via `su -`.
+
+### ATA homed migration uses saved list (v9.3.2.3)
+`ata_migrate_homed_users` called `homectl list` directly.  By the time
+migration runs, `homectl` might be removed.  Now reads the saved
+`/tmp/ata-homed.txt` from detection.
+
+### ATA `has_homed` persisted (v9.3.2.3)
+`has_homed` was set in the init stage but not persisted.  On resume, the
+variable was 0 and homed migration was skipped.  Now persisted as
+`ATA_HAS_HOMED` state key.
+
+### SonicDE removed as target (v9.3.2.3)
+SonicDE was nuked from install paths, migration targets, ISO choices, and
+recovery repair.  Detection still recognizes SonicDE so migration can offer
+to move away from it.
+
+### xlibre removed as target (v9.3.2.3)
+Xlibre was officially dropped upstream.  Removed from X_PACKAGES, TUI/ISO hub
+choices, ISO common.yaml, drivers.sh GPU/VM conditionals, and sanity warnings.
+Detection preserved so migration can move users to xorg.  Xorg is the only
+supported display stack.
 
 ### Systemd→Artix full migration
 This path replaces the entire pacman database and package set.  It temporarily
@@ -374,6 +543,10 @@ become background loop scripts launched at boot.  Monotonic timers without a
 direct cron equivalent are flagged for manual review.  Case patterns are quoted
 to prevent bash glob expansion at parse time (e.g., `"*-*-* 00:00:00"`).
 
+### ATA timer conversion fetches config once (v9.3.2.3)
+`systemctl cat` was called four times per timer — 200 subprocesses for 50
+timers.  Now fetches once into a variable and greps the variable.
+
 ### ATA PAM and mkinitcpio conversion
 `pam_systemd.so` references are replaced with `pam_elogind.so` across all
 files in `/etc/pam.d/`; `pam_systemd_home.so` lines are removed entirely.
@@ -425,6 +598,17 @@ shell.
 converted to XDG autostart `.desktop` files in `/etc/xdg/autostart/`.  Known
 services have pre-defined desktop entries; unknown services are listed for
 manual follow-up.
+
+### ATA network credentials use actual interface (v9.3.2.3)
+`ata_convert_network_credentials` appended to a fixed filename
+`wpa_supplicant-nl80211-wlp.conf` — hardcoded interface name.  If the system
+has `wlan0` or another interface, the config never loads.  Now queries
+`ip link` for the actual wireless interface, falls back to `wlan0`.
+
+### ATA resolv.conf detection checks active systemd-resolved (v9.3.2.3)
+Detection only wrote `/tmp/ata-resolv-link.txt` if `/etc/resolv.conf` was a
+symlink.  If systemd-resolved was running but the file was real, the check
+missed it.  Now checks `systemctl is-active systemd-resolved` as well.
 
 ### ATA systemd-boot replacement
 If `bootctl status` detects systemd-boot, the migration installs GRUB to the
@@ -496,6 +680,10 @@ When operating on a mounted target system, recovery and migration code uses
 `pacman --root /mnt` to query and modify the target’s package database without
 entering a full chroot.  This is faster and avoids issues with `/dev`, `/proc`,
 or `/sys` not being mounted inside the chroot.
+
+### `openssl passwd -6` fd 3 for GPG passphrases
+`state_encrypt_preset` passes the passphrase via `--passphrase-fd 3` with
+`3<<<"${passphrase}"`.  Never on the command line where `ps` could catch it.
 
 ---
 

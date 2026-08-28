@@ -87,10 +87,14 @@ _finalize_write_report() {
             local name_var="USER_${i}_NAME"
             local shell_var="USER_${i}_SHELL"
             local sudo_var="USER_${i}_SUDO"
+            local de_var="USER_${i}_DE"
+            local dotfiles_var="USER_${i}_DOTFILES"
             local uname="${!name_var:-unnamed}"
             local ushell="${!shell_var:-/bin/bash}"
             local usudo="${!sudo_var:-yes}"
-            printf '  %s (shell: %s, sudo: %s)\n' "${uname}" "${ushell}" "${usudo}"
+            local ude="${!de_var:-system default}"
+            local udot="${!dotfiles_var:-none}"
+            printf '  %s (shell: %s, sudo: %s, DE: %s, dotfiles: %s)\n' "${uname}" "${ushell}" "${usudo}" "${ude}" "${udot}"
         done
         printf '\n'
 
@@ -112,6 +116,120 @@ _finalize_write_report() {
     } > "${report}"
     chmod 644 "${report}"
     log_info "Installation report written to /root/artixforge-install-report.txt"
+}
+
+_finalize_run_post_install_script() {
+    local script_path
+    script_path="$(state_get POST_INSTALL_SCRIPT '')"
+    [[ -n "${script_path}" ]] || return 0
+
+    log_info "Running post-install script..."
+
+    local script_name
+    script_name=$(basename "${script_path}")
+
+    if [[ -n "${ARTIX_RUNTIME_DIR:-}" ]]; then
+        cp "${script_path}" "${ARTIX_RUNTIME_DIR}/${script_name}" 2>/dev/null || true
+    fi
+
+    install -Dm755 "${script_path}" "/mnt/root/${script_name}" 2>/dev/null || {
+        log_warn "Failed to copy post-install script to target"
+        return 1
+    }
+
+    artix-chroot /mnt "/root/${script_name}" >> /tmp/artix-installer/install.log 2>&1 || {
+        log_warn "Post-install script exited with non-zero status"
+        log_warn "Check /root/${script_name} on the installed system"
+    }
+
+    log_info "Post-install script completed"
+}
+
+_finalize_write_oneshot_service() {
+    local command
+    command="$(state_get POST_INSTALL_ONESHOT '')"
+    [[ -n "${command}" ]] || return 0
+
+    local init
+    init="$(state_get INIT openrc)"
+
+    log_info "Writing one-shot post-install service..."
+
+    mkdir -p /mnt/usr/local/lib/artix-installer
+    cat > /mnt/usr/local/lib/artix-installer/oneshot.sh <<'ONESHOT'
+#!/bin/sh
+command="$1"
+
+if eval "$command"; then
+    echo "One-shot post-install completed successfully."
+    if command -v rc-update >/dev/null 2>&1; then
+        rc-update del artixforge-oneshot default 2>/dev/null || true
+        rm -f /etc/init.d/artixforge-oneshot
+    elif [ -d /etc/runit/sv/artixforge-oneshot ]; then
+        rm -rf /etc/runit/sv/artixforge-oneshot
+        rm -f /etc/runit/runsvdir/default/artixforge-oneshot
+    elif command -v dinitctl >/dev/null 2>&1; then
+        dinitctl disable artixforge-oneshot 2>/dev/null || true
+        rm -f /etc/dinit.d/artixforge-oneshot
+    elif command -v s6-rc-bundle-update >/dev/null 2>&1; then
+        s6-rc-bundle-update del default artixforge-oneshot 2>/dev/null || true
+        rm -rf /etc/s6/sv/artixforge-oneshot
+    fi
+    exit 0
+else
+    echo "One-shot post-install failed — will retry on next boot." >&2
+    exit 1
+fi
+ONESHOT
+    chmod +x /mnt/usr/local/lib/artix-installer/oneshot.sh
+
+    case "${init}" in
+        openrc)
+            cat > /mnt/etc/init.d/artixforge-oneshot <<EOF
+#!/sbin/openrc-run
+description="ArtixForge one-shot post-install service"
+
+start() {
+    ebegin "Running one-shot post-install"
+    /usr/local/lib/artix-installer/oneshot.sh "${command}"
+    eend \$?
+}
+EOF
+            chmod +x /mnt/etc/init.d/artixforge-oneshot
+            artix-chroot /mnt rc-update add artixforge-oneshot default
+            ;;
+        runit)
+            mkdir -p /mnt/etc/runit/sv/artixforge-oneshot
+            cat > /mnt/etc/runit/sv/artixforge-oneshot/run <<EOF
+#!/bin/sh
+exec /usr/local/lib/artix-installer/oneshot.sh "${command}"
+EOF
+            chmod +x /mnt/etc/runit/sv/artixforge-oneshot/run
+            mkdir -p /mnt/etc/runit/runsvdir/default
+            ln -sf /etc/runit/sv/artixforge-oneshot /mnt/etc/runit/runsvdir/default/artixforge-oneshot 2>/dev/null || true
+            ;;
+        dinit)
+            cat > /mnt/etc/dinit.d/artixforge-oneshot <<EOF
+type = process
+command = /usr/local/lib/artix-installer/oneshot.sh "${command}"
+restart = true
+logfile = /tmp/artixforge-oneshot.log
+EOF
+            mkdir -p /mnt/etc/dinit.d/boot.d
+            ln -sf ../artixforge-oneshot /mnt/etc/dinit.d/boot.d/artixforge-oneshot 2>/dev/null || true
+            ;;
+        s6)
+            mkdir -p /mnt/etc/s6/sv/artixforge-oneshot
+            cat > /mnt/etc/s6/sv/artixforge-oneshot/run <<EOF
+#!/bin/sh
+exec /usr/local/lib/artix-installer/oneshot.sh "${command}"
+EOF
+            chmod +x /mnt/etc/s6/sv/artixforge-oneshot/run
+            artix-chroot /mnt s6-rc-bundle-update add default artixforge-oneshot 2>/dev/null || true
+            ;;
+    esac
+
+    log_info "One-shot post-install service enabled for ${init}"
 }
 
 _finalize_success_dialog() {
@@ -143,6 +261,12 @@ stage_finalize() {
 
     log_info "Running post-install validation..."
     _finalize_validate
+
+    log_info "Running post-install script..."
+    _finalize_run_post_install_script
+
+    log_info "Writing one-shot service..."
+    _finalize_write_oneshot_service
 
     log_info "Applying final system configuration..."
     _finalize_write_report

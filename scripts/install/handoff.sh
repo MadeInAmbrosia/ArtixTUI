@@ -102,6 +102,8 @@ $(for ((i=1; i<=$(state_get USER_COUNT 1); i++)); do
     printf 'USER_%d_SHELL="%s"\n'  "$i" "$(state_get "USER_${i}_SHELL" "/bin/bash")"
     printf 'USER_%d_GROUPS="%s"\n' "$i" "$(state_get "USER_${i}_GROUPS" "")"
     printf 'USER_%d_SUDO="%s"\n'   "$i" "$(state_get "USER_${i}_SUDO" "yes")"
+    printf 'USER_%d_DE="%s"\n'     "$i" "$(state_get "USER_${i}_DE" "")"
+    printf 'USER_%d_DOTFILES="%s"\n' "$i" "$(state_get "USER_${i}_DOTFILES" "")"
 done)
 PRIV_ESCALATION="$(state_get PRIV_ESCALATION)"
 NETWORK_STACK="$(state_get NETWORK_STACK)"
@@ -150,6 +152,7 @@ KERNEL_GOVERNOR="$(state_get KERNEL_GOVERNOR)"
 TARGET_ARCH="$(state_get TARGET_ARCH)"
 BOARD_NAME="$(state_get BOARD_NAME)"
 UBOOT_TARGET="$(state_get UBOOT_TARGET)"
+POST_INSTALL_SCRIPT="$(state_get POST_INSTALL_SCRIPT '')"
 EOF
     chmod 600 /mnt/etc/artix-installer.conf
 

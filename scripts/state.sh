@@ -10,6 +10,204 @@ ensure_state_dirs() {
     mkdir -p "${STATE_ROOT}" "${STAGE_DIR}" "${LOG_DIR}"
 }
 
+lint_state() {
+    local errors=""
+
+    local -a required_keys=(DISK FS_TYPE BOOTLOADER KERNEL_CHOICE INIT)
+    for key in "${required_keys[@]}"; do
+        local val
+        val=$(state_get "$key" "")
+        [[ -n "$val" ]] || errors+="Missing required key: ${key}"$'\n'
+    done
+
+    local disk
+    disk=$(state_get DISK "")
+    if [[ -n "$disk" && ! -b "$disk" ]]; then
+        errors+="DISK '${disk}' is not a valid block device"$'\n'
+    fi
+
+    local fs
+    fs=$(state_get FS_TYPE "")
+    if [[ -n "$fs" ]]; then
+        case "$fs" in
+            ext4|btrfs|xfs|f2fs) ;;
+            *) errors+="FS_TYPE '${fs}' is not supported"$'\n' ;;
+        esac
+    fi
+
+    local init
+    init=$(state_get INIT "")
+    if [[ -n "$init" ]]; then
+        case "$init" in
+            openrc|runit|dinit|s6|busybox) ;;
+            *) errors+="INIT '${init}' is not supported"$'\n' ;;
+        esac
+    fi
+
+    local bootloader
+    bootloader=$(state_get BOOTLOADER "")
+    if [[ -n "$bootloader" ]]; then
+        case "$bootloader" in
+            grub|refind|efistub|limine) ;;
+            *) errors+="BOOTLOADER '${bootloader}' is not supported"$'\n' ;;
+        esac
+    fi
+
+    local priv_esc
+    priv_esc=$(state_get PRIV_ESCALATION "")
+    if [[ -n "$priv_esc" ]]; then
+        case "$priv_esc" in
+            sudo|doas) ;;
+            *) errors+="PRIV_ESCALATION '${priv_esc}' is not supported"$'\n' ;;
+        esac
+    fi
+
+    local x_stack
+    x_stack=$(state_get X_STACK "")
+    if [[ -n "$x_stack" ]]; then
+        case "$x_stack" in
+            xorg|wayland|none) ;;
+            *) errors+="X_STACK '${x_stack}' is not supported"$'\n' ;;
+        esac
+    fi
+
+    local user_count
+    user_count=$(state_get USER_COUNT 0)
+    if [[ "$user_count" -eq 0 ]]; then
+        local root_pass
+        root_pass=$(state_get ROOT_PASS "")
+        [[ -n "$root_pass" ]] || errors+="No users and no root password configured"$'\n'
+    fi
+
+    if [[ -n "$errors" ]]; then
+        echo "$errors"
+        return 1
+    fi
+
+    return 0
+}
+
+state_load_preset() {
+    local preset_file="${1}"
+    [[ -f "${preset_file}" ]] || return 1
+
+    local base_state
+    base_state=$(grep '^BASE_STATE=' "${preset_file}" 2>/dev/null | head -n1 | cut -d= -f2- | tr -d "'\"")
+
+    if [[ -n "${base_state}" ]]; then
+        if [[ "${base_state}" != /* ]]; then
+            base_state="$(dirname "${preset_file}")/${base_state}"
+        fi
+        if [[ ! -f "${base_state}" ]]; then
+            log_warn "BASE_STATE not found: ${base_state}"
+        else
+            while IFS='=' read -r key value; do
+                [[ -z "${key}" || "${key}" == \#* || "${key}" == "BASE_STATE" ]] && continue
+                value="${value#\'}"; value="${value%\'}"
+                value="${value#\"}"; value="${value%\"}"
+                [[ -n "${value}" ]] && state_set "${key}" "${value}"
+            done < "${base_state}"
+        fi
+    fi
+
+    while IFS='=' read -r key value; do
+        [[ -z "${key}" || "${key}" == \#* || "${key}" == "BASE_STATE" ]] && continue
+        value="${value#\'}"; value="${value%\'}"
+        value="${value#\"}"; value="${value%\"}"
+        [[ -n "${value}" ]] && state_set "${key}" "${value}"
+    done < "${preset_file}"
+
+    state_resolve_templates
+}
+
+state_resolve_templates() {
+    local -A values
+    local key value ref resolved pass
+
+    while IFS='=' read -r key value; do
+        [[ -z "${key}" || "${key}" == \#* ]] && continue
+        value="${value#\'}"; value="${value%\'}"
+        value="${value#\"}"; value="${value%\"}"
+        values["${key}"]="${value}"
+    done < "${STATE_FILE}"
+
+    local changed=1
+    local iterations=0
+    while [[ ${changed} -eq 1 && ${iterations} -lt 10 ]]; do
+        changed=0
+        iterations=$((iterations + 1))
+
+        for key in "${!values[@]}"; do
+            value="${values[${key}]}"
+            if [[ "${value}" =~ \$\{([A-Za-z_][A-Za-z0-9_]*)\} ]]; then
+                ref="${BASH_REMATCH[1]}"
+                resolved="${values[${ref}]:-}"
+                if [[ -n "${resolved}" ]]; then
+                    values["${key}"]="${value//\$\{${ref}\}/${resolved}}"
+                    changed=1
+                fi
+            fi
+        done
+    done
+
+    for key in "${!values[@]}"; do
+        state_set "${key}" "${values[${key}]}"
+    done
+}
+
+state_encrypt_preset() {
+    local preset="${1}"
+    [[ -f "${preset}" ]] || { log_error "Preset not found: ${preset}"; return 1; }
+
+    local passphrase confirm
+    passphrase=$(tui_password "Preset Encryption" "Enter passphrase to encrypt this preset:") || return 1
+    confirm=$(tui_password "Preset Encryption" "Confirm passphrase:") || return 1
+    [[ "${passphrase}" == "${confirm}" ]] || { tui_msg_quick "Mismatch" "Passphrases do not match."; return 1; }
+
+    local temp_encrypted
+    temp_encrypted=$(mktemp)
+
+    {
+        printf 'ARTIXFORGE_ENCRYPTED=1\n'
+        gpg --symmetric --cipher-algo AES256 --batch --yes \
+            --passphrase-fd 3 3<<<"${passphrase}" \
+            --output - "${preset}" 2>/dev/null | base64
+    } > "${temp_encrypted}"
+
+    mv "${temp_encrypted}" "${preset}.enc"
+    chmod 600 "${preset}.enc"
+    rm -f "${preset}"
+    log_info "Encrypted preset saved to ${preset}.enc"
+}
+
+state_decrypt_preset() {
+    local encrypted="${1}"
+    [[ -f "${encrypted}" ]] || { log_error "Encrypted preset not found: ${encrypted}"; return 1; }
+
+    head -n1 "${encrypted}" | grep -q 'ARTIXFORGE_ENCRYPTED=1' || {
+        log_error "Not an encrypted ArtixForge preset"
+        return 1
+    }
+
+    local passphrase
+    passphrase=$(tui_password "Preset Decryption" "Enter passphrase to decrypt this preset:") || return 1
+
+    local temp_base64 temp_decrypted
+    temp_base64=$(mktemp)
+    temp_decrypted=$(mktemp)
+
+    tail -n +2 "${encrypted}" | base64 -d > "${temp_base64}" 2>/dev/null
+    gpg --decrypt --batch --yes --passphrase-fd 3 3<<<"${passphrase}" \
+        --output "${temp_decrypted}" "${temp_base64}" 2>/dev/null || {
+        tui_msg_quick "Decryption Failed" "Wrong passphrase or corrupted file."
+        rm -f "${temp_base64}" "${temp_decrypted}"
+        return 1
+    }
+
+    cat "${temp_decrypted}"
+    rm -f "${temp_base64}" "${temp_decrypted}"
+}
+
 state_save() {
     ensure_state_dirs
     local tmp_state="${STATE_FILE}.tmp"
@@ -53,6 +251,8 @@ state_save() {
             printf "USER_%d_SHELL='%s'\n"  "$i" "$(state_get "USER_${i}_SHELL" "/bin/bash")"
             printf "USER_%d_GROUPS='%s'\n" "$i" "$(state_get "USER_${i}_GROUPS" "wheel,audio,video,storage")"
             printf "USER_%d_SUDO='%s'\n"   "$i" "$(state_get "USER_${i}_SUDO" "yes")"
+            printf "USER_%d_DE='%s'\n"     "$i" "$(state_get "USER_${i}_DE" "")"
+            printf "USER_%d_DOTFILES='%s'\n" "$i" "$(state_get "USER_${i}_DOTFILES" "")"
         done
         printf "USER_SHELL='%s'\n"            "$(state_get USER_SHELL /bin/bash)"
         printf "PRIV_ESCALATION='%s'\n"       "$(state_get PRIV_ESCALATION sudo)"
@@ -69,7 +269,6 @@ state_save() {
         printf "POWER_USER='%s'\n"            "$(state_get POWER_USER no)"
         printf "POWERUSER_PACKAGES='%s'\n"    "$(state_get POWERUSER_PACKAGES '')"
         printf "POWERUSER_PROFILE='%s'\n"     "$(state_get POWERUSER_PROFILE default)"
-        printf "GUI_MODE='%s'\n"              "$(state_get GUI_MODE no)"
         printf "ENABLE_AURIS='%s'\n"          "$(state_get ENABLE_AURIS no)"
         printf "LUKS_KEYFILE='%s'\n"          "$(state_get LUKS_KEYFILE no)"
         printf "LUKS_KEYFILE_PATH='%s'\n"     "$(state_get LUKS_KEYFILE_PATH '')"
@@ -108,6 +307,19 @@ state_save() {
         printf "TARGET_ARCH='%s'\n"           "$(state_get TARGET_ARCH '')"
         printf "BOARD_NAME='%s'\n"            "$(state_get BOARD_NAME '')"
         printf "UBOOT_TARGET='%s'\n"          "$(state_get UBOOT_TARGET '')"
+        printf "MIGRATION_TYPE='%s'\n"        "$(state_get MIGRATION_TYPE '')"
+        printf "MIGRATION_SRC='%s'\n"         "$(state_get MIGRATION_SRC '')"
+        printf "MIGRATION_TGT='%s'\n"         "$(state_get MIGRATION_TGT '')"
+        printf "MIG_ROOT='%s'\n"              "$(state_get MIG_ROOT '')"
+        printf "DE_MIG_DM='%s'\n"             "$(state_get DE_MIG_DM '')"
+        printf "DE_MIG_X='%s'\n"              "$(state_get DE_MIG_X '')"
+        printf "DE_MIG_AUDIO='%s'\n"          "$(state_get DE_MIG_AUDIO '')"
+        printf "DE_MIG_NETWORK='%s'\n"        "$(state_get DE_MIG_NETWORK '')"
+        printf "DE_MIG_EXTRAS='%s'\n"         "$(state_get DE_MIG_EXTRAS '')"
+        printf "ATA_AUR_HELPER='%s'\n"        "$(state_get ATA_AUR_HELPER '')"
+        printf "ATA_HAS_HOMED='%s'\n"         "$(state_get ATA_HAS_HOMED 0)"
+        printf "POST_INSTALL_SCRIPT='%s'\n"   "$(state_get POST_INSTALL_SCRIPT '')"
+        printf "POST_INSTALL_ONESHOT='%s'\n"  "$(state_get POST_INSTALL_ONESHOT '')"
     } > "${tmp_state}"
     mv "${tmp_state}" "${STATE_FILE}"
     chmod 600 "${STATE_FILE}"

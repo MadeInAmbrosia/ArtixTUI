@@ -8,7 +8,6 @@ ata_detect_all() {
 
     # Core system (uses recovery detection functions)
     detect_init
-    # detect_desktop (recovery detects look for Artix package names)
     detect_display_manager
     detect_xstack
     detect_audio_stack
@@ -22,34 +21,42 @@ ata_detect_all() {
     detect_uki
 
     # Override desktop detection with Arch package names
-    if pacman -Q plasma-meta &>/dev/null || pacman -Q plasma-desktop &>/dev/null; then
-        state_set WM_DE kde
-    elif pacman -Q xfce4 &>/dev/null; then
-        state_set WM_DE xfce4
-    elif pacman -Q cinnamon &>/dev/null; then
-        state_set WM_DE cinnamon
-    elif pacman -Q budgie-desktop &>/dev/null; then
-        state_set WM_DE budgie
-    elif pacman -Q gnome-shell &>/dev/null; then
-        state_set WM_DE gnome
-    elif pacman -Q lxqt-session &>/dev/null; then
-        state_set WM_DE lxqt
-    elif pacman -Q lxde-common &>/dev/null; then
-        state_set WM_DE lxde
-    elif pacman -Q hyprland &>/dev/null; then
-        state_set WM_DE hyprland
-    elif pacman -Q sway &>/dev/null; then
-        state_set WM_DE sway
-    elif pacman -Q niri &>/dev/null; then
-        state_set WM_DE niri
-    elif pacman -Q i3-wm &>/dev/null; then
-        state_set WM_DE i3wm
-    elif pacman -Q dwm &>/dev/null; then
-        state_set WM_DE dwm
-    elif pacman -Q icewm &>/dev/null; then
-        state_set WM_DE icewm
-    elif pacman -Q mate-desktop &>/dev/null; then
-        state_set WM_DE mate
+    local -A arch_de_pkgs=(
+        ["kde"]="plasma-meta plasma-desktop"
+        ["xfce4"]="xfce4"
+        ["cinnamon"]="cinnamon"
+        ["budgie"]="budgie-desktop"
+        ["gnome"]="gnome-shell"
+        ["lxqt"]="lxqt-session"
+        ["lxde"]="lxde-common"
+        ["hyprland"]="hyprland"
+        ["sway"]="sway"
+        ["niri"]="niri"
+        ["i3wm"]="i3-wm"
+        ["dwm"]="dwm"
+        ["icewm"]="icewm"
+        ["mate"]="mate-desktop"
+    )
+
+    local detected_de="none"
+    for de in "${!arch_de_pkgs[@]}"; do
+        local found=0
+        for pkg in ${arch_de_pkgs[$de]}; do
+            if pacman -Q "$pkg" &>/dev/null; then
+                detected_de="$de"
+                found=1
+                break
+            fi
+        done
+        [[ $found -eq 1 ]] && break
+    done
+
+    if [[ "$detected_de" == "mate" ]]; then
+        log_warn "MATE desktop detected, but MATE is not supported for automatic migration."
+        log_warn "Setting WM_DE=none so you can install a desktop manually after migration."
+        state_set WM_DE none
+    else
+        state_set WM_DE "$detected_de"
     fi
 
     # Users
@@ -78,7 +85,14 @@ ata_detect_all() {
 
     # Systemd units
     systemctl list-unit-files --state=enabled --no-legend 2>/dev/null | awk '{print $1}' > /tmp/ata-units.txt
-    systemctl --user list-unit-files --state=enabled --no-legend 2>/dev/null | awk '{print $1}' > /tmp/ata-user-units.txt || true
+
+    # User units: iterate over each user, not just root
+    : > /tmp/ata-user-units.txt
+    while IFS= read -r user; do
+        if id "$user" &>/dev/null; then
+            su - "$user" -c 'systemctl --user list-unit-files --state=enabled --no-legend 2>/dev/null' 2>/dev/null | awk '{print $1}' >> /tmp/ata-user-units.txt || true
+        fi
+    done < /tmp/ata-users.txt
 
     # Custom unit files
     find /etc/systemd/system -name '*.service' -not -name 'dbus-org.*' > /tmp/ata-custom-units.txt 2>/dev/null

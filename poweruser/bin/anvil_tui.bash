@@ -1,24 +1,19 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-_filly_send() {
-    local _dir _tmp _out
-    _dir=$(mktemp -d --tmpdir anvil-tui-XXXXXX)
-    chmod 700 "$_dir"
-    _tmp="$_dir/input.json"
-    _out="$_dir/output.json"
-    printf '%s\n' "$1" > "$_tmp"
-    "${FILLY_BIN}" oneshot --input "$_tmp" 2>/dev/null | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' > "$_out" || true
-    cat "$_out" 2>/dev/null
-    rm -rf "$_dir"
+_filly_relay() {
+    local json="${1}"
+    _start_filly_daemon || return 1
+    "${FILLY_BIN}" relay --socket "${FILLY_SOCKET}" "${json}" 2>/dev/null
 }
 
 _filly_result() {
-    local _json
-    _json=$(_filly_send "$1")
-    [[ -z "$_json" ]] && return 1
-    [[ "$(jq -r '.cancelled' <<< "$_json")" == "true" ]] && return 1
-    jq -r '.result // empty' <<< "$_json" 2>/dev/null
+    _filly_relay "$1"
+}
+
+tui_anvil_hub() {
+    local categories_json='...'
+    _filly_result '{"widget":"anvil","params":{"title":"anvil","categories":'"${categories_json}"'}}'
 }
 
 tui_anvil_hub() {

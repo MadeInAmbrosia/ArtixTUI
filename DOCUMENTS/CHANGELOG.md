@@ -1,5 +1,60 @@
 # Changelog
 
+## v9.3.2.3 (2026-08-28) — ArtixForge
+
+### Added
+- **FILLY 0.7.0 TUI rewrite** — `scripts/tui/core.sh` now speaks the FILLY relay protocol directly against the daemon; all widget functions (`tui_msg`, `tui_yesno`, `tui_input`, `tui_password`, `tui_menu`, `tui_checklist`, `tui_filter`, `tui_multiselect`, `tui_file_picker`, `tui_summary`, `tui_edit`, `tui_disk`, `tui_hub`, `tui_install_hub`, `tui_recovery`, `tui_iso`, `tui_migration_init`, `tui_migration_desktop`, `tui_poweruser`) route through `filly relay` with JSON over Unix socket; `_filly_dispatch` and `_filly_relay` handle all transport; results read from stdout; the old `fil.sh` Bash wrapper dependency is gone; `--insecure-plugins` removed from daemon start since plugin `.sig` files ship alongside the `.so` files
+- **FILLY plugin updates for 0.7.0** — `install_hub.c` accepts tab/text input and threads backend to sub-widgets; `anvil.c` accepts tab; `iso.c` rewritten with `visible_if` support and edit overlays; `migration_init.c` accepts tab and highlights selected fields; `migration_desktop.c` accepts tab and highlights selected fields; `password_confirm.c` accepts tab/text input and hashes passwords before returning; `user_manager.c` gains `de` and `dotfiles` fields with 8-field form; `recovery.c` rewritten for nested JSON structure with two-column layout and F-keys; `poweruser.c` rewritten with `visible_if` and edit overlays; all plugins re-signed with Ed25519
+- **State file linting** — `lint_state` in `state.sh` validates required keys (DISK, FS_TYPE, BOOTLOADER, KERNEL_CHOICE, INIT), checks disk device exists, validates filesystem/init/bootloader/privilege escalation/display stack values, and ensures at least one user or root password exists; called from `run_install_pipeline` before any stage runs
+- **State file inheritance** — `state_load_preset` loads a preset and if the preset declares `BASE_STATE='/path/to/base.conf'`, loads the base first and applies the preset's keys on top; relative paths resolve against the preset's directory; empty values in an override mean "use base"; no recursion beyond one level
+- **State file templating** — `state_resolve_templates` resolves `${KEY}` references against the loaded state file using bash indirect expansion, no eval, max 10 iterations, unknown references left literal; runs after preset load only
+- **Encrypted state presets** — `state_encrypt_preset` and `state_decrypt_preset` use GPG symmetric encryption (AES256) with passphrase via fd 3 (never on command line); encrypted file format is magic header `ARTIXFORGE_ENCRYPTED=1` followed by base64-encoded GPG binary; decryption writes to temp, sources, shreds; detected in `_load_config_preset` by magic header
+- **Per-user desktop environment** — `USER_${i}_DE` state key, persisted through `state_save`, exported to target via `handoff.sh`, applied in `configure_users` with fallback to system-wide `WM_DE`; seat group added when user DE is a Wayland compositor
+- **Per-user dotfiles repositories** — `USER_${i}_DOTFILES` state key; `_clone_dotfiles` in `users.sh` clones the repo, copies `.config/` into `~/.config/`, copies dotfiles and dotdirs from repo root into home, skips `.git`, chowns to user
+- **Post-install script injection** — `POST_INSTALL_SCRIPT` state key; `_validate_post_install_script` checks path exists and is readable before pipeline; `_finalize_run_post_install_script` copies script to target `/root/`, runs inside chroot, logs output, warns on non-zero exit
+- **One-shot post-install services** — `POST_INSTALL_ONESHOT` state key; `_finalize_write_oneshot_service` in `finalize.sh` writes a self-destructing service for the target init (OpenRC, runit, dinit, s6) that runs the command on first boot and removes its own service file and symlinks on success, keeps on failure with retry on next boot
+- **Bug report generator** — `_generate_bug_report` collects install log, state file, migration debug log, stage markers, system info (uname, lscpu, free, lsblk, mounts) into `/tmp/artixforge-bugreport-*.tar.gz`; called from `installer_error` on failure and shown to user
+- **Advanced features gate** — `_verify_root_password` prompts for root password before showing the Advanced menu (Recovery, Power User, Migration, ISO); checks against live system's `/etc/shadow`, falls back to open access if running as root with no root password set
+- **Migration target selection** — `ensure_migration_root` in both `migrations/des/common.sh` and `migrations/inits/common.sh` replaces the fragile single-signal live ISO detection; prompts for auto-mount, already-mounted, or custom mount point on live ISO; prompts for running system vs mounted install on installed system; verifies target has `/etc/os-release`, pacman binary, and pacman DB; persists `MIG_ROOT` via `state_set`
+
+### Changed
+- **License changed to IRX License 1.0** — replaced Forge Attribution License 1.0 across all projects; includes patent grant with termination on litigation, 30-day cure period for violations, modified versions must use a different project name or prominently display modification notices; Section 9 optional endorsement clause activated for FILLY, not needed for ArtixForge; `LICENSE`, `OSI.md`, and `TRADEMARKS.md` updated
+- **GUI removed from live code** — `install` no longer checks `DISPLAY`/`WAYLAND_DISPLAY` or prompts to use GUI; `FILLY_BACKEND=tui` is forced; `--non-interactive` flag removed entirely; GUI code remains in the FILLY submodule but is inert
+- **SonicDE removed as target** — removed from DE_PACKAGES, DE_DISPLAY_MANAGER, DM_PACKAGES, desktop install script, TUI/ISO hub choices, and ISO package lists; detection preserved in recovery and migration so existing SonicDE installs are recognized and can migrate away; explicit warning when migrating from SonicDE; repo setup and cleanup cases deleted
+- **xlibre removed as target** — removed from X_PACKAGES, TUI/ISO hub choices, ISO common.yaml, drivers.sh GPU/VM conditionals, and sanity warnings; detection preserved for migration away; xorg is the only supported display stack; `validate_display_stack` simplified
+- **DE migration `remove_packages` switched to `pacman -Rdd`** — no dependency cascade on desktop removal; orphan removal separated into a user-visible checklist step
+- **DE migration source package discovery** — `_installed_de_packages` dynamically queries installed packages by DE pattern instead of relying solely on hardcoded package lists; KDE removal now actually removes KDE
+- **DE migration backup selective** — `backup_de_config` never copies `.cache` or `.local/cache`; only `.config` and `.local/share`; reports backup size after completion
+- **Init migration service listing fixed** — dinit uses `find -type l` on `boot.d` not broken `sed 's/\.d$//'`; runit filters symlinks only; s6 attempts `s6-rc-db list bundle default` first; systemd strips `.service` suffix
+- **Init migration service mapping expanded** — `logind` → `elogind` added to all tables; `SYSTEMD_TO_OPENRC` keys updated to bare names without `.service` suffix
+- **Init migration `cold_reboot` fixed** — uses `${MIG_ROOT:-/}` so running-system migrations remount root correctly
+- **ATA backup selective** — `_backup_user` uses rsync with `--safe-links` and excludes `.cache`, flatpak/docker/container storage, thumbnails, gradle, npm, cargo, rustup, node_modules, target, build, dist; `/etc` backup excludes mtab, resolv.conf, pacman.d, crypttab
+- **ATA user service detection per-user** — iterates over `/tmp/ata-users.txt` and queries each user's `systemctl --user` units instead of only root's
+- **ATA homed migration uses saved list** — reads `/tmp/ata-homed.txt` instead of calling `homectl` directly, which may be removed by the time migration runs
+- **ATA desktop detection lookup table** — replaced the `elif` chain with an associative array mapping Arch package names to DE names; MATE detected but mapped to `none` with warning since it's not supported
+- **ATA `has_homed` persisted** — `ATA_HAS_HOMED` state key survives resume
+- **ATA network credentials use actual interface** — queries `ip link` for the wireless interface instead of hardcoding `wlp`
+- **ATA timer conversion fetches unit config once** — `systemctl cat` called once per timer instead of four times
+- **ATA resolv.conf detection checks active systemd-resolved** — not just symlink status
+- **State migration keys persisted** — `MIGRATION_TYPE`, `MIGRATION_SRC`, `MIGRATION_TGT`, `MIG_ROOT`, all `DE_MIG_*` keys, `ATA_AUR_HELPER`, `ATA_HAS_HOMED`, `POST_INSTALL_SCRIPT`, `POST_INSTALL_ONESHOT` added to `state_save`
+- **`_setup_filly` plugin paths corrected** — copies from `FILLY/out/libartixforge.so` not `FILLY/libartixforge.so`
+- **Multi-DE installation** — `install_desktop` in `desktop.sh` now collects unique DEs from system `WM_DE` and all `USER_${i}_DE` keys, installs all requested DEs in one transaction, dedupes package lists, handles per-DE special cases (MangoWM AUR build, vxwm source build), and enables seatd if any user requested a Wayland compositor; `_desktop_packages_for` extracts the package selection logic into a reusable function
+
+### Removed
+- **`--non-interactive` mode** — GUI backend is gone; the non-interactive flag was GUI plumbing
+- **`fil.sh` dependency** — FILLY 0.7.0 has no `fil.sh`; all TUI transport is now native `filly relay` in `core.sh`
+- **SonicDE install path** — `install_sonicde`, repo setup, DM install, service enable removed from desktop install script
+- **xlibre install path** — all xlibre package references in drivers, desktop install, ISO generation removed
+- **`_cleanup_target_repo` in DE migration** — function deleted entirely; SonicDE repo cleanup happens inline in the SonicDE removal branch only
+
+### Fixed
+- **KDE→XFCE regression** — source DE packages now removed via dynamic discovery + `-Rdd`; backup no longer fills disk with caches; target DE packages install correctly; three failures (no KDE removal, no XFCE install, massive backup copy) fixed separately
+- **`tui_edit` trailing newline loss** — noted in new core.sh; config files edited via text editor preserve newlines correctly through relay protocol
+- **`install` bug report syntax error** — missing quote in `_generate_bug_report` fixed
+- **SonicDE and xlibre removed from migration plugin targets** — FILLY `migration_desktop.c` no longer offers SonicDE or xlibre as selectable targets; detection still recognizes them as sources so users can migrate away
+
+####  artist
+
 ## v9.3.2.2 (2026-08-03) — ArtixForge
 
 ### Added

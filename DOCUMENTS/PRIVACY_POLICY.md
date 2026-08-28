@@ -18,7 +18,6 @@ The installer runs entirely on your local machine. It does not:
 | Stage progress markers | `/tmp/artix-installer/stages/` | Deleted on reboot (tmpfs) |
 | User password hashes | `/tmp/artix-installer/state.conf` (SHA-512 crypt hash) | Deleted on reboot (tmpfs) |
 | LUKS passphrase | Memory only, never written to disk | Gone when installer exits |
-| GUI installer state (filly-graphical) | Python memory, writes to state.conf | Cleared when GUI window closes; state.conf on tmpfs |
 | Target system config | `/mnt/etc/artix-installer.conf` | Shredded or removed during finalize stage |
 | Quick Profile save | `/mnt/etc/artixforge-profile.conf` | Remains on installed system for reuse |
 | Installer log | `/mnt/var/log/artix-installer.log` | Remains on the installed system for debugging |
@@ -26,7 +25,10 @@ The installer runs entirely on your local machine. It does not:
 | Recipe database | `/mnt/usr/share/artix-poweruser/db/local.db` | Remains on the installed system |
 | Recovery detection data | `/tmp/artix-installer/state.conf` (reconstructed) | Deleted on reboot (tmpfs) |
 | ATA migration backup | `/arch-migration-backup-YYYYMMDD-HHMMSS/` | Stays on disk (root-only, chmod 700); user must delete manually |
-| FILLY widget temp files | `/tmp/tmp.XXXXXXXXXX` (oneshot mode) or `/tmp/filly.sock` (daemon mode) | Discarded after each widget call; any remnants deleted on reboot (tmpfs) |
+| Encrypted state presets | `presets/*.enc` | GPG symmetric (AES256); decrypted only in memory or temp files when loaded |
+| FILLY daemon socket | `/tmp/filly.sock` | Removed on installer exit; deleted on reboot (tmpfs) |
+| Bug report tarball | `/tmp/artixforge-bugreport-*.tar.gz` | Stays in /tmp until user deletes or reboot (tmpfs) |
+| Post-install script copy | `/root/<script>` on target system | Remains on installed system; user must delete manually if sensitive |
 
 The installed system itself contains no ArtixForge-specific data collection. The installer
 removes its own configuration from the target before finishing.
@@ -51,6 +53,10 @@ credential subdirectories within the backup are also `chmod 700`. When credentia
 are restored to the target system, files are written with `chmod 600`. The raw
 backup is retained so the user can verify what was migrated and delete it manually.
 
+The ATA backup is selective: `.cache`, flatpak/docker/container storage,
+thumbnails, and build caches are excluded. Only dotfiles, configs, and local
+share data are copied.
+
 No data leaves the local machine during ATA migration. The package mapping feature
 queries only the local pacman database and configured repositories — no external
 API calls are made for system audit or conversion.
@@ -70,16 +76,33 @@ The recovery mode rootkit scanner (`rkhunter`) downloads its database updates
 from the rkhunter project servers when first run. This is the only optional
 third-party network request outside of package management.
 
-SonicDE packages are downloaded from the sonicde-artix.github.io third-party repository.
+The state preset encryption uses local GPG only. No keys or passphrases are
+transmitted anywhere. The encrypted preset file is local.
 
-**The GUI installer (`filly-graphical`):** extras search queries local pacman cache only. Power User recipe list is fetched once from the community repository at startup; individual recipe files are downloaded on demand when sections are enabled. All other data reads/writes `state.conf` and spawns the non‑interactive Bash installer. No telemetry, no analytics, no background network activity. Runs inside a Python venv at `/tmp/filly-gui-venv` with system-site-packages for GTK4 bindings.
+Post-install scripts (`POST_INSTALL_SCRIPT`) and one-shot services
+(`POST_INSTALL_ONESHOT`) are user-provided. ArtixForge copies them to the target
+system but does not inspect, transmit, or execute them outside the local
+installation.
 
-**FILLY:** the Rust TUI binary makes no network connections. It reads JSON from a local temp file specified by `--input` and writes responses to stdout or a local temp file specified by `--output`. All rendering is done via `/dev/tty`. No data leaves the process.
+Per-user dotfiles repositories (`USER_${i}_DOTFILES`) are cloned from the URL
+the user provides. This is the same as running `git clone` manually — the remote
+server sees the same request it would see from any git client.
+
+**FILLY:** the C TUI binary makes no network connections. Interactive widgets
+run through a local daemon (`filly daemon`) listening on a Unix socket at
+`/tmp/filly.sock`. Widget JSON requests are sent via `filly relay` and responses
+are returned on stdout. The socket is accessible only to the current user. All
+rendering is done via `/dev/tty`. No data leaves the process.
 
 ## Third-party services
 
 The installer does not integrate with any third-party analytics, monitoring,
 or data collection services. Zero. None.
+
+Chaotic-AUR and CachyOS repositories may be configured during installation if
+the user selects them. Package downloads from those repositories are standard
+pacman operations. No additional data is transmitted beyond the package requests
+themselves.
 
 ## Questions
 

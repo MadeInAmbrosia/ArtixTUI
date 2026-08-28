@@ -1,6 +1,54 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+_clone_dotfiles() {
+    local username="$1" repo_url="$2"
+    
+    if [[ -z "${repo_url}" ]]; then
+        return 0
+    fi
+
+    if ! command -v git >/dev/null 2>&1; then
+        log_warn "git not installed — cannot clone dotfiles for ${username}"
+        return 1
+    fi
+
+    log_info "Cloning dotfiles for ${username} from ${repo_url}..."
+
+    local tmp_clone="/tmp/dotfiles-${username}"
+    rm -rf "${tmp_clone}"
+    if ! git clone --depth 1 "${repo_url}" "${tmp_clone}" 2>/dev/null; then
+        log_warn "Failed to clone dotfiles repository: ${repo_url}"
+        return 1
+    fi
+
+    local home_dir="/mnt/home/${username}"
+    mkdir -p "${home_dir}"
+
+    if [[ -d "${tmp_clone}/.config" ]]; then
+        mkdir -p "${home_dir}/.config"
+        cp -a "${tmp_clone}/.config/." "${home_dir}/.config/"
+    fi
+
+    find "${tmp_clone}" -maxdepth 1 -type f -name '.*' | while IFS= read -r dotfile; do
+        local filename
+        filename=$(basename "${dotfile}")
+        [[ "${filename}" == ".config" ]] && continue
+        [[ "${filename}" == ".git" ]] && continue
+        cp -a "${dotfile}" "${home_dir}/${filename}"
+    done
+
+    find "${tmp_clone}" -maxdepth 1 -type d -name '.*' ! -name '.config' ! -name '.git' | while IFS= read -r dotdir; do
+        local dirname
+        dirname=$(basename "${dotdir}")
+        cp -a "${dotdir}" "${home_dir}/${dirname}"
+    done
+
+    chown -R "${username}:${username}" "${home_dir}"
+    rm -rf "${tmp_clone}"
+    log_info "Dotfiles installed for ${username}"
+}
+
 configure_users() {
     local priv_esc wm_de
     priv_esc="$(state_get PRIV_ESCALATION sudo)"
@@ -17,6 +65,8 @@ configure_users() {
             state_set "USER_${idx}_PASS"  "$(echo "${user_json}" | jq -r ".[$i].pass // empty")"
             state_set "USER_${idx}_SHELL" "$(echo "${user_json}" | jq -r ".[$i].shell // \"/bin/bash\"")"
             state_set "USER_${idx}_SUDO"  "$(echo "${user_json}" | jq -r ".[$i].sudo // true")"
+            state_set "USER_${idx}_DE"    "$(echo "${user_json}" | jq -r ".[$i].de // empty")"
+            state_set "USER_${idx}_DOTFILES" "$(echo "${user_json}" | jq -r ".[$i].dotfiles // empty")"
             local groups_json
             groups_json=$(echo "${user_json}" | jq -r ".[$i].groups // [\"wheel\",\"audio\",\"video\",\"storage\"] | join(\",\")")
             state_set "USER_${idx}_GROUPS" "${groups_json}"
@@ -31,6 +81,8 @@ configure_users() {
         state_set USER_1_SHELL "/bin/bash"
         state_set USER_1_GROUPS "wheel,audio,video,storage"
         state_set USER_1_SUDO "yes"
+        state_set USER_1_DE ""
+        state_set USER_1_DOTFILES ""
         printf '\n[!] No users were configured.\n'
         printf '[!] A default user "artix" has been created.\n'
         printf '[!] Username: artix\n'
@@ -42,12 +94,14 @@ configure_users() {
     local user_count="${USER_COUNT:-1}"
 
     for ((i=1; i<=user_count; i++)); do
-        local username password shell ugroups usudo
+        local username password shell ugroups usudo ude udotfiles
         username="$(state_get "USER_${i}_NAME" "")"
         password="$(state_get "USER_${i}_PASS" "")"
         shell="$(state_get "USER_${i}_SHELL" "/bin/bash")"
         ugroups="$(state_get "USER_${i}_GROUPS" "wheel,audio,video,storage")"
         usudo="$(state_get "USER_${i}_SUDO" "yes")"
+        ude="$(state_get "USER_${i}_DE" "")"
+        udotfiles="$(state_get "USER_${i}_DOTFILES" "")"
 
         [[ -n "${username}" ]] || continue
         [[ "${username}" =~ ^[a-z_][a-z0-9_-]*$ ]] || {
@@ -77,6 +131,8 @@ configure_users() {
         clean_groups="${clean_groups##,}"
         clean_groups="${clean_groups%%,}"
 
+        local user_de="${ude:-${wm_de}}"
+
         log_info "Creating user ${username}..."
 
         artix-chroot /mnt /bin/bash -c "
@@ -86,7 +142,7 @@ if ! id '${username}' &>/dev/null; then
 fi
 [[ -n '${user_hash}' ]] && usermod -p '${user_hash}' '${username}'
 
-if [[ '${wm_de}' =~ ^(hyprland|sway|niri|mango|cosmic)$ ]]; then
+if [[ '${user_de}' =~ ^(hyprland|sway|niri|mango|cosmic)$ ]]; then
     usermod -aG seat '${username}'
 fi
 "
@@ -98,6 +154,10 @@ fi
                 mkdir -p /mnt/etc/sudoers.d
                 echo "${username} ALL=(ALL:ALL) ALL" >> /mnt/etc/sudoers.d/99-artixforge
             fi
+        fi
+
+        if [[ -n "${udotfiles}" ]]; then
+            _clone_dotfiles "${username}" "${udotfiles}"
         fi
     done
 

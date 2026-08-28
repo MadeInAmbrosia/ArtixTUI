@@ -12,7 +12,7 @@ understand the codebase without reverse-engineering it.
 
 ArtixForge is a **declarative system deployment framework** that materializes
 a complete Artix Linux installation from a central state file. All user
-choices are collected through a TUI or GUI hub, stored as key-value pairs
+choices are collected through a TUI hub, stored as key-value pairs
 in `/tmp/artix-installer/state.conf`, and consumed by a linear pipeline of
 stage scripts. Subsystems for recovery, system migration, ISO generation,
 and source-based package management (Power User) read from the same state
@@ -20,9 +20,8 @@ file, making the installer, the recovery tool, the migration engine, and
 the package builder all instances of the same underlying framework.
 
 The framework is written entirely in **Bash** (≈12,000 lines). The user
-interface is provided by **FILLY**, a pure-C widget library that renders
-to terminals, graphical surfaces, and headless buffers through a single
-JSON protocol.
+interface is provided by **FILLY 0.7.0**, a pure-C widget library that
+renders to terminals through a JSON relay protocol over Unix sockets.
 
 ---
 
@@ -36,15 +35,13 @@ modes. Its responsibilities are:
 - **Self-update check**: compares `VERSION` against the upstream GitHub
   release and offers to update.
 - **FILLY bootstrap**: copies the `filly` binary to `/usr/local/bin`,
-  deploys plugins to `~/.config/filly/plugins/`, detects graphical
-  sessions, and selects the TUI or GUI backend.
-- **Mode dispatch**: presents a main menu (`Automatic`, `Resume`, `Recovery`,
-  `Power User`, `Build ISO`, `System Migration`) and routes to the
-  appropriate pipeline function.
-
-The `--non-interactive` flag skips the menu and reads the mode from the
-state file, allowing the GUI to save a configuration and re-launch the
-installer without user interaction.
+  deploys plugin `.so` and `.sig` files from `FILLY/out/` to
+  `~/.config/filly/plugins/`, forces `FILLY_BACKEND=tui`, and starts the
+  FILLY daemon on demand.
+- **Mode dispatch**: presents a main menu (`Installation`, `Resume`,
+  `Advanced`) and routes to the appropriate pipeline function. The
+  Advanced menu (Recovery, Power User, Migration, ISO) requires the root
+  password via `_verify_root_password`.
 
 ---
 
@@ -52,7 +49,8 @@ installer without user interaction.
 
 The state file at `/tmp/artix-installer/state.conf` is the **single source
 of truth** for the entire deployment. It is a flat key-value file with
-single-quoted values.
+single-quoted values. The state file is the interface — no command-line
+flags configure behavior; everything is declared in state.
 
 ### 3.1 Reading and Writing
 
@@ -64,7 +62,39 @@ single-quoted values.
   file atomically (write to `.tmp`, then `mv`). This ensures that
   interrupted writes do not corrupt the file.
 
-### 3.2 Stage Tracking
+### 3.2 Validation
+
+`lint_state` validates the current state before any pipeline runs. It
+checks required keys (DISK, FS_TYPE, BOOTLOADER, KERNEL_CHOICE, INIT),
+verifies the target disk exists, validates filesystem/init/bootloader/
+privilege escalation/display stack values, and ensures at least one user
+or root password is configured.
+
+### 3.3 Inheritance
+
+A preset file can declare `BASE_STATE='/path/to/base.conf'`. When loaded
+via `state_load_preset`, the base is loaded first and the preset's keys
+are applied on top. Relative paths resolve against the preset's directory.
+Empty values in the override mean "use base". There is exactly one level
+of inheritance — no recursion.
+
+### 3.4 Templating
+
+State values can reference other keys: `HOSTNAME='${USER_1_NAME}-machine'`.
+`state_resolve_templates` resolves `${KEY}` references after preset load
+using bash indirect expansion. No eval, no shell injection. Unknown
+references are left literal. Maximum 10 iterations guards against cycles.
+
+### 3.5 Encryption
+
+Presets can be encrypted with GPG symmetric encryption (AES256). The
+encrypted format is a magic header (`ARTIXFORGE_ENCRYPTED=1`) followed by
+base64-encoded GPG binary. `state_encrypt_preset` and
+`state_decrypt_preset` handle encryption and decryption. Passphrases pass
+via fd 3, never on the command line. The live state file remains plaintext
+on tmpfs — encryption is for persistent presets only.
+
+### 3.6 Stage Tracking
 
 Each stage of the pipeline is tracked by a sentinel file in
 `/tmp/artix-installer/stages/<name>.done`. The function `stage_should_skip`
@@ -73,7 +103,7 @@ checks both the sentinel and the actual state of the environment (via
 invalid (e.g., `/mnt` is empty after a reboot), the stage is reset and
 re-run. This enables crash-resume.
 
-### 3.3 Adding a State Key
+### 3.7 Adding a State Key
 
 To add a new configuration option, you must:
 
@@ -81,33 +111,35 @@ To add a new configuration option, you must:
 2. Add the key to the `state_save` function so it persists across resume.
 3. Add the key to `handoff.sh` so it is written to
    `/mnt/etc/artix-installer.conf` on the target system.
+4. Add the key to `lint_state` if it has validation requirements.
 
 ---
 
 ## 4. User Interface Layer (`scripts/tui/`)
 
-All user interaction goes through FILLY, a C library that speaks a
-JSON protocol over Unix sockets or temp files. The Bash side constructs
-JSON payloads and sends them to the `filly` binary.
+All user interaction goes through FILLY 0.7.0, a C library that speaks a
+JSON protocol over a Unix socket. The Bash side constructs JSON payloads
+and sends them to the `filly` binary via `filly relay`.
 
-### 4.1 Core Dispatch (`core.sh`)
+### 4.1 Core Transport (`core.sh`)
 
-`_filly_dispatch` is the single entry point for all simple widgets
-(`menu`, `yesno`, `input`, `password`, `msg`, `checklist`, `filter`,
-`multiselect`). Complex widgets that require persistent daemon state
-(`hub`, `install_hub`, `recovery`, `iso`, `migration_init`,
-`migration_desktop`, `poweruser`) have dedicated functions that use
-`filly relay` mode.
+`_filly_relay` sends JSON to the daemon socket and returns the result.
+`tui_msg`, `tui_yesno`, `tui_input`, `tui_password`, `tui_menu`,
+`tui_checklist`, `tui_filter`, `tui_multiselect`, `tui_file_picker`,
+`tui_summary`, `tui_edit`, and `tui_disk` are thin wrappers that build a
+JSON request and call relay. Complex widgets that require persistent
+daemon state (`hub`, `install_hub`, `recovery`, `iso`, `migration_init`,
+`migration_desktop`, `poweruser`) have dedicated functions that also use
+relay mode with the daemon socket.
 
-### 4.2 Daemon and Oneshot Modes
+### 4.2 Daemon Lifecycle
 
-- **Oneshot mode**: spawns `filly` for one widget call, using temp files
-  for input/output. Used before the main configuration loop.
-- **Daemon mode**: starts a persistent `filly daemon` listening on a
-  Unix socket. Bash sends JSON requests over the socket. The daemon is
-  started just before the configuration hub loop in
-  `tui_collect_install_config` and stopped on exit via an EXIT trap.
-  This eliminates terminal flicker.
+The FILLY daemon is started via `_start_filly_daemon` before the
+configuration hub loop and stopped by an EXIT trap via
+`_stop_filly_daemon`. The daemon listens on `/tmp/filly.sock`. Bash sends
+JSON requests over the socket. Results are returned on stdout as bare
+values. The daemon holds the terminal in the alternate screen, eliminating
+flicker between widget transitions.
 
 ### 4.3 Hub Widget
 
@@ -139,7 +171,7 @@ implemented as a separate script:
 | chroot | `chroot.sh` | System configuration, users, bootloader |
 | init | `init.sh` | BusyBox init setup (if applicable) |
 | post | `post.sh` | Desktop, drivers, audio, extras |
-| finalize | `finalize.sh` | Validation, report, unmount |
+| finalize | `finalize.sh` | Validation, report, post-install script, unmount |
 
 Each stage script follows the same pattern:
 
@@ -150,6 +182,8 @@ Each stage script follows the same pattern:
 
 Stages are called sequentially by `run_install_pipeline` in `install`.
 The Power User stage is only executed if `POWER_USER=yes` in the state.
+Before any stage runs, `lint_state` validates the state file and
+`_validate_post_install_script` checks the post-install script path if set.
 
 ---
 
@@ -172,7 +206,7 @@ UEFI paths.
 
 The main script `configure_bootloader` detects the root device, generates
 a kernel command line via `generate_root_cmdline` (handling LUKS, LVM,
-BTRFS, ZFS), runs `mkinitcpio`, and dispatches to a per-bootloader
+BTRFS), runs `mkinitcpio`, and dispatches to a per-bootloader
 backend. Backends live in `scripts/install/bootloaders/`:
 
 - `grub.sh` — GRUB for UEFI and BIOS, with LUKS/LVM support.
@@ -199,7 +233,8 @@ aspect of the installed system:
 - `audio.sh` — PipeWire or PulseAudio setup.
 - `networking.sh` — NetworkManager, dhcpcd+iwd, or ConnMan.
 - `extras.sh` — additional user-selected packages.
-- `users.sh` — user creation, password hashing, sudo/doas setup.
+- `users.sh` — user creation, password hashing, sudo/doas setup,
+  per-user DE, dotfiles cloning.
 - `system.sh` — hostname, locale, keymap, timezone.
 
 ### 6.5 Recovery (`scripts/recovery/`)
@@ -219,13 +254,18 @@ detection is read-only until the user confirms a repair.
 Three migration types, all state-driven and resumable:
 
 - **Init migration** (`inits/common.sh`): service mapping tables between
-  all init pairs, with a hub-chaining model through OpenRC.
+  all init pairs, with a hub-chaining model through OpenRC. Explicit
+  target selection via `ensure_migration_root`.
 - **Desktop migration** (`des/common.sh`): generic scripts that detect
-  the current DE and install the target DE.
+  the current DE, dynamically discover installed packages, and install
+  the target DE. Explicit target selection via `ensure_migration_root`.
+  Uses `pacman -Rdd` for package removal and user-visible orphan cleanup.
 - **ATA migration** (`ata/`): full Arch→Artix conversion with audit,
-  backup, conversion, package replacement, and service migration.
+  selective backup, conversion, package replacement, and service
+  migration.
 
 All migrations use stage files (`migration-stage.conf`) for crash-resume.
+Migration keys are persisted through `state_save`.
 
 ### 6.7 ISO Builder (`iso/`)
 
@@ -262,7 +302,9 @@ files:
    or subsystem library.
 4. **Handoff**: add the key to the config export in `handoff.sh` so it
    is written to `/mnt/etc/artix-installer.conf`.
-5. **Recovery** (if applicable): add detection in `scripts/recovery/detects/`
+5. **Linting**: add validation to `lint_state` in `state.sh` if the key
+   has constraints.
+6. **Recovery** (if applicable): add detection in `scripts/recovery/detects/`
    and repair in `scripts/recovery/repairs/`.
 
 ---
@@ -270,6 +312,7 @@ files:
 ## 8. Resilience Patterns
 
 - **Atomic state writes**: `state_save` writes to `.tmp` then `mv`.
+- **State validation**: `lint_state` runs before every pipeline.
 - **Stage validation**: `stage_should_skip` re-validates the environment,
   not just the sentinel file.
 - **Retry with backoff**: `retry_command` in `common.sh` for network
@@ -279,6 +322,8 @@ files:
 - **Debug mode**: `set -x` to fd 19, separate from TTY.
 - **Self-update**: `recoverable_error` offers to update ArtixForge from
   GitHub and restart.
+- **Bug report generation**: `_generate_bug_report` collects logs, state,
+  stage markers, and system info into a tarball on failure.
 
 ---
 
@@ -302,11 +347,10 @@ The same state machine and pipeline deploy to aarch64 without modification.
 ArtixForge is a unified, state-driven system deployment framework. Every
 mode—installer, recovery, migration, ISO builder, poweruser—is an instance
 of the same architecture: collect state, run a pipeline, produce a bootable
-Artix system. The framework is modular at the directory level, with each
-subsystem (`scripts/`, `poweruser/`, `migrations/`, `iso/`) capable of
-functioning as a standalone project. FILLY provides the universal UI layer
-with a formal protocol, allowing the same Bash code to drive terminal,
-graphical, and headless interfaces.
+Artix system. The state file is the interface. The framework is modular at
+the directory level, with each subsystem (`scripts/`, `poweruser/`,
+`migrations/`, `iso/`) capable of functioning as a standalone project.
+FILLY 0.7.0 provides the TUI layer with a relay protocol over Unix sockets.
 
 *This document was synthesized from CODE_INDENTS.md, the live codebase,
 and the project READMEs. It is updated as the architecture evolves.*

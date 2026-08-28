@@ -48,7 +48,7 @@ ata_migrate_main() {
     target_init="$(state_get INIT '')"
     aur_helper="$(state_get ATA_AUR_HELPER '')"
     backup_dir="$(state_get MIGRATION_BACKUP_DIR '')"
-    has_homed=0
+    has_homed="$(state_get ATA_HAS_HOMED 0)"
     de="$(state_get WM_DE none)"
 
     local resolv_backup=""
@@ -68,6 +68,7 @@ ata_migrate_main() {
             target_init="$(state_get INIT '')"
             aur_helper="$(state_get ATA_AUR_HELPER '')"
             backup_dir="$(state_get MIGRATION_BACKUP_DIR '')"
+            has_homed="$(state_get ATA_HAS_HOMED 0)"
             de="$(state_get WM_DE none)"
         else
             log_info "Starting fresh – removing partial state..."
@@ -79,6 +80,7 @@ ata_migrate_main() {
             target_init=""
             aur_helper=""
             de="none"
+            has_homed=0
         fi
     fi
 
@@ -116,7 +118,7 @@ WHAT CAN BE MIGRATED AUTOMATICALLY:
   AUR packages (attempt batch reinstall)
 
 WHAT WILL BE BACKED UP:
-  All of /home
+  All of /home (excluding caches)
   /etc, /boot, /usr/local
   Pacman database
   System journal (text export)
@@ -152,6 +154,7 @@ WHAT WILL BE BACKED UP:
             has_homed=1
             tui_msg "systemd-homed Detected" "Users with systemd-homed were found.\n\nTheir home directories will be unlocked and migrated to standard /home if you provide their passwords."
         fi
+        state_set ATA_HAS_HOMED "${has_homed}"
 
         de=$(state_get WM_DE none)
         local aur_count flatpak_count snap_count

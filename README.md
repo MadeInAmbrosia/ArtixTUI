@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>Modular operating system deployment for Artix Linux</strong><br>
-  TUI • GUI • Installer • Migration • ISO Builder • Power User
+  TUI • Installer • Migration • ISO Builder • Power User
 </p>
 
 <p align="center">
@@ -22,12 +22,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v9.3.2.2-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v9.3.2.3-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Stable-v9.1.1.4-3572a5?style=flat-square" alt="Stable Release">
   <img src="https://img.shields.io/badge/Artix-[galaxy--gremlins]-blue?style=flat-square&logo=artixlinux" alt="Artix Galaxy-Gremlins">
   <img src="https://img.shields.io/badge/Language-Bash-4EAA25?style=flat-square&logo=gnu-bash" alt="Bash">
   <img src="https://img.shields.io/badge/UI-FILLY_C-FFB6C1?style=flat-square&logo=c" alt="FILLY">
-  <img src="https://img.shields.io/badge/License-Forge_Attribution_1.0-yellow?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/License-IRX_1.0-yellow?style=flat-square" alt="License">
 </p>
 
 ---
@@ -72,8 +72,8 @@ bootloader setup, desktop environment, drivers, and extra tools — all from a
 single interface.
 
 - Built with [FILLY](https://github.com/realvolk/FILLY) — a pure C widget
-  library with terminal, graphical, and headless backends speaking a single
-  JSON protocol. No Rust. No Python. No GTK. No external dependencies beyond
+  library with terminal and headless backends speaking a single JSON
+  protocol. No Rust. No Python. No GTK. No external dependencies beyond
   a C compiler and libsodium.
 - Custom colour themes (ArtixForge, Artix Blue, Jet Black, Mono, Retro) that
   persist to the installed system.
@@ -113,11 +113,11 @@ A debug toggle is available for every mode.
 | Storage | Standard partitions, LVM, LUKS, LVM-on-LUKS |
 | Boot method | UKI, GRUB, rEFInd, EFIStub, Limine |
 | Kernel | linux, zen, lts, hardened, libre, cachyos-*, bazzite, xanmod, tkg |
-| Desktop | KDE Plasma, XFCE, LXQt, LXDE, Hyprland, Sway, Niri, i3, dwm, vxwm, IceWM, MangoWM, SonicDE, Cinnamon, Budgie, Moksha, COSMIC, none |
+| Desktop | KDE Plasma, XFCE, LXQt, LXDE, Hyprland, Sway, Niri, i3, dwm, vxwm, IceWM, MangoWM, Cinnamon, Budgie, Moksha, COSMIC, none |
 | Network | NetworkManager, dhcpcd+iwd, ConnMan, none |
 | Audio | PipeWire, PulseAudio, none |
 | Shell | bash, zsh, fish |
-| Display stack | X.Org, xLibre |
+| Display stack | X.Org, Wayland, none |
 | Coreutils | GNU, BusyBox, uutils, ArtixForge minimal, Custom |
 | Privilege escalation | sudo, doas |
 | Encryption | LUKS full-disk, LUKS-on-LVM |
@@ -135,7 +135,7 @@ W.I.P
 
 ## Core Installer
 
-- Two interfaces: Terminal UI and Graphical UI — same JSON protocol, same C backend via FILLY
+- Terminal UI built on FILLY — same JSON protocol, same C backend
 - Configuration hub with live summary strings, conditional visibility, and inline editing
 - Modular architecture — separate scripts for storage, install, post, stages, recovery, and TUI
 - Universal logger — writes to `/tmp/artix-installer/install.log` and `/mnt/var/log/artix-installer.log`
@@ -215,5 +215,5 @@ submissions, and [code of conduct](DOCUMENTS/CODE_OF_CONDUCT.md).
 
 # License
 
-Licensed under the [Forge Attribution License 1.0](DOCUMENTS/LICENSE)
+Licensed under the [IRX License 1.0](DOCUMENTS/LICENSE)
 © [Volk](https://github.com/realvolk) 2026.

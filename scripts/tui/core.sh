@@ -43,14 +43,13 @@ log_error() {
 }
 
 _start_filly_daemon() {
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then return 0; fi
     if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null && [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
         return 0
     fi
     if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then rm -f "${FILLY_DAEMON_SOCKET}"; fi
     _ensure_log_dirs
-    "${FILLY_BIN:-filly}" daemon --insecure-plugins --socket "${FILLY_DAEMON_SOCKET}" \
-        </dev/null &>/dev/null &
+    "${FILLY_BIN:-filly}" daemon --socket "${FILLY_DAEMON_SOCKET}" \
+        </dev/null &>"${FILLY_DAEMON_LOG}" &
     FILLY_DAEMON_PID=$!
     for _ in {1..100}; do
         if [[ -S "${FILLY_DAEMON_SOCKET}" ]]; then
@@ -66,7 +65,6 @@ _start_filly_daemon() {
 
 _stop_filly_daemon() {
     if [[ -n "${FILLY_DAEMON_PID}" ]] && kill -0 "${FILLY_DAEMON_PID}" 2>/dev/null; then
-        printf '{"type":"quit"}\n' | nc -U "${FILLY_DAEMON_SOCKET}" 2>/dev/null || true
         kill "${FILLY_DAEMON_PID}" 2>/dev/null || true
         wait "${FILLY_DAEMON_PID}" 2>/dev/null || true
     fi
@@ -77,56 +75,109 @@ _stop_filly_daemon() {
 
 trap '_stop_filly_daemon' EXIT
 
-_filly_dispatch() {
-    local widget="${1}" title="${2}" message="${3}"
-    shift 3
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    [[ -n "${message}" ]] && printf '%s\n' "${message}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        "filly_graphical_${widget}" "${title}" "${message}" "$@"
-    else
-        "filly_${widget}" "${title}" "${message}" "$@"
-    fi
+_filly_relay() {
+    local json="${1}"
+    "${FILLY_BIN:-filly}" relay --socket "${FILLY_SOCKET}" "${json}" 2>/dev/null
 }
 
-tui_msg()        { _filly_dispatch msg "$@"; }
-tui_yesno()      { _filly_dispatch yesno "$@"; }
-tui_input()      { _filly_dispatch input "$@"; }
-tui_password()   { _filly_dispatch password "$@"; }
-tui_menu()       { _filly_dispatch menu "$@"; }
-tui_checklist()  { _filly_dispatch checklist "$@"; }
-tui_filter()     { _filly_dispatch filter "$@"; }
-tui_multiselect(){ _filly_dispatch multiselect "$@"; }
-tui_file_picker(){ _filly_dispatch file_picker "$@"; }
+tui_msg() {
+    local title="${1}" message="${2}"
+    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
+    [[ -n "${message}" ]] && printf '%s\n' "${message}" >&2
+    _start_filly_daemon || return 1
+    "${FILLY_BIN:-filly}" relay --socket "${FILLY_SOCKET}" \
+        "{\"widget\":\"msg\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\"}}" >/dev/null 2>&1
+}
+
+tui_yesno() {
+    local title="${1}" message="${2}"
+    _start_filly_daemon || return 1
+    local result
+    result=$(_filly_relay "{\"widget\":\"yesno\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\",\"default\":true}}")
+    [[ "${result}" == "true" ]]
+}
+
+tui_input() {
+    local title="${1}" message="${2}" default="${3:-}"
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"input\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\",\"default\":\"${default}\"}}"
+}
+
+tui_password() {
+    local title="${1}" message="${2}"
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"password\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\"}}"
+}
+
+tui_menu() {
+    local title="${1}" message="${2}"
+    shift 2
+    _start_filly_daemon || return 1
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s -c .)
+    _filly_relay "{\"widget\":\"menu\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\",\"choices\":${choices_json}}}"
+}
+
+tui_checklist() {
+    local title="${1}" message="${2}"
+    shift 2
+    _start_filly_daemon || return 1
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s -c .)
+    _filly_relay "{\"widget\":\"checklist\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\",\"choices\":${choices_json}}}"
+}
+
+tui_filter() {
+    local title="${1}" message="${2}"
+    shift 2
+    _start_filly_daemon || return 1
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s -c .)
+    _filly_relay "{\"widget\":\"filter\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\",\"choices\":${choices_json}}}"
+}
+
+tui_multiselect() {
+    local title="${1}" message="${2}"
+    shift 2
+    _start_filly_daemon || return 1
+    local choices_json
+    choices_json=$(printf '%s\n' "$@" | jq -R . | jq -s -c .)
+    _filly_relay "{\"widget\":\"multiselect\",\"params\":{\"title\":\"${title}\",\"message\":\"${message}\",\"choices\":${choices_json}}}"
+}
+
+tui_file_picker() {
+    local title="${1}" start_dir="${2:-/}" filter="${3:-}"
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"file_picker\",\"params\":{\"title\":\"${title}\",\"start_dir\":\"${start_dir}\",\"filter_ext\":\"${filter}\"}}"
+}
 
 tui_summary() {
     local title="${1}" file="${2:-}" message="${3:-}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_summary "${title}" "${file}" "${message}"
+    local content=""
+    if [[ -n "${file}" && -f "${file}" ]]; then
+        content=$(<"${file}")
     else
-        filly_summary "${title}" "${file}" "${message}"
+        content="${message}"
     fi
+    _start_filly_daemon || return 1
+    "${FILLY_BIN:-filly}" relay --socket "${FILLY_SOCKET}" \
+        "{\"widget\":\"summary\",\"params\":{\"title\":\"${title}\",\"message\":\"${content}\"}}" >/dev/null 2>&1
 }
 
 tui_edit() {
     local title="${1}" file="${2}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_text_editor "${title}" "${file}"
-    else
-        filly_text_editor "${title}" "${file}"
-    fi
+    local content=""
+    [[ -f "${file}" ]] && content=$(<"${file}")
+    _start_filly_daemon || return 1
+    local result
+    result=$(_filly_relay "{\"widget\":\"text_editor\",\"params\":{\"title\":\"${title}\",\"file_path\":\"${file}\",\"content\":\"${content}\"}}")
+    [[ -n "${result}" ]] && printf '%s\n' "${result}" > "${file}"
 }
 
 tui_disk() {
     local title="${1}" disk="${2}" partitions_json="${3:-[]}" free_space_json="${4:-[]}" readonly="${5:-false}"
-    printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
-    else
-        filly_disk "${title}" "${disk}" "${partitions_json}" "${free_space_json}" "${readonly}"
-    fi
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"disk\",\"params\":{\"title\":\"${title}\",\"disk\":\"${disk}\",\"partitions\":${partitions_json},\"free_space\":${free_space_json},\"readonly\":${readonly}}}"
 }
 
 tui_msg_quick() {
@@ -139,18 +190,9 @@ tui_password_confirm() {
     local title="${1:-Password}" prompt="${2:-Enter password:}" confirm_prompt="${3:-Confirm password:}"
     local pass confirm
     while true; do
-        printf '\e[1;%sm── %s ──\e[0m\n' "$(theme_ansi_code "${GUM_TITLE_COLOR}")" "${title}" >&2
-        if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-            pass=$(filly_graphical_password "${title}" "${prompt}")
-        else
-            pass=$(filly_password "${title}" "${prompt}")
-        fi
+        pass=$(tui_password "${title}" "${prompt}")
         [[ -n "${pass}" ]] || return 1
-        if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-            confirm=$(filly_graphical_password "${title}" "${confirm_prompt}")
-        else
-            confirm=$(filly_password "${title}" "${confirm_prompt}")
-        fi
+        confirm=$(tui_password "${title}" "${confirm_prompt}")
         [[ -n "${confirm}" ]] || return 1
         if [[ "${pass}" == "${confirm}" ]]; then
             printf '%s\n' "${pass}"
@@ -163,74 +205,47 @@ tui_password_confirm() {
 tui_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}"
     _start_filly_daemon || return 1
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_hub "${title}" "${categories_json}" "${actions_json}"
-    else
-        local cats_compact acts_compact request
-        cats_compact=$(echo "${categories_json}" | jq -c .)
-        acts_compact=$(echo "${actions_json}" | jq -c .)
-        request=$(printf '{"widget":"hub","params":{"title":"%s","categories":%s,"actions":%s},"relay":true}' \
-            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}")
-        "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" "${request}"
-    fi
+    local request
+    request=$(jq -cn --arg title "${title}" --argjson cats "${categories_json}" --argjson acts "${actions_json}" \
+        '{widget:"hub",params:{title:$title,categories:$cats,actions:$acts},relay:true}')
+    _filly_relay "${request}"
 }
 
 tui_install_hub() {
     local title="${1}" categories_json="${2}" actions_json="${3}" boot_mode="${4:-uefi}"
     _start_filly_daemon || return 1
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_install_hub "${title}" "${categories_json}" "${actions_json}" "${boot_mode}"
-    else
-        local cats_compact acts_compact request
-        cats_compact=$(echo "${categories_json}" | jq -c .)
-        acts_compact=$(echo "${actions_json}" | jq -c .)
-        request=$(printf '{"widget":"install_hub","params":{"title":"%s","categories":%s,"actions":%s,"boot_mode":"%s"},"relay":true}' \
-            "${title//\"/\\\"}" "${cats_compact}" "${acts_compact}" "${boot_mode}")
-        "${FILLY_BIN:-filly}" relay "${FILLY_DAEMON_SOCKET}" "${request}"
-    fi
+    local request
+    request=$(jq -cn --arg title "${title}" --argjson cats "${categories_json}" --argjson acts "${actions_json}" --arg boot "${boot_mode}" \
+        '{widget:"install_hub",params:{title:$title,categories:$cats,actions:$acts,boot_mode:$boot},relay:true}')
+    _filly_relay "${request}"
 }
 
 tui_recovery() {
     local title="${1}" status_json="${2}" repairs_json="${3}"
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_recovery "${title}" "${status_json}" "${repairs_json}"
-    else
-        filly_recovery "${title}" "${status_json}" "${repairs_json}"
-    fi
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"recovery\",\"params\":{\"title\":\"${title}\",\"status\":${status_json},\"repairs\":${repairs_json}}}"
 }
 
 tui_iso() {
     local title="${1}" categories_json="${2}"
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_iso "${title}" "${categories_json}"
-    else
-        filly_iso "${title}" "${categories_json}"
-    fi
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"iso\",\"params\":{\"title\":\"${title}\",\"categories\":${categories_json}}}"
 }
 
 tui_migration_init() {
     local title="${1}" current_init="${2}"
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_migration_init "${title}" "${current_init}"
-    else
-        filly_migration_init "${title}" "${current_init}"
-    fi
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"migration_init\",\"params\":{\"title\":\"${title}\",\"current_init\":\"${current_init}\"}}"
 }
 
 tui_migration_desktop() {
     local title="${1}" current_de="${2}"
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_migration_desktop "${title}" "${current_de}"
-    else
-        filly_migration_desktop "${title}" "${current_de}"
-    fi
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"migration_desktop\",\"params\":{\"title\":\"${title}\",\"current_de\":\"${current_de}\"}}"
 }
 
 tui_poweruser() {
     local title="${1}" categories_json="${2}"
-    if [[ "${FILLY_BACKEND:-tui}" == "gui" ]]; then
-        filly_graphical_poweruser "${title}" "${categories_json}"
-    else
-        filly_poweruser "${title}" "${categories_json}"
-    fi
+    _start_filly_daemon || return 1
+    _filly_relay "{\"widget\":\"poweruser\",\"params\":{\"title\":\"${title}\",\"categories\":${categories_json}}}"
 }
